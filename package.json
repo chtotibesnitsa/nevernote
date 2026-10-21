@@ -1,0 +1,14 @@
+{
+  "name": "nevernote",
+  "private": true,
+  "description": "Free, open source, offline class note taker: every word, every speaker, notes and due dates on your phone.",
+  "license": "MIT",
+  "workspaces": ["packages/*", "apps/web", "apps/desktop"],
+  "scripts": {
+    "test": "npm run test -w @nevernote/core",
+    "dev:web": "npm run dev -w @nevernote/web",
+    "dev:desktop": "npm run dev -w @nevernote/desktop",
+    "build:web": "npm run build -w @nevernote/web",
+    "typecheck": "npm run typecheck --workspaces --if-present"
+  }
+}

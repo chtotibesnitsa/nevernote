@@ -1,0 +1,112 @@
+import { describe, expect, it } from "vitest";
+import { recordUpsell, shouldUpsell, summaryRoute } from "../src/plans";
+import { insights, streaks } from "../src/stats";
+import { mergeExtractions, parseSummary } from "../src/summarize";
+import { Syncer, mergeNote, type Remote, type Store } from "../src/sync";
+import type { Extraction, Note } from "../src/types";
+
+const note = (over: Partial<Note> = {}): Note => ({
+  id: "n1",
+  title: "APES 10/21",
+  createdAt: "2026-10-21T13:37:00.000Z",
+  updatedAt: "2026-10-21T14:00:00.000Z",
+  durationSec: 600,
+  device: "mac",
+  stage: "ready",
+  segments: [{ id: "a", start: 0, end: 5, text: "Limestone holds carbon for millions of years.", speaker: "S1" }],
+  speakers: [{ id: "S1", name: "Teacher", share: 1 }],
+  extractions: [],
+  thoughts: "",
+  ...over,
+});
+
+describe("stats", () => {
+  it("counts words, wpm and books", () => {
+    const i = insights([note(), note({ id: "n2", durationSec: 60, device: "ios" })], new Date(2026, 9, 21));
+    expect(i.totalWords).toBe(14);
+    expect(i.wpm).toBe(1);
+    expect(i.byDevice.ios).toBe(7);
+  });
+  it("keeps streaks across weekends", () => {
+    // Thu, Fri, (Sat, Sun skipped), Mon
+    expect(streaks(["2026-10-15", "2026-10-16", "2026-10-19"], new Date(2026, 9, 19)).current).toBe(3);
+    // a missed Tuesday breaks it
+    expect(streaks(["2026-10-12", "2026-10-14"], new Date(2026, 9, 14)).current).toBe(1);
+    // today not recorded yet doesn't break it
+    expect(streaks(["2026-10-19", "2026-10-20"], new Date(2026, 9, 21)).current).toBe(2);
+  });
+});
+
+describe("plans", () => {
+  const now = new Date("2026-10-21T15:00:00Z");
+  const base = { installedAt: "2026-10-01T00:00:00Z", shownCount: 0, dismissedInARow: 0 };
+  it("routes free summaries past the daily limit to sponsored-or-overnight", () => {
+    expect(summaryRoute("free", 0)).toBe("instant");
+    expect(summaryRoute("free", 3)).toBe("sponsored-or-overnight");
+    expect(summaryRoute("pro", 99)).toBe("instant");
+  });
+  it("never upsells new users, pro users, or while recording", () => {
+    expect(shouldUpsell("free", "deadlineFound", { ...base, installedAt: "2026-10-21T00:00:00Z" }, now).show).toBe(false);
+    expect(shouldUpsell("pro", "deadlineFound", base, now).show).toBe(false);
+    expect(shouldUpsell("free", "deadlineFound", base, now, true).show).toBe(false);
+    expect(shouldUpsell("free", "deadlineFound", base, now).show).toBe(true);
+  });
+  it("waits three days between nudges and snoozes after three dismissals", () => {
+    let s = recordUpsell(base, now, true);
+    expect(shouldUpsell("free", "summaryReady", s, new Date("2026-10-23T15:00:00Z")).show).toBe(false);
+    expect(shouldUpsell("free", "summaryReady", s, new Date("2026-10-25T15:00:00Z")).show).toBe(true);
+    s = recordUpsell(recordUpsell(s, now, true), now, true);
+    expect(shouldUpsell("free", "summaryReady", s, new Date("2026-11-10T15:00:00Z")).show).toBe(false);
+    expect(shouldUpsell("free", "summaryReady", s, new Date("2026-11-25T15:00:00Z")).show).toBe(true);
+  });
+});
+
+describe("summaries", () => {
+  it("parses fenced model output and links quotes to segments", () => {
+    const raw = '```json\n{"title":"Carbon","notes":"### Sinks\\n- Limestone","studyGuide":[{"question":"Q","answer":"A"}],"keyTerms":[],"items":[{"kind":"exam","title":"Unit 3 test","date":"2026-10-27","time":null,"quote":"Limestone holds carbon"}]}\n```';
+    const s = parseSummary(raw, "test-model", note().segments);
+    expect(s.title).toBe("Carbon");
+    expect(s.extractions[0]).toMatchObject({ kind: "exam", when: "2026-10-27", allDay: true, segmentId: "a" });
+  });
+  it("prefers AI items and keeps keyword items the AI missed", () => {
+    const k = (kind: Extraction["kind"], when?: string): Extraction => ({ id: kind + when, kind, title: kind, when, allDay: true, phrase: "", confidence: 0.8, source: "keywords" });
+    const merged = mergeExtractions([k("exam", "2026-10-27"), k("event", "2026-11-03")], [{ ...k("exam", "2026-10-27"), source: "ai" }]);
+    expect(merged.map((m) => `${m.kind}:${m.source}`)).toEqual(["exam:ai", "event:keywords"]);
+  });
+});
+
+describe("sync", () => {
+  it("merges segments from two devices and keeps the newest title", () => {
+    const a = note({ title: "old", updatedAt: "2026-10-21T14:00:00Z" });
+    const b = note({ title: "new", updatedAt: "2026-10-21T15:00:00Z", segments: [{ id: "b", start: 6, end: 9, text: "Fossil fuels." }] });
+    const m = mergeNote(a, b);
+    expect(m.title).toBe("new");
+    expect(m.segments.map((s) => s.id)).toEqual(["a", "b"]);
+  });
+  it("pushes dirty notes, skips live recordings, and pulls remote ones", async () => {
+    const db = new Map<string, Note>([
+      ["n1", note()],
+      ["live", note({ id: "live", stage: "recording" })],
+    ]);
+    const meta = new Map<string, string>();
+    const store: Store = {
+      get: async (id) => db.get(id),
+      put: async (n) => void db.set(n.id, n),
+      list: async () => [...db.values()],
+      getMeta: async (k) => meta.get(k),
+      setMeta: async (k, v) => void meta.set(k, v),
+    };
+    const pushed: string[] = [];
+    let pulled = 0;
+    const remote: Remote = {
+      push: async (ns) => void pushed.push(...ns.map((n) => n.id)),
+      pull: async () => (pulled++ ? { notes: [] } : { notes: [note({ id: "phone", device: "ios" })], cursor: "c1" }),
+    };
+    const states: string[] = [];
+    await new Syncer(store, remote, (s) => states.push(s)).run(true);
+    expect(pushed).toEqual(["n1"]);
+    expect(db.has("phone")).toBe(true);
+    expect(meta.get("cursor")).toBe("c1");
+    expect(states).toEqual(["syncing", "synced"]);
+  });
+});

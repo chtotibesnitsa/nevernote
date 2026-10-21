@@ -1,8 +1,15 @@
 node_modules
+dist
+out
+release
 .env
+.env.*
+!.env.example
 .expo
-.rork
-
-# Cloudflare Functions
-functions/node_modules
-!functions/package.json
+ios/Pods
+*.tsbuildinfo
+.DS_Store
+bench/trials
+bench/results*.json
+__pycache__
+models/
