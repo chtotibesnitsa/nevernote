@@ -58,7 +58,7 @@ create table public.summary_jobs (
 );
 create index summary_jobs_queue on public.summary_jobs (status, route, created_at);
 
-create or replace function public.touch_note() returns trigger language plpgsql as $$
+create or replace function public.touch_note() returns trigger language plpgsql set search_path = '' as $$
 begin
   new.server_updated_at := clock_timestamp();
   return new;
@@ -92,7 +92,7 @@ create policy "log own events" on public.usage_events for insert with check (aut
 create policy "see own jobs" on public.summary_jobs for select using (auth.uid() = user_id);
 
 -- Owner dashboard (query from the Supabase SQL editor or a service-role client).
-create or replace view public.admin_daily as
+create or replace view public.admin_daily with (security_invoker = true) as
 select date_trunc('day', at)::date as day,
        count(*) filter (where kind = 'signup') as signups,
        count(distinct user_id) as active_users,

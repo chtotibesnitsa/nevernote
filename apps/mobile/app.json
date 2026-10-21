@@ -69,8 +69,8 @@
       "typedRoutes": true
     },
     "extra": {
-      "supabaseUrl": "",
-      "supabaseAnonKey": "",
+      "supabaseUrl": "https://bbvaqcsyinbeopyhrqzi.supabase.co",
+      "supabaseAnonKey": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJidmFxY3N5aW5iZW9weWhycXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2MDUzNjksImV4cCI6MjEwODE4MTM2OX0.v-0eHe-bUWvXqSsmCbs8oqlA3EzhYJLtk0hxI2uCI3c",
       "revenueCatIosKey": "",
       "eas": {
         "projectId": ""

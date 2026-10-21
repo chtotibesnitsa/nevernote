@@ -3,7 +3,7 @@
 import type { ChatMessage } from "../../../../packages/core/src/summarize.ts";
 
 export const MODEL = Deno.env.get("LLM_MODEL") ?? "google/gemini-2.5-flash-lite";
-export const PRO_MODEL = Deno.env.get("LLM_PRO_MODEL") ?? MODEL;
+export const PRO_MODEL = Deno.env.get("LLM_PRO_MODEL") || MODEL;
 const BASE = (Deno.env.get("LLM_BASE_URL") ?? "https://openrouter.ai/api/v1").replace(/\/$/, "");
 
 export async function chat(messages: ChatMessage[], model = MODEL, json = true): Promise<{ text: string; tokensIn: number; tokensOut: number }> {

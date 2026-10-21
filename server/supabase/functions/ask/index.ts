@@ -19,7 +19,11 @@ Deno.serve(async (req) => {
   q = Array.isArray(noteIds) && noteIds.length ? q.in("id", noteIds) : q.order("created_at", { ascending: false }).limit(8);
   const { data } = await q;
   const ctx = (data ?? []).map((n) => ({ title: n.title, date: new Date(n.created_at), segments: n.segments, notes: n.summary?.notes }));
-  const r = await chat(askMessages(question, ctx), PRO_MODEL, false);
-  await admin().from("usage_events").insert({ user_id: user.id, kind: "ask", meta: { tokens_in: r.tokensIn, tokens_out: r.tokensOut } });
-  return json({ answer: r.text });
+  try {
+    const r = await chat(askMessages(question, ctx), PRO_MODEL, false);
+    await admin().from("usage_events").insert({ user_id: user.id, kind: "ask", meta: { tokens_in: r.tokensIn, tokens_out: r.tokensOut } });
+    return json({ answer: r.text });
+  } catch (e) {
+    return json({ error: String(e instanceof Error ? e.message : e) }, 502);
+  }
 });

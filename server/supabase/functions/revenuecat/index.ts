@@ -2,7 +2,8 @@
 import { admin, json } from "../_shared/db.ts";
 
 Deno.serve(async (req) => {
-  if (req.headers.get("Authorization") !== `Bearer ${Deno.env.get("REVENUECAT_WEBHOOK_SECRET")}`) return json({ error: "forbidden" }, 403);
+  const secret = Deno.env.get("REVENUECAT_WEBHOOK_SECRET");
+  if (!secret || req.headers.get("Authorization") !== `Bearer ${secret}`) return json({ error: "forbidden" }, 403);
   const { event } = await req.json();
   const userId: string | undefined = event?.app_user_id;
   if (!userId || !/^[0-9a-f-]{36}$/.test(userId)) return json({ ok: true, skipped: "anonymous" });

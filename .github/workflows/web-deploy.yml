@@ -1,9 +1,9 @@
 name: Deploy website
 
 # Builds the website and web app and publishes it to GitHub Pages.
-# One-time setup: Settings → Pages → Source: GitHub Actions, and add the repository
-# variables VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY (Settings → Secrets and variables → Actions → Variables).
-# With a custom domain, also add the variable VITE_BASE=/ .
+# One-time setup: Settings → Pages → Source: GitHub Actions.
+# It talks to the official Supabase project by default; forks can set the repository
+# variables VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. With a custom domain, set VITE_BASE=/ .
 on:
   push:
     branches: [main]

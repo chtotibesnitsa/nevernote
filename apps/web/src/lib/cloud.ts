@@ -3,8 +3,10 @@
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
 import { noteToRow, rowToNote, type Plan, type Remote, type Summary } from "@nevernote/core";
 
-const url = import.meta.env.VITE_SUPABASE_URL as string | undefined;
-const key = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
+// The official Nevernote project. The anon key is public by design (row-level
+// security protects the data); forks can point at their own project with env vars.
+const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || "https://bbvaqcsyinbeopyhrqzi.supabase.co";
+const key = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJidmFxY3N5aW5iZW9weWhycXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2MDUzNjksImV4cCI6MjEwODE4MTM2OX0.v-0eHe-bUWvXqSsmCbs8oqlA3EzhYJLtk0hxI2uCI3c";
 
 export const supabase: SupabaseClient | undefined = url && key ? createClient(url, key, { auth: { persistSession: true, detectSessionInUrl: true } }) : undefined;
 export const cloudEnabled = !!supabase;
