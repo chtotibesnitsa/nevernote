@@ -36,7 +36,7 @@ export const LIMITS = {
   /** Sponsor-card summaries a free user can unlock per day. */
   sponsoredPerDay: 10,
   /** Pro "Ask your notes" questions per day. */
-  asksPerDay: 100,
+  asksPerDay: 30,
   /** Longest transcript we summarise in one note, in words (about 4 hours of class). */
   maxSummaryWords: 36_000,
   /** Times one note can be re-summarised (e.g. after edits) per day. */
