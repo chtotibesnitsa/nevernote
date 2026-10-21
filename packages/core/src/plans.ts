@@ -31,6 +31,18 @@ export const PRICING = {
 /** Free AI summaries that run the moment you're online. Past this they still run, just batched overnight (or instantly after a short sponsor card). */
 export const FREE_INSTANT_SUMMARIES_PER_DAY = 3;
 
+/** Cost guards. A summary costs about $0.002 per class hour on Gemini Flash Lite, so these keep a heavy free user under a few cents a month. */
+export const LIMITS = {
+  /** Sponsor-card summaries a free user can unlock per day. */
+  sponsoredPerDay: 10,
+  /** Pro "Ask your notes" questions per day. */
+  asksPerDay: 100,
+  /** Longest transcript we summarise in one note, in words (about 4 hours of class). */
+  maxSummaryWords: 36_000,
+  /** Times one note can be re-summarised (e.g. after edits) per day. */
+  resummariesPerNotePerDay: 2,
+} as const;
+
 export type SummaryRoute = "instant" | "sponsored-or-overnight";
 
 export function summaryRoute(plan: Plan, usedToday: number): SummaryRoute {

@@ -1,6 +1,7 @@
 // Summarises one note end to end: chunk, call the model, merge, save.
 import { chunkSegments, mergeExtractions, mergeMessages, parseSummary, summaryMessages } from "../../../../packages/core/src/summarize.ts";
 import type { Note, Summary } from "../../../../packages/core/src/types.ts";
+import { LIMITS } from "../../../../packages/core/src/plans.ts";
 import { admin } from "./db.ts";
 import { chat, MODEL, PRO_MODEL } from "./llm.ts";
 
@@ -12,7 +13,10 @@ export async function summariseNote(noteId: string, userId: string, plan: "free"
   if (!segments.length) throw new Error("note has no transcript yet");
   const model = plan === "pro" ? PRO_MODEL : MODEL;
   const recorded = new Date(row.created_at);
-  const chunks = chunkSegments(segments);
+  // Cap the words sent so one runaway all-day recording can't cost dollars.
+  let words = 0;
+  const capped = segments.filter((s) => (words += s.text.split(/\s+/).length) <= LIMITS.maxSummaryWords);
+  const chunks = chunkSegments(capped);
   let tin = 0, tout = 0;
   const parts: Summary[] = [];
   for (let i = 0; i < chunks.length; i++) {

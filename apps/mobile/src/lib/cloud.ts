@@ -45,7 +45,7 @@ export async function fetchPlan(): Promise<Plan> {
   return data?.plan === "pro" && (!data.pro_until || Date.parse(data.pro_until) > Date.now()) ? "pro" : "free";
 }
 
-export type SummaryResult = { route: "instant" | "sponsored"; summary: Summary } | { route: "overnight"; message: string };
+export type SummaryResult = { route: "instant" | "sponsored" | "cached"; summary: Summary } | { route: "overnight"; message: string };
 
 export async function requestSummary(noteId: string, sponsored = false): Promise<SummaryResult> {
   const { data, error } = await supabase!.functions.invoke("summarize", { body: { noteId, sponsored } });
