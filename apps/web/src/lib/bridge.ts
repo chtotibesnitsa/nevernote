@@ -39,5 +39,6 @@ export const desktop: DesktopBridge | undefined = typeof window !== "undefined" 
 export const isDesktop = !!desktop;
 
 export const GITHUB_PROFILE = "https://github.com/chtotibesnitsa";
+export const X_PROFILE = "https://x.com/aleks_lucenko";
 export const GITHUB_REPO = "https://github.com/chtotibesnitsa/nevernote";
 export const RELEASES = `${GITHUB_REPO}/releases/latest`;

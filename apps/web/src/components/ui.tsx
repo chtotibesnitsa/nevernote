@@ -1,7 +1,7 @@
 import { pipelineDots, stageInfo, type Dot, type Stage } from "@nevernote/core";
 import { motion } from "motion/react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { GITHUB_PROFILE } from "../lib/bridge.ts";
+import { X_PROFILE } from "../lib/bridge.ts";
 
 export const spring = { type: "spring", stiffness: 380, damping: 32, mass: 0.8 } as const;
 export const soft = { type: "spring", stiffness: 200, damping: 28 } as const;
@@ -101,12 +101,12 @@ export function Logo({ size = 22 }: { size?: number }) {
 export function Hmu({ compact }: { compact?: boolean }) {
   return (
     <a
-      href={GITHUB_PROFILE}
+      href={X_PROFILE}
       target="_blank"
       rel="noreferrer"
       className="group glass inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-xs text-[var(--ink-2)] transition hover:text-[var(--fg)]"
     >
-      <img src="https://github.com/chtotibesnitsa.png?size=64" alt="" className="h-6 w-6 rounded-full bg-[var(--line)]" onError={(e) => (e.currentTarget.style.display = "none")} />
+      <img src={`${import.meta.env.BASE_URL}aleks.jpg`} alt="Aleks" className="h-6 w-6 rounded-full bg-[var(--line)] object-cover" />
       <span>{compact ? "hmu" : "hmu, I made this"}</span>
       <span className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">↗</span>
     </a>

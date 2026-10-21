@@ -71,6 +71,8 @@ interface Ctx {
   stop(): Promise<void>;
   summarize(id: string, sponsored?: boolean): Promise<void>;
   session: Session | null;
+  /** False until the saved sign-in has been read, so the sign-in screen doesn't flash. */
+  authReady: boolean;
   plan: Plan;
   online: boolean;
   syncState: "offline" | "syncing" | "synced" | "error" | "local";
@@ -112,6 +114,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
+  const [authReady, setAuthReady] = useState(!supabase);
   const [plan, setPlan] = useState<Plan>("free");
   const [online, setOnline] = useState(navigator.onLine);
   const [syncState, setSyncState] = useState<Ctx["syncState"]>(cloudEnabled ? "offline" : "local");
@@ -228,7 +231,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // ---------- auth, plan, online ----------
   useEffect(() => {
     if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthReady(true);
+    });
     const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => data.subscription.unsubscribe();
   }, []);
@@ -498,6 +504,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     stop,
     summarize,
     session,
+    authReady,
     plan,
     online,
     syncState,

@@ -5,6 +5,8 @@ import { NavLink, useLocation, useNavigate } from "react-router-dom";
 import { ProSheet, Toasts } from "../components/Overlays.tsx";
 import { fmtClock, Hmu, Logo, spring, StatusDot, Wave } from "../components/ui.tsx";
 import { isDesktop } from "../lib/bridge.ts";
+import { cloudEnabled } from "../lib/cloud.ts";
+import { AuthGate, GuestBar } from "./AuthGate.tsx";
 import { useApp } from "./state.tsx";
 
 const NAV = [
@@ -65,10 +67,14 @@ function SyncPill() {
 }
 
 export function Shell({ children }: { children: ReactNode }) {
-  const { settings, setSettings, openPro, plan } = useApp();
+  const { settings, setSettings, openPro, plan, session, authReady } = useApp();
   const loc = useLocation();
   const dark = document.documentElement.classList.contains("dark");
+  if (cloudEnabled && !authReady) return <div className="min-h-screen bg-[var(--bg)]" />;
+  if (cloudEnabled && !session) return <AuthGate />;
   return (
+    <>
+    <GuestBar />
     <div className={`flex min-h-screen ${isDesktop ? "" : "paper-grain"}`}>
       {/* Sidebar */}
       <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col px-3 pb-4 pt-12 md:flex" style={{ WebkitAppRegion: "drag" } as never}>
@@ -144,5 +150,6 @@ export function Shell({ children }: { children: ReactNode }) {
       <Toasts />
       <ProSheet />
     </div>
+    </>
   );
 }

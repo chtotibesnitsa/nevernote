@@ -45,17 +45,18 @@
 
 .dark {
   color-scheme: dark;
-  --bg: #14120f;
-  --fg: #f4efe6;
-  --glass: rgb(38 33 28 / 0.55);
-  --glass-strong: rgb(38 33 28 / 0.8);
-  --glass-edge: rgb(255 255 255 / 0.08);
-  --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 20px 50px -20px rgb(0 0 0 / 0.6);
-  --card: #1c1915;
-  --line: #2e2923;
-  --mute: #998f84;
-  --ink-2: #cfc6ba;
-  --bubble: #25211c;
+  /* Graphite, not brown: closer to macOS dark mode, with the amber kept as the accent. */
+  --bg: #0e0e10;
+  --fg: #f5f5f7;
+  --glass: rgb(44 44 48 / 0.55);
+  --glass-strong: rgb(44 44 48 / 0.82);
+  --glass-edge: rgb(255 255 255 / 0.1);
+  --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.08) inset, 0 20px 50px -20px rgb(0 0 0 / 0.7);
+  --card: #1a1a1d;
+  --line: #2c2c31;
+  --mute: #8e8e93;
+  --ink-2: #c7c7cc;
+  --bubble: #26262a;
 }
 
 html,
@@ -218,16 +219,22 @@ html.desktop body {
 }
 
 /* Landing page: brighter white paper with a warm amber glow that drifts. */
+/* The website is always light, even when the app is in dark mode. */
 .site {
+  color-scheme: light;
   --bg: #fdfcfa;
+  --fg: var(--color-ink);
+  --glass: rgb(255 255 255 / 0.58);
+  --glass-strong: rgb(255 255 255 / 0.78);
+  --glass-edge: rgb(255 255 255 / 0.85);
+  --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 12px 40px -12px rgb(60 40 20 / 0.18), 0 2px 6px rgb(60 40 20 / 0.06);
   --card: #ffffff;
+  --line: var(--color-line);
+  --mute: var(--color-mute);
+  --ink-2: var(--color-ink-2);
   --bubble: #f6f1ea;
   background: var(--bg);
-}
-.dark .site {
-  --bg: #12100d;
-  --card: #1a1713;
-  --bubble: #24201a;
+  color: var(--fg);
 }
 @keyframes liquid {
   0%, 100% { border-radius: 48% 52% 60% 40% / 50% 45% 55% 50%; scale: 1; rotate: 0deg; }
