@@ -16,3 +16,4 @@ models/
 apps/desktop/renderer
 apps/mobile/ios
 apps/mobile/android
+server/deno.lock

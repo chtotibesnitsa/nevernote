@@ -11,6 +11,7 @@ import { Shell } from "./app/Shell.tsx";
 import { AppProvider } from "./app/state.tsx";
 import { isDesktop } from "./lib/bridge.ts";
 import { Landing } from "./site/Landing.tsx";
+import { Privacy, Support } from "./site/Legal.tsx";
 
 if (isDesktop) document.documentElement.classList.add("desktop");
 if (new URLSearchParams(location.search).has("demo")) await import("./lib/demo.ts").then((d) => d.seedDemo());
@@ -40,6 +41,8 @@ createRoot(document.getElementById("root")!).render(
       <Routes>
         <Route path="/" element={isDesktop ? <Navigate to="/app" replace /> : <Landing />} />
         <Route path="/app/*" element={<App />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/support" element={<Support />} />
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>

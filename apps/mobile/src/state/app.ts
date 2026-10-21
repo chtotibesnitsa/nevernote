@@ -8,6 +8,7 @@ import {
   shouldUpsell,
   speakersOf,
   Syncer,
+  tombstone,
   type LiveSegment,
   type Note,
   type Plan,
@@ -90,7 +91,7 @@ export function getNote(id: string): Note | undefined {
 }
 
 export async function reload(): Promise<void> {
-  const notes = await local.list();
+  const notes = (await local.list()).filter((n) => !n.deleted);
   app.set({ notes, loaded: true });
 }
 
@@ -105,9 +106,14 @@ export function update(id: string, patch: Partial<Note>): void {
   }));
 }
 
+/** Deletes here and, once synced, on every other device. */
 export async function removeNote(id: string): Promise<void> {
-  await local.delete(id);
-  app.set((s) => ({ notes: s.notes.filter((n) => n.id !== id) }));
+  const n = getNote(id);
+  if (n) await local.put(tombstone(n));
+  const a = audioFile(id);
+  if (a.exists) a.delete();
+  app.set((s) => ({ notes: s.notes.filter((x) => x.id !== id) }));
+  void syncNow();
 }
 
 export function renameSpeaker(noteId: string, speakerId: string, name: string): void {

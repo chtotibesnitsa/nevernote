@@ -292,6 +292,12 @@ export function Landing() {
           <span className="inline-flex items-center gap-1.5">
             <Smartphone size={15} /> iPhone soon
           </span>
+          <Link to="/privacy" className="hover:text-[var(--fg)]">
+            Privacy
+          </Link>
+          <Link to="/support" className="hover:text-[var(--fg)]">
+            Support
+          </Link>
         </div>
         <span>Made by a student, for students.</span>
       </footer>

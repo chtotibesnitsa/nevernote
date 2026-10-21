@@ -77,6 +77,8 @@ export interface Note {
   vocabulary?: string[];
   /** Last time this note was confirmed on the server. */
   syncedAt?: string;
+  /** Tombstone: an emptied note kept until it syncs, so other devices delete it too. */
+  deleted?: boolean;
 }
 
 export type Plan = "free" | "pro";

@@ -3,6 +3,7 @@
 Usage:
   python3 bench/evaluate.py --models ~/models --trials ~/trials --asr parakeet whisper-base.en moonshine
   python3 bench/evaluate.py --wav lecture.wav --ref lecture.txt      # your own recording vs a known transcript
+  python3 bench/evaluate.py --score other_app.txt --ref lecture.txt  # score any app's transcript (e.g. pasted from Wispr Flow)
 
 Word error rate uses the Whisper English normalizer (case, punctuation and
 number formats don't count as errors). Speaker accuracy is the share of
@@ -88,8 +89,18 @@ def main():
     ap.add_argument("--asr-on", default="raw", choices=["raw", "clean"])
     ap.add_argument("--wav")
     ap.add_argument("--ref")
+    ap.add_argument("--score", help="a transcript from another app to score against --ref (or a trial .json)")
     ap.add_argument("--out", default="bench/results.json")
     args = ap.parse_args()
+
+    if args.score:
+        ref = json.load(open(args.ref)) if args.ref.endswith(".json") else {"text": open(args.ref).read()}
+        ref_text = " ".join(s["text"] for s in ref["segments"]) if "segments" in ref else ref["text"]
+        e, o = wer(ref_text, open(args.score).read())
+        print(json.dumps({"file": args.score, "wer": round(e, 4), "sub": o.substitutions, "del": o.deletions, "ins": o.insertions, "ref_words": len(norm(ref_text).split())}))
+        if os.environ.get("SHOW_DIFF"):
+            print(jiwer.visualize_alignment(o, show_measures=False)[:4000])
+        return
 
     if args.wav:
         jobs = [(args.wav, {"text": open(args.ref).read()})]

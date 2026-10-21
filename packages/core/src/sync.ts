@@ -18,7 +18,14 @@ export function mergeNote(a: Note, b: Note): Note {
     durationSec: Math.max(a.durationSec, b.durationSec),
     segments: [...segs.values()].sort((x, y) => x.start - y.start),
     thoughts: newer.thoughts || older.thoughts,
+    // Deleting on any device wins.
+    deleted: a.deleted || b.deleted || undefined,
   };
+}
+
+/** What a note becomes when deleted: no content, just enough to sync the deletion. */
+export function tombstone(n: Note): Note {
+  return { ...n, deleted: true, segments: [], speakers: [], extractions: [], summary: undefined, thoughts: "", updatedAt: new Date().toISOString() };
 }
 
 export interface Store {
@@ -93,11 +100,11 @@ type Row = Record<string, any>;
 export const noteToRow = (n: Note, userId: string): Row => ({
   id: n.id, user_id: userId, title: n.title, created_at: n.createdAt, updated_at: n.updatedAt, duration_sec: n.durationSec,
   device: n.device, folder: n.folder ?? null, stage: n.stage, segments: n.segments, speakers: n.speakers,
-  extractions: n.extractions, summary: n.summary ?? null, thoughts: n.thoughts, vocabulary: n.vocabulary ?? [],
+  extractions: n.extractions, summary: n.summary ?? null, thoughts: n.thoughts, vocabulary: n.vocabulary ?? [], deleted: !!n.deleted,
 });
 
 export const rowToNote = (r: Row): Note => ({
   id: r.id, title: r.title, createdAt: r.created_at, updatedAt: r.updated_at, durationSec: r.duration_sec, device: r.device,
   folder: r.folder ?? undefined, stage: r.stage, segments: r.segments ?? [], speakers: r.speakers ?? [], extractions: r.extractions ?? [],
-  summary: r.summary ?? undefined, thoughts: r.thoughts ?? "", vocabulary: r.vocabulary ?? [],
+  summary: r.summary ?? undefined, thoughts: r.thoughts ?? "", vocabulary: r.vocabulary ?? [], deleted: r.deleted || undefined,
 });

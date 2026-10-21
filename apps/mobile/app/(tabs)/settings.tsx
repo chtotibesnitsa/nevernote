@@ -4,7 +4,7 @@ import * as WebBrowser from "expo-web-browser";
 import { useState, type ReactNode } from "react";
 import { Alert, Platform, ScrollView, Switch, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
-import { cloudEnabled, sendEmailCode, signInWithApple, signInWithGoogle, supabase, verifyEmailCode } from "../../src/lib/cloud";
+import { cloudEnabled, deleteAccount, sendEmailCode, signInWithApple, signInWithGoogle, supabase, verifyEmailCode } from "../../src/lib/cloud";
 import { useTheme } from "../../src/lib/theme";
 import { downloadModels, openPro, useApp } from "../../src/state/app";
 import { settings, useSettings, type Settings as S } from "../../src/state/settings";
@@ -115,6 +115,18 @@ export default function SettingsScreen() {
               {plan !== "pro" && <Button label="Get Pro" onPress={() => openPro("settings")} />}
               <Button variant="ghost" label="Sign out" onPress={() => void supabase!.auth.signOut()} />
             </View>
+            <T
+              kind="mute"
+              style={{ color: t.red }}
+              onPress={() =>
+                Alert.alert("Delete your account?", "Every synced note and your Pro status are erased from our server. Notes on this phone stay until you delete them.", [
+                  { text: "Cancel", style: "cancel" },
+                  { text: "Delete account", style: "destructive", onPress: () => void deleteAccount().catch((e) => Alert.alert("Couldn't delete", String(e?.message ?? e))) },
+                ])
+              }
+            >
+              Delete account
+            </T>
           </View>
         ) : (
           <SignIn />

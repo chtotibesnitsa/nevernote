@@ -8,6 +8,7 @@ import {
   recordUpsell,
   speakersOf,
   Syncer,
+  tombstone,
   type Extraction,
   type Note,
   type Plan,
@@ -130,7 +131,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ---------- notes ----------
   const reload = useCallback(async () => {
-    const list = await local.list();
+    const list = (await local.list()).filter((n) => !n.deleted);
     setNotes(list);
     setLoaded(true);
   }, []);
@@ -162,9 +163,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return full;
   }, []);
 
+  // Deleted notes stay as empty tombstones until synced, so other devices delete them too.
   const remove = useCallback(async (id: string) => {
-    await local.delete(id);
-    setNotes((all) => all.filter((n) => n.id !== id));
+    const n = notesRef.current.find((x) => x.id === id);
+    if (n) await local.put(tombstone(n));
+    setNotes((all) => all.filter((x) => x.id !== id));
   }, []);
 
   // ---------- toasts, Pro ----------

@@ -110,3 +110,18 @@ describe("sync", () => {
     expect(states).toEqual(["syncing", "synced"]);
   });
 });
+
+describe("deletion sync", () => {
+  it("a delete on any device wins and carries no content", async () => {
+    const { mergeNote, tombstone } = await import("../src/sync.ts");
+    const base = {
+      id: "n1", title: "Bio", createdAt: "2026-10-21T10:00:00Z", updatedAt: "2026-10-21T10:00:00Z", durationSec: 60, device: "ios" as const,
+      stage: "ready" as const, segments: [{ id: "a", start: 0, end: 1, text: "hello" }], speakers: [], extractions: [], thoughts: "mine",
+    };
+    const gone = tombstone(base);
+    expect(gone.segments).toEqual([]);
+    expect(gone.thoughts).toBe("");
+    // An older, un-deleted copy arriving later must not resurrect it.
+    expect(mergeNote(gone, { ...base, updatedAt: "2026-10-21T09:00:00Z" }).deleted).toBe(true);
+  });
+});

@@ -108,3 +108,10 @@ export async function verifyEmailCode(email: string, token: string): Promise<voi
   const { error } = await supabase!.auth.verifyOtp({ email, token, type: "email" });
   if (error) throw error;
 }
+
+/** Deletes the account and everything in it on the server, then signs out. */
+export async function deleteAccount(): Promise<void> {
+  const { error } = await supabase!.functions.invoke("delete-account", { body: {} });
+  if (error) throw error;
+  await supabase!.auth.signOut();
+}

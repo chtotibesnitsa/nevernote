@@ -6,7 +6,7 @@ import { chat, MODEL, PRO_MODEL } from "./llm.ts";
 
 export async function summariseNote(noteId: string, userId: string, plan: "free" | "pro", jobId?: number): Promise<Summary> {
   const db = admin();
-  const { data: row, error } = await db.from("notes").select("*").eq("id", noteId).eq("user_id", userId).single();
+  const { data: row, error } = await db.from("notes").select("*").eq("id", noteId).eq("user_id", userId).eq("deleted", false).single();
   if (error || !row) throw new Error("note not found");
   const segments = row.segments as Note["segments"];
   if (!segments.length) throw new Error("note has no transcript yet");
