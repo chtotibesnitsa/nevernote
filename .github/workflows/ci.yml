@@ -1,0 +1,52 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - name: Core tests
+        run: npm test
+      - name: Typecheck core, web, desktop
+        run: npm run typecheck
+      - name: Build website
+        run: npm run build:web
+      - name: Build desktop main process
+        run: npm run build:main -w @nevernote/desktop
+
+  mobile:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/mobile
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm ci --legacy-peer-deps
+      - run: npx tsc --noEmit
+      - name: Bundle iOS JavaScript
+        run: npx expo export --platform ios --output-dir /tmp/expo-dist
+        env:
+          EXPO_OFFLINE: "1"
+
+  server:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: denoland/setup-deno@v2
+        with:
+          deno-version: v2.x
+      - name: Typecheck Edge Functions
+        run: deno check --config server/deno.check.json server/supabase/functions/*/index.ts

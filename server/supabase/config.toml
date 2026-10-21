@@ -1,0 +1,17 @@
+project_id = "nevernote"
+
+[auth]
+site_url = "https://nevernote.app"
+additional_redirect_urls = ["nevernote://auth", "http://localhost:5173/app"]
+
+[auth.external.apple]
+enabled = true
+
+[auth.external.google]
+enabled = true
+
+[functions.nightly]
+verify_jwt = false
+
+[functions.revenuecat]
+verify_jwt = false
