@@ -52,6 +52,17 @@ mic ──► speech chunks ──► Parakeet TDT 0.6b (on-device) ──► li
 Word error rate on the bench (lower is better). See [bench/README.md](bench/README.md) for the trials and how to re-run them.
 
 <!-- results:start -->
+| Engine | Real speech | Quiet room | Echoey room | Classroom noise | Loud room | Brutal | Speed |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Nevernote · Parakeet | 2.0% | 4.2% | 3.7% | 12.8% | 24.1% | 89.9% | 3.0× real time |
+| Moonshine base | 6.1% | 4.9% | 6.6% | 27.1% | 58.2% | 98.0% | 4.7× real time |
+| Whisper base | 7.1% | 10.6% | 5.4% | 19.7% | 52.2% | 98.0% | 3.5× real time |
+
+Speaker accuracy (share of speech time given to the right speaker):
+
+| Quiet room | Echoey room | Classroom noise | Loud room | Brutal |
+|---:|---:|---:|---:|---:|
+| 95% | 80% | 83% | 71% | 61% |
 <!-- results:end -->
 
 ## Free and Pro

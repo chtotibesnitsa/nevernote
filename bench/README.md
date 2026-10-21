@@ -33,14 +33,25 @@ The scripts are full of what students need: due dates ("Friday October 24th by 1
 
 ## Results
 
-All runs are on CPU and on-device, with nothing sent anywhere. Each engine is scored at its own best input-level setting: Parakeet without gain, and Whisper and Moonshine with gain up to 8×, which they need on quiet speech.
+All runs are on CPU and on-device, with nothing sent anywhere. Each engine is scored at its own best input-level setting: Parakeet and Moonshine without gain, and Whisper with gain up to 8×, which it needs on quiet speech (without it, Whisper drops most of the quiet-room trial). Speed is on a 4-core cloud CPU and includes denoising and speaker labelling.
 
 <!-- results:start -->
+| Engine | Real speech | Quiet room | Echoey room | Classroom noise | Loud room | Brutal | Speed |
+|---|---:|---:|---:|---:|---:|---:|---:|
+| Nevernote · Parakeet | 2.0% | 4.2% | 3.7% | 12.8% | 24.1% | 89.9% | 3.0× real time |
+| Moonshine base | 6.1% | 4.9% | 6.6% | 27.1% | 58.2% | 98.0% | 4.7× real time |
+| Whisper base | 7.1% | 10.6% | 5.4% | 19.7% | 52.2% | 98.0% | 3.5× real time |
+
+Speaker accuracy (share of speech time given to the right speaker):
+
+| Quiet room | Echoey room | Classroom noise | Loud room | Brutal |
+|---:|---:|---:|---:|---:|
+| 95% | 80% | 83% | 71% | 61% |
 <!-- results:end -->
 
 What the numbers say:
 
-- **Parakeet is the right default.** It is the most accurate in every tier, and in classroom noise it makes roughly half the errors of the others.
+- **Parakeet is the right default.** It is the most accurate in every tier, and in classroom noise it makes a third fewer errors than Whisper base and half as many as Moonshine.
 - **"Brutal" is beyond every model here.** 3 dB SNR with a quarter of the class talking over each other is beyond what any of these models can transcribe. This tier is the target for the next round of work: beam search with course vocabulary, and a stronger denoiser.
 - **Speaker labels need cleaner audio.** They are near-perfect in a quiet room. In a loud room about 7 of every 10 seconds go to the right voice. Renaming a speaker in the app fixes the label everywhere in that class.
 
@@ -74,8 +85,9 @@ python3 bench/generate.py --models ~/models --out bench/trials
 # Real speech: drop any WAV with a same-named .txt transcript into bench/trials
 # (we used LibriSpeech test-clean clips and the JFK sample from the sherpa-onnx test set).
 python3 bench/evaluate.py --models ~/models --trials bench/trials --asr parakeet --out bench/results.json
-AGC_MAX=8 python3 bench/evaluate.py --models ~/models --trials bench/trials --asr moonshine whisper-base.en --out bench/results_gain8.json
-python3 bench/report.py parakeet=bench/results.json moonshine=bench/results_gain8.json whisper-base.en=bench/results_gain8.json
+python3 bench/evaluate.py --models ~/models --trials bench/trials --asr moonshine --out bench/results_moonshine.json
+AGC_MAX=8 python3 bench/evaluate.py --models ~/models --trials bench/trials --asr whisper-base.en --out bench/results_gain8.json
+python3 bench/report.py parakeet=bench/results.json moonshine=bench/results_moonshine.json whisper-base.en=bench/results_gain8.json
 ```
 
 `pipeline.py` is the reference pipeline: VAD, Parakeet per chunk, word timestamps, short bubbles, then denoise and diarize after stop. The desktop and iPhone apps implement the same steps (`apps/desktop/src/engine.ts`, `apps/mobile/src/lib/recorder.ts`).

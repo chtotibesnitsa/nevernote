@@ -58,7 +58,7 @@ def main():
         cells = [f"{r['wer'][k]:.1f}%" if k in r["wer"] else "—" for k, _ in TIERS]
         print(f"| {NAMES.get(asr, asr)} | " + " | ".join(cells) + f" | {1 / r['rtf']:.1f}× real time |")
     first = next(iter(rows.values()))
-    print("\nSpeaker accuracy (share of speech time given to the right speaker):")
+    print("\nSpeaker accuracy (share of speech time given to the right speaker):\n")
     print("| " + " | ".join(n for k, n in TIERS if k in first["spk"]) + " |")
     print("|" + "---:|" * len(first["spk"]))
     print("| " + " | ".join(f"{first['spk'][k]:.0f}%" for k, _ in TIERS if k in first["spk"]) + " |")
