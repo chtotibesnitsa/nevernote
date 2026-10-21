@@ -216,3 +216,23 @@ html.desktop body {
   padding: 0.1em 0.35em;
   border-radius: 6px;
 }
+
+/* Landing page: brighter white paper with a warm amber glow that drifts. */
+.site {
+  --bg: #fdfcfa;
+  --card: #ffffff;
+  --bubble: #f6f1ea;
+  background: var(--bg);
+}
+.dark .site {
+  --bg: #12100d;
+  --card: #1a1713;
+  --bubble: #24201a;
+}
+@keyframes liquid {
+  0%, 100% { border-radius: 48% 52% 60% 40% / 50% 45% 55% 50%; scale: 1; rotate: 0deg; }
+  33% { border-radius: 60% 40% 45% 55% / 40% 60% 40% 60%; scale: 1.08; rotate: 8deg; }
+  66% { border-radius: 40% 60% 55% 45% / 60% 40% 60% 40%; scale: 0.94; rotate: -6deg; }
+}
+.liquid { animation: liquid 18s var(--ease-liquid) infinite; }
+@media (prefers-reduced-motion: reduce) { .liquid { animation: none; } }
