@@ -1,7 +1,7 @@
 // Supabase: sign-in, sync and AI summaries. Everything works signed out; this
 // only adds the phone/laptop link and the summaries.
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
-import { noteToRow, rowToNote, type Plan, type Remote, type Summary } from "@nevernote/core";
+import { noteToRow, rowToNote, type Plan, type Remote, type Summary, type SummaryPrefs } from "@nevernote/core";
 
 // The official Nevernote project. The anon key is public by design (row-level
 // security protects the data); forks can point at their own project with env vars.
@@ -35,6 +35,21 @@ export async function fetchPlan(): Promise<Plan> {
   if (!supabase) return "free";
   const { data } = await supabase.from("profiles").select("plan, pro_until").maybeSingle();
   return data?.plan === "pro" && (!data.pro_until || Date.parse(data.pro_until) > Date.now()) ? "pro" : "free";
+}
+
+/** How this student likes notes written. Lives on the profile so every device and the overnight batch use it. */
+export async function fetchSummaryPrefs(): Promise<SummaryPrefs> {
+  if (!supabase) return {};
+  const { data } = await supabase.from("profiles").select("settings").maybeSingle();
+  return (data?.settings?.summary as SummaryPrefs | undefined) ?? {};
+}
+
+export async function saveSummaryPrefs(prefs: SummaryPrefs): Promise<void> {
+  const { data: s } = await supabase!.auth.getSession();
+  if (!s.session) return;
+  const { data } = await supabase!.from("profiles").select("settings").maybeSingle();
+  const { error } = await supabase!.from("profiles").update({ settings: { ...(data?.settings ?? {}), summary: prefs } }).eq("id", s.session.user.id);
+  if (error) throw error;
 }
 
 export type SummaryResult = { route: "instant" | "sponsored" | "cached"; summary: Summary } | { route: "overnight"; message: string };

@@ -46,7 +46,7 @@ export function chunkSegments(segments: Segment[], maxWords = CHUNK_WORDS): Segm
   return out;
 }
 
-export function summaryMessages(segments: Segment[], recordedAt: Date, opts: { course?: string; thoughts?: string; part?: [number, number] } = {}): ChatMessage[] {
+export function summaryMessages(segments: Segment[], recordedAt: Date, opts: { course?: string; thoughts?: string; part?: [number, number]; style?: string } = {}): ChatMessage[] {
   const day = recordedAt.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const head = [
     `Recording date: ${day}.`,
@@ -55,7 +55,7 @@ export function summaryMessages(segments: Segment[], recordedAt: Date, opts: { c
     opts.thoughts?.trim() ? `The student's own notes:\n${opts.thoughts.trim()}` : "",
   ].filter(Boolean);
   return [
-    { role: "system", content: SYSTEM },
+    { role: "system", content: opts.style ? `${SYSTEM}\n${opts.style}` : SYSTEM },
     { role: "user", content: `${head.join("\n")}\n\nTranscript:\n${transcriptText(segments)}` },
   ];
 }

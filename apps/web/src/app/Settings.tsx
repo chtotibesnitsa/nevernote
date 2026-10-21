@@ -1,8 +1,9 @@
 import { motion } from "motion/react";
-import { useState, type ReactNode } from "react";
+import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Card, spring } from "../components/ui.tsx";
 import { isDesktop, GITHUB_REPO, type AsrModelId } from "../lib/bridge.ts";
-import { cloudEnabled, supabase } from "../lib/cloud.ts";
+import { STYLE_LIMITS, SUMMARY_STYLES, type SummaryPrefs, type SummaryStyleId } from "@nevernote/core";
+import { cloudEnabled, fetchSummaryPrefs, saveSummaryPrefs, supabase } from "../lib/cloud.ts";
 import { useApp, type Settings as S } from "./state.tsx";
 
 const MODELS: { id: AsrModelId; label: string; blurb: string }[] = [
@@ -41,6 +42,8 @@ export function Settings() {
           <SignIn />
         )}
       </Section>
+
+      {cloudEnabled && session && <NoteStyle />}
 
       <Section title="Your name">
         <input value={settings.name} onChange={(e) => setSettings({ name: e.target.value })} placeholder="What should Nevernote call you?" className="w-full rounded-xl border border-[var(--line)] bg-transparent px-3 py-2 outline-none" />
@@ -95,6 +98,76 @@ export function Settings() {
         </a>
       </p>
     </div>
+  );
+}
+
+function NoteStyle() {
+  const { plan, openPro, toast } = useApp();
+  const [prefs, setPrefs] = useState<SummaryPrefs>({ style: "standard", rules: "", presets: [] });
+  const [loaded, setLoaded] = useState(false);
+  const [preset, setPreset] = useState({ folder: "", rules: "" });
+  const pro = plan === "pro";
+  const lim = STYLE_LIMITS[pro ? "pro" : "free"];
+  useEffect(() => {
+    fetchSummaryPrefs().then((p) => { setPrefs({ style: "standard", rules: "", presets: [], ...p }); setLoaded(true); }).catch(() => setLoaded(true));
+  }, []);
+  const save = (next: SummaryPrefs) => {
+    setPrefs(next);
+    saveSummaryPrefs(next).catch(() => toast({ title: "Couldn't save your note style", body: "Check your connection." }));
+  };
+  const timer = useRef<number>(0);
+  if (!loaded) return null;
+  return (
+    <Section title="How your notes are written" hint="Applies to every new summary, on every device. Notes that are already written keep their style.">
+      <div className="grid gap-2 sm:grid-cols-2">
+        {(Object.keys(SUMMARY_STYLES) as SummaryStyleId[]).map((id) => (
+          <button key={id} onClick={() => save({ ...prefs, style: id })} className={`rounded-2xl border p-3 text-left transition ${prefs.style === id ? "border-[var(--fg)] bg-[var(--bubble)]" : "border-[var(--line)] hover:bg-[var(--bubble)]"}`}>
+            <div className="font-medium">{SUMMARY_STYLES[id].label}</div>
+            <div className="text-sm text-[var(--mute)]">{SUMMARY_STYLES[id].blurb}</div>
+          </button>
+        ))}
+      </div>
+      <label className="mt-5 block text-sm font-medium" htmlFor="rules">Your own rules</label>
+      <textarea
+        id="rules"
+        rows={3}
+        maxLength={lim.rulesChars}
+        value={prefs.rules ?? ""}
+        onChange={(e) => {
+          const next = { ...prefs, rules: e.target.value };
+          setPrefs(next);
+          window.clearTimeout(timer.current);
+          timer.current = window.setTimeout(() => save(next), 700);
+        }}
+        placeholder="e.g. Put every formula in its own list. Bold the vocabulary words."
+        className="mt-1 w-full rounded-xl border border-[var(--line)] bg-[var(--bg)] p-3 text-sm"
+      />
+      <div className="flex justify-between text-xs text-[var(--mute)]">
+        <span>{(prefs.rules ?? "").length} / {lim.rulesChars}</span>
+        {!pro && <button className="underline" onClick={() => openPro("summaryRules")}>Pro: longer rules, plus different rules for each class</button>}
+      </div>
+      {pro && (
+        <div className="mt-5">
+          <div className="text-sm font-medium">Rules for one class</div>
+          <p className="text-sm text-[var(--mute)]">Used with the rules above when the note's class name matches.</p>
+          <ul className="mt-2 space-y-1.5 text-sm">
+            {(prefs.presets ?? []).map((p, i) => (
+              <li key={i} className="flex items-start justify-between gap-3 rounded-xl bg-[var(--bubble)] px-3 py-2">
+                <span><b>{p.folder}</b>: {p.rules}</span>
+                <button className="text-[var(--mute)] underline" onClick={() => save({ ...prefs, presets: (prefs.presets ?? []).filter((_, j) => j !== i) })}>Remove</button>
+              </li>
+            ))}
+          </ul>
+          {(prefs.presets ?? []).length < lim.presets && (
+            <form className="mt-2 flex flex-wrap gap-2" onSubmit={(e) => { e.preventDefault(); if (!preset.folder.trim() || !preset.rules.trim()) return; save({ ...prefs, presets: [...(prefs.presets ?? []), { folder: preset.folder.trim(), rules: preset.rules.trim() }] }); setPreset({ folder: "", rules: "" }); }}>
+              <input aria-label="Class name" value={preset.folder} onChange={(e) => setPreset({ ...preset, folder: e.target.value })} placeholder="Class name, e.g. Biology" className="w-44 rounded-lg border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm" />
+              <input aria-label="Rules for this class" value={preset.rules} maxLength={lim.rulesChars} onChange={(e) => setPreset({ ...preset, rules: e.target.value })} placeholder="Rules for this class" className="min-w-[200px] flex-1 rounded-lg border border-[var(--line)] bg-[var(--bg)] px-3 py-2 text-sm" />
+              <Button variant="primary" type="submit">Add</Button>
+            </form>
+          )}
+        </div>
+      )}
+    </Section>
   );
 }
 

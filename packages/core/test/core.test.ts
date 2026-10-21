@@ -125,3 +125,30 @@ describe("deletion sync", () => {
     expect(mergeNote(gone, { ...base, updatedAt: "2026-10-21T09:00:00Z" }).deleted).toBe(true);
   });
 });
+
+import { cleanPrefs, styleInstructions } from "../src/styles.ts";
+import { summaryMessages as sm } from "../src/summarize.ts";
+
+describe("summary styles", () => {
+  it("caps custom rules by plan and drops class presets for free", () => {
+    const long = "x".repeat(5000);
+    const free = cleanPrefs({ style: "cornell", rules: long, presets: [{ folder: "Bio", rules: "a" }] }, "free");
+    expect(free.rules!.length).toBe(300);
+    expect(free.presets).toEqual([]);
+    const pro = cleanPrefs({ style: "cornell", rules: long, presets: [{ folder: "Bio", rules: "list formulas" }] }, "pro");
+    expect(pro.rules!.length).toBe(2000);
+    expect(pro.presets).toEqual([{ folder: "Bio", rules: "list formulas" }]);
+  });
+  it("falls back to the standard style for unknown values", () => {
+    expect(cleanPrefs({ style: "nope" }, "free").style).toBe("standard");
+  });
+  it("adds style hints and class rules to the prompt without touching the JSON format", () => {
+    const prefs = cleanPrefs({ style: "outline", rules: "Bold every date", presets: [{ folder: "Bio", rules: "Explain terms" }] }, "pro");
+    const text = styleInstructions(prefs, "bio");
+    expect(text).toContain("nested bullet outline");
+    expect(text).toContain("Bold every date Explain terms");
+    const msgs = sm([{ id: "1", start: 0, end: 1, text: "hello" }], new Date(), { style: text });
+    expect(msgs[0].content).toContain("Return ONLY a JSON object");
+    expect(msgs[0].content).toContain("Bold every date");
+  });
+});

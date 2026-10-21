@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
   const ctx = (data ?? []).map((n) => ({ title: n.title, date: new Date(n.created_at), segments: n.segments, notes: n.summary?.notes }));
   try {
     const r = await chat(askMessages(question, ctx), PRO_MODEL, false);
-    await admin().from("usage_events").insert({ user_id: user.id, kind: "ask", meta: { tokens_in: r.tokensIn, tokens_out: r.tokensOut } });
+    await admin().from("usage_events").insert({ user_id: user.id, kind: "ask", meta: { tokens_in: r.tokensIn, tokens_out: r.tokensOut, cost_usd: r.cost } });
     return json({ answer: r.text });
   } catch (e) {
     return json({ error: String(e instanceof Error ? e.message : e) }, 502);

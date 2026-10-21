@@ -1,4 +1,4 @@
-// POST { noteId, sponsored?: boolean }
+// POST { noteId, sponsored?: boolean, regenerate?: boolean }  (regenerate: write the notes again, e.g. after changing note style)
 // Free: 3 instant summaries a day. After that the note is written overnight,
 // or instantly if the student just watched a short sponsor card.
 import { LIMITS, summaryRoute } from "../../../../packages/core/src/plans.ts";
@@ -9,7 +9,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   const user = await userFrom(req);
   if (!user) return json({ error: "sign in to summarise" }, 401);
-  const { noteId, sponsored } = await req.json().catch(() => ({}));
+  const { noteId, sponsored, regenerate } = await req.json().catch(() => ({}));
   if (typeof noteId !== "string") return json({ error: "noteId required" }, 400);
 
   const db = admin();
@@ -22,7 +22,7 @@ Deno.serve(async (req) => {
   // unchanged since is answered from the database.
   const { data: note } = await db.from("notes").select("summary, updated_at").eq("id", noteId).eq("user_id", user.id).eq("deleted", false).single();
   if (!note) return json({ error: "note not found" }, 404);
-  if (note.summary?.createdAt && Date.parse(note.summary.createdAt) >= Date.parse(note.updated_at) - 60_000) return json({ route: "cached", summary: note.summary });
+  if (!regenerate && note.summary?.createdAt && Date.parse(note.summary.createdAt) >= Date.parse(note.updated_at) - 60_000) return json({ route: "cached", summary: note.summary });
   const { count: again } = await jobs().eq("note_id", noteId).neq("status", "failed");
   if ((again ?? 0) >= LIMITS.resummariesPerNotePerDay) return json({ error: "This note was already summarised today. Try again tomorrow." }, 429);
 

@@ -8,8 +8,8 @@ Live backend: Supabase project `bbvaqcsyinbeopyhrqzi`. Website after the PR is m
 
 | Step | Where | Result |
 |---|---|---|
-| 1. AI notes key | OpenRouter: make a key and add $5 of credit. Supabase → Edge Functions → Secrets → `LLM_API_KEY` | Summaries, study guides and Ask work |
-| 2. Google sign-in | Google Cloud → APIs and Services → Credentials → OAuth client, type **Web**. Authorized redirect URI: `https://bbvaqcsyinbeopyhrqzi.supabase.co/auth/v1/callback`. Paste the client ID and secret into Supabase → Authentication → Providers → Google | "Continue with Google" works |
+| 1. AI notes key | Either OpenRouter (key + $5, secret `LLM_API_KEY`) or Vercel AI Gateway: make an AI Gateway key in Vercel, then set secrets `LLM_BASE_URL=https://ai-gateway.vercel.sh/v1`, `LLM_API_KEY=<gateway key>`, `LLM_MODEL=google/gemini-2.5-flash-lite` in Supabase → Edge Functions → Secrets. Enter the key yourself, never paste it in chat | Summaries, study guides and Ask work, and Vercel shows the spend |
+| 2. Google sign-in | Done. Google is enabled in Supabase with the Nevernote Google Cloud client. If it errors, the redirect URI must be `https://bbvaqcsyinbeopyhrqzi.supabase.co/auth/v1/callback` | "Continue with Google" works |
 | 3. Website | Merge PR #1. Settings → Pages is already set to GitHub Actions. The **Deploy website** workflow publishes it | The site is live |
 | 4. Supabase plan | Upgrade the NeverNote org to Pro ($25 a month) before you post | The project never pauses and has room for storage |
 
@@ -96,9 +96,23 @@ Then Ask and calendar auto-add should work. Set it back to `'free'` afterwards.
 
 How fast does data show up? Each app checks for changes every 60 seconds and right away when you open it or return to it. It is not instant push. If you want true instant sync, tell me and I'll add Supabase Realtime.
 
-## G. Check the numbers
+## G. Admin panel (only you)
 
-- Supabase SQL Editor: `select * from admin_daily order by day desc;` shows signups, recordings, minutes, summaries, upsells and upgrades.
+Open `/admin` on the site (https://chtotibesnitsa.github.io/nevernote/admin) and sign in with Google as aleksander@lucenko.com.
+
+- Any other account, or a signed-out visitor, gets a plain "no access". The check runs on the server: the function verifies your Google identity and email, and the data tables have no public access at all.
+- You see signups, active people, Pro count, recordings, summaries, asks, AI cost per day, revenue, fixed costs, profit and loss over time, top AI spenders, and which note styles people use.
+- Fixed costs (Supabase, domain, Apple fee) are editable at the bottom. Revenue is estimated from Pro plans after Apple's 15%.
+- To change who is admin, set the `ADMIN_EMAILS` secret (comma separated).
+
+## H. Note styles
+
+Settings → Note style. Free: pick one of five styles and write up to 300 characters of your own rules. Pro: 2000 characters and a separate style per class. Record a class, then check the summary follows the style. Changing the style and tapping Regenerate re-runs it (twice a day per note).
+
+## I. Check the numbers
+
+
+- Easier: the admin panel above. Raw: Supabase SQL Editor: `select * from admin_daily order by day desc;` shows signups, recordings, minutes, summaries, upsells and upgrades.
 - Cost of AI notes per summary: `select avg(tokens_in), avg(tokens_out) from summary_jobs where status = 'done';` Compare with the profit model.
 - Edge Functions → Logs shows any failed summary and why.
 
