@@ -37,7 +37,7 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <Router>
+    <Router basename={isDesktop ? undefined : import.meta.env.BASE_URL.replace(/\/$/, "")}>
       <Routes>
         <Route path="/" element={isDesktop ? <Navigate to="/app" replace /> : <Landing />} />
         <Route path="/app/*" element={<App />} />

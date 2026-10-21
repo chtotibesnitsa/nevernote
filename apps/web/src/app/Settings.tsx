@@ -128,7 +128,7 @@ export function SignIn() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState("");
-  const redirectTo = isDesktop ? "nevernote://auth" : `${location.origin}/app`;
+  const redirectTo = isDesktop ? "nevernote://auth" : `${location.origin}${import.meta.env.BASE_URL}app`;
   return (
     <div>
       <p className="text-sm text-[var(--ink-2)]">Sign in with the same account on your laptop and phone. Free.</p>
