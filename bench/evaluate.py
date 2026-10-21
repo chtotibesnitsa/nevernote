@@ -31,11 +31,20 @@ def pre(t):
     # "11.59 pm" and "7.30" are clock times, "costs$25" is a spacing slip;
     # none of them are recognition errors a student would notice.
     t = re.sub(r"(\d{1,2})\.(\d{2})\b", r"\1:\2", t)
+    t = re.sub(r"\b([ap])\.\s?m\.", r"\1m", t, flags=re.I)
     return re.sub(r"(\w)\$", r"\1 $", t)
 
 
+def post(t):
+    # After Whisper's normalizer: treat "24th"/"24", "11.59"/"1159" and
+    # "kj"/"kilojoules" as the same word on both sides.
+    t = re.sub(r"\b(\d+)(st|nd|rd|th)\b", r"\1", t)
+    t = re.sub(r"\b(\d{1,2})\.(\d{2})\b", r"\1\2", t)
+    return re.sub(r"\bkj\b", "kilojoules", t)
+
+
 def wer(ref, hyp):
-    r, h = norm(pre(ref)), norm(pre(hyp))
+    r, h = post(norm(pre(ref))), post(norm(pre(hyp)))
     o = jiwer.process_words(r, h)
     return o.wer, o
 
@@ -69,7 +78,7 @@ def main():
     ap.add_argument("--models", default=os.path.expanduser("~/models"))
     ap.add_argument("--trials", default="bench/trials")
     ap.add_argument("--asr", nargs="+", default=["parakeet"])
-    ap.add_argument("--denoise", action="store_true")
+    ap.add_argument("--no-denoise", dest="denoise", action="store_false")
     ap.add_argument("--embedding", default="titanet")
     ap.add_argument("--threshold", type=float, default=0.6)
     ap.add_argument("--no-diarize", action="store_true")

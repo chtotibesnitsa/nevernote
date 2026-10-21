@@ -1,6 +1,6 @@
 // What's free, what's Pro, and when we're allowed to mention Pro.
 
-import type { Plan } from "./types";
+import type { Plan } from "./types.ts";
 
 export type Feature =
   | "record"

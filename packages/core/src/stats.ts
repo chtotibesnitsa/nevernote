@@ -1,6 +1,6 @@
 // Insights: the numbers on the stats screen, all computed locally from notes.
 
-import type { Device, Note } from "./types";
+import type { Device, Note } from "./types.ts";
 
 export interface Insights {
   totalWords: number;

@@ -3,7 +3,7 @@
 The desktop app (apps/desktop/src/main/engine.ts) runs the same steps with
 sherpa-onnx-node, so numbers measured here describe what users get:
 
-  audio -> [optional denoise] -> Silero VAD -> offline ASR per speech chunk
+  audio -> GTCRN denoise (for detection + speaker ID) -> Silero VAD -> offline ASR per speech chunk
         -> pyannote segmentation + speaker embeddings -> clustering
         -> each ASR chunk gets the speaker with the most overlap
 """
@@ -15,6 +15,10 @@ import numpy as np
 import sherpa_onnx
 
 SR = 16000
+# Gain cap for per-chunk level matching. Tested 1x/4x/10x/30x: boosting never helped in
+# noisy rooms (Parakeet normalises features itself) and turned breaths into phantom
+# "yeah"s in quiet ones (4.4% -> 8.3% WER), so by default chunks are only ever turned down.
+AGC_MAX = float(__import__("os").environ.get("AGC_MAX", "1"))
 
 
 def recognizer(models, name, threads=4, hotwords=None):
@@ -74,6 +78,7 @@ def vad_chunks(models, samples, max_speech=20.0, threshold=0.35):
 
 
 def diarizer(models, embedding="titanet", threshold=0.6, num_speakers=-1):
+    # Tuned on the synthetic trials: titanet + 0.6 on denoised audio scored best (bench/README.md).
     emb = {
         "titanet": f"{models}/nemo_en_titanet_small.onnx",
         "eres2net": f"{models}/3dspeaker_speech_eres2net_base_sv_zh-cn_3dspeaker_16k.onnx",
@@ -116,18 +121,23 @@ def with_gaps(chunks, n, samples, min_gap=0.6):
     return final
 
 
-def transcribe(models, samples, asr="parakeet", denoise=False, diarize=True, rec=None, diar=None,
+def transcribe(models, samples, asr="parakeet", denoise=True, diarize=True, rec=None, diar=None,
                vad_threshold=0.35, asr_on="raw", chunker="vad", rescue_gaps=False, **dkw):
     """denoise: run GTCRN first. asr_on: 'raw' feeds the recognizer the original
     audio cut where the (possibly denoised) VAD found speech; 'clean' feeds it
     the denoised audio."""
     t0 = time.time()
     raw = samples
+    clean = None
     if denoise:
         d = denoiser(models).run(samples, SR)
-        samples = np.array(d.samples, dtype=np.float32)[: len(raw)]
+        clean = np.array(d.samples, dtype=np.float32)[: len(raw)]
+        # Denoised audio helps speech detection only in loud rooms; in quiet ones it clips
+        # word edges (5.8% -> 9.0% WER on the clean trial), so detection uses it only as a fallback.
     rec = rec or recognizer(models, asr)
     chunks = vad_chunks(models, samples, threshold=vad_threshold) if chunker == "vad" else fixed_chunks(samples)
+    if clean is not None and sum(len(c) for _, c in chunks) < 0.5 * len(samples):
+        chunks = vad_chunks(models, clean, threshold=vad_threshold)
     # A VAD that hears almost nothing in a long recording is being fooled by
     # noise, not listening to silence: fall back to fixed windows.
     voiced = sum(len(c) for _, c in chunks)
@@ -135,13 +145,11 @@ def transcribe(models, samples, asr="parakeet", denoise=False, diarize=True, rec
         chunks = fixed_chunks(samples)
     if rescue_gaps:
         chunks = with_gaps(chunks, len(samples), samples)
-    if asr_on == "raw" and denoise:
-        chunks = [(st, raw[st : st + len(c)]) for st, c in chunks]
+    src = clean if asr_on == "clean" and clean is not None else raw
+    chunks = [(st, src[st : st + len(c)]) for st, c in chunks]
     streams = []
     for _, c in chunks:
-        # Far-away students arrive 15-20 dB quieter than the teacher; level
-        # every chunk so the recognizer hears them at the same loudness.
-        c = c * min(0.1 / (np.sqrt(np.mean(c**2)) + 1e-6), 30.0)
+        c = c * min(0.1 / (np.sqrt(np.mean(c**2)) + 1e-6), AGC_MAX)
         c = np.clip(c, -1, 1).astype(np.float32)
         s = rec.create_stream()
         s.accept_waveform(SR, c)
@@ -155,7 +163,8 @@ def transcribe(models, samples, asr="parakeet", denoise=False, diarize=True, rec
     t_asr = time.time() - t0
     if diarize:
         diar = diar or diarizer(models, **dkw)
-        turns = diar.process(samples).sort_by_start_time()
+        # Speaker ID runs on the denoised audio when available: 57% -> 70% accuracy in noisy rooms.
+        turns = diar.process(clean if clean is not None else samples).sort_by_start_time()
         for s in segs:
             best, score = "S?", 0.0
             for t in turns:

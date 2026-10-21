@@ -1,4 +1,4 @@
-import type { Stage } from "./types";
+import type { Stage } from "./types.ts";
 
 /** red = needs you or failed, orange = working or waiting for Wi-Fi, green = done. */
 export type Dot = "red" | "orange" | "green";

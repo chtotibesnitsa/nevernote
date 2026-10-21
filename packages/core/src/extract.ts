@@ -2,8 +2,8 @@
 // moments as the transcript grows. Free, offline, instant; the AI summary
 // later refines titles and catches what keywords can't.
 
-import { findDates, toLocalISO } from "./dates";
-import type { Extraction, ExtractionKind, Segment } from "./types";
+import { findDates, toLocalISO } from "./dates.ts";
+import type { Extraction, ExtractionKind, Segment } from "./types.ts";
 
 interface Rule {
   kind: ExtractionKind;
@@ -23,7 +23,8 @@ export const RULES: Rule[] = [
   { kind: "important", re: /\b(?:(?:this|that|it)(?:'s| is| will be| might be| could be)? (?:going to be )?on the (?:test|exam|quiz|final|midterm)|write (?:this|that) down|important|key (?:concept|point|idea|term)|pay attention|you need to know|know this|memorize|common mistake|trick question)\b/i },
   { kind: "deadline", re: new RegExp(`\\b(?:your |the |our |a )?(${ASSIGNMENT})\\b[^.?!]{0,80}?\\b(?:is |are |will be )?(?:due|needs to be (?:in|submitted|turned in)|has to be (?:in|submitted))\\b`, "i"), label: (m) => cap(m[1]) },
   { kind: "deadline", re: new RegExp(`\\b(?:turn in|submit|hand in|upload|email me|send me|bring)\\b[^.?!]{0,40}?\\b(?:your |the )?(${ASSIGNMENT})`, "i"), label: (m) => cap(m[1]) },
-  { kind: "deadline", re: /\b(?:due|deadline)\b/i, needsDate: true },
+  // Bare "due" only counts when a date follows right away ("due Friday", "due by the 3rd"), not "what's due next week".
+  { kind: "deadline", re: /(?<!what's |what is |anything )\b(?:due|deadline is|deadline)\s+(?:on\s+|by\s+|this\s+|next\s+|before\s+)?(?:the\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|tonight|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d|first|second|third|fourth|fifth|end of)/i, needsDate: true },
   { kind: "exam", re: new RegExp(`\\b(?:a |the |your |our )?((?:unit \\d+ |chapter \\d+ |pop )?${EXAM})\\b`, "i"), needsDate: true, label: (m) => cap(m[1]) },
   { kind: "event", re: /\b(field trip|office hours|review session|study session|lab session|guest speaker|assembly|conference|club meeting|tutoring|info session|career fair|deadline to (?:drop|withdraw|register))\b/i, needsDate: true, label: (m) => cap(m[1]) },
   { kind: "reminder", re: /\b(?:don't forget|do not forget|remember to|make sure (?:you|to)|you need to|you have to|you must|bring (?:your|a)|sign up|register for)\b/i },

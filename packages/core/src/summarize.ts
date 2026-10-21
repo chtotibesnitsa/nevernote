@@ -2,8 +2,8 @@
 // (server/functions/summarize) or a small on-device model, so it is kept
 // short, explicit and JSON-only.
 
-import { toLocalISO } from "./dates";
-import type { Extraction, Segment, Summary } from "./types";
+import { toLocalISO } from "./dates.ts";
+import type { Extraction, Segment, Summary } from "./types.ts";
 
 export interface ChatMessage {
   role: "system" | "user" | "assistant";

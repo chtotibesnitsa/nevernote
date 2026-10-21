@@ -2,7 +2,7 @@
 // internet; when a connection appears the outbox drains and newer notes come
 // down. Recording never waits on the network.
 
-import type { Note, Segment } from "./types";
+import type { Note, Segment } from "./types.ts";
 
 /** Merge two copies of the same note. Segments union by id; other fields: newest edit wins. */
 export function mergeNote(a: Note, b: Note): Note {
@@ -86,3 +86,18 @@ export class Syncer {
     }
   }
 }
+
+type Row = Record<string, any>;
+
+/** A note as a row of the server's `notes` table. */
+export const noteToRow = (n: Note, userId: string): Row => ({
+  id: n.id, user_id: userId, title: n.title, created_at: n.createdAt, updated_at: n.updatedAt, duration_sec: n.durationSec,
+  device: n.device, folder: n.folder ?? null, stage: n.stage, segments: n.segments, speakers: n.speakers,
+  extractions: n.extractions, summary: n.summary ?? null, thoughts: n.thoughts, vocabulary: n.vocabulary ?? [],
+});
+
+export const rowToNote = (r: Row): Note => ({
+  id: r.id, title: r.title, createdAt: r.created_at, updatedAt: r.updated_at, durationSec: r.duration_sec, device: r.device,
+  folder: r.folder ?? undefined, stage: r.stage, segments: r.segments ?? [], speakers: r.speakers ?? [], extractions: r.extractions ?? [],
+  summary: r.summary ?? undefined, thoughts: r.thoughts ?? "", vocabulary: r.vocabulary ?? [],
+});

@@ -1,9 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { recordUpsell, shouldUpsell, summaryRoute } from "../src/plans";
-import { insights, streaks } from "../src/stats";
-import { mergeExtractions, parseSummary } from "../src/summarize";
-import { Syncer, mergeNote, type Remote, type Store } from "../src/sync";
-import type { Extraction, Note } from "../src/types";
+import { recordUpsell, shouldUpsell, summaryRoute } from "../src/plans.ts";
+import { insights, streaks } from "../src/stats.ts";
+import { mergeExtractions, parseSummary } from "../src/summarize.ts";
+import { Syncer, mergeNote, type Remote, type Store } from "../src/sync.ts";
+import type { Extraction, Note } from "../src/types.ts";
 
 const note = (over: Partial<Note> = {}): Note => ({
   id: "n1",

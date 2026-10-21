@@ -1,0 +1,80 @@
+{
+  "expo": {
+    "name": "Nevernote",
+    "slug": "nevernote",
+    "scheme": "nevernote",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "automatic",
+    "newArchEnabled": true,
+    "ios": {
+      "bundleIdentifier": "app.nevernote",
+      "buildNumber": "1",
+      "supportsTablet": false,
+      "usesAppleSignIn": true,
+      "infoPlist": {
+        "UIBackgroundModes": [
+          "audio"
+        ],
+        "NSMicrophoneUsageDescription": "Nevernote listens to your class so it can write the transcript on this phone. Audio never leaves your device to be transcribed.",
+        "ITSAppUsesNonExemptEncryption": false
+      }
+    },
+    "android": {
+      "package": "app.nevernote",
+      "permissions": [
+        "RECORD_AUDIO",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_MICROPHONE",
+        "POST_NOTIFICATIONS"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/android-icon-foreground.png",
+        "backgroundColor": "#1c1915"
+      }
+    },
+    "plugins": [
+      "expo-router",
+      "expo-web-browser",
+      "expo-font",
+      "expo-apple-authentication",
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 120,
+          "backgroundColor": "#f7f3ec",
+          "dark": {
+            "image": "./assets/splash-icon-dark.png",
+            "backgroundColor": "#14120f"
+          }
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#6b4f3a"
+        }
+      ],
+      "expo-system-ui",
+      [
+        "expo-calendar",
+        {
+          "calendarPermission": "Nevernote adds the due dates and tests it hears in class to your calendar, only when you ask."
+        }
+      ]
+    ],
+    "experiments": {
+      "typedRoutes": true
+    },
+    "extra": {
+      "supabaseUrl": "",
+      "supabaseAnonKey": "",
+      "revenueCatIosKey": "",
+      "eas": {
+        "projectId": ""
+      }
+    }
+  }
+}

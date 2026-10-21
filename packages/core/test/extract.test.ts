@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { findDates, toLocalISO } from "../src/dates";
-import { extract } from "../src/extract";
-import { digitize } from "../src/numwords";
+import { findDates, toLocalISO } from "../src/dates.ts";
+import { extract } from "../src/extract.ts";
+import { digitize } from "../src/numwords.ts";
 
 // Wednesday, October 21 2026, 9:37 a.m. (the day of the APES screenshot)
 const REF = new Date(2026, 9, 21, 9, 37);
@@ -69,6 +69,12 @@ describe("extract", () => {
   it("finds the permission slip and the problem set", () => {
     expect(items.find((x) => /permission slip/i.test(x.title))?.when).toBe("2026-11-03");
     expect(items.find((x) => /problem set/i.test(x.title))?.when).toBe("2026-10-26");
+  });
+  it("doesn't treat a preview of what's due as a deadline", () => {
+    const x = extract([{ id: "p", start: 0, end: 1, text: "Today we're finishing unit 3 and then I'll go over what's due next week." }], REF);
+    expect(x).toEqual([]);
+    const y = extract([{ id: "q", start: 0, end: 1, text: "The reading is due by Thursday." }], REF);
+    expect(y[0]?.when).toBe("2026-10-22");
   });
   it("ignores ordinary content", () => {
     expect(items.some((x) => x.segmentId === "s5")).toBe(false);

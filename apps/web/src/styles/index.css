@@ -1,0 +1,218 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@import "@fontsource-variable/newsreader";
+@import "@fontsource-variable/newsreader/wght-italic.css";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Paper, ink and a little leather. */
+@theme {
+  --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
+  --font-serif: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
+
+  --color-paper: #f7f3ec;
+  --color-paper-2: #efe9df;
+  --color-card: #fcfaf6;
+  --color-ink: #1c1915;
+  --color-ink-2: #4a433b;
+  --color-mute: #8a8076;
+  --color-line: #e4ddd2;
+  --color-leather: #6b4f3a;
+  --color-clay: #c8794a;
+
+  --color-dot-red: #d9534a;
+  --color-dot-orange: #e8973e;
+  --color-dot-green: #3f9a6b;
+
+  --ease-liquid: cubic-bezier(0.22, 1, 0.36, 1);
+  --radius-glass: 22px;
+}
+
+:root {
+  color-scheme: light;
+  --bg: var(--color-paper);
+  --fg: var(--color-ink);
+  --glass: rgb(255 255 255 / 0.58);
+  --glass-strong: rgb(255 255 255 / 0.78);
+  --glass-edge: rgb(255 255 255 / 0.85);
+  --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 12px 40px -12px rgb(60 40 20 / 0.18), 0 2px 6px rgb(60 40 20 / 0.06);
+  --card: var(--color-card);
+  --line: var(--color-line);
+  --mute: var(--color-mute);
+  --ink-2: var(--color-ink-2);
+  --bubble: #f0ebe3;
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #14120f;
+  --fg: #f4efe6;
+  --glass: rgb(38 33 28 / 0.55);
+  --glass-strong: rgb(38 33 28 / 0.8);
+  --glass-edge: rgb(255 255 255 / 0.08);
+  --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 20px 50px -20px rgb(0 0 0 / 0.6);
+  --card: #1c1915;
+  --line: #2e2923;
+  --mute: #998f84;
+  --ink-2: #cfc6ba;
+  --bubble: #25211c;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  background: var(--bg);
+  color: var(--fg);
+  font-family: var(--font-sans);
+  font-feature-settings: "cv11", "ss01";
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+/* Desktop app: let the window vibrancy show through. */
+html.desktop body {
+  background: transparent;
+}
+
+::selection {
+  background: rgb(200 121 74 / 0.25);
+}
+
+@utility glass {
+  background: var(--glass);
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+}
+
+@utility glass-strong {
+  background: var(--glass-strong);
+  backdrop-filter: blur(30px) saturate(190%);
+  -webkit-backdrop-filter: blur(30px) saturate(190%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+}
+
+/* For glass that sits on top of text: still frosted, but readable. */
+@utility glass-solid {
+  background: color-mix(in oklab, var(--card) 96%, transparent);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border: 1px solid var(--glass-edge);
+  box-shadow: var(--glass-shadow);
+}
+
+@utility paper-grain {
+  background-image: radial-gradient(rgb(107 79 58 / 0.05) 1px, transparent 1px);
+  background-size: 3px 3px;
+}
+
+@utility title-serif {
+  font-family: var(--font-serif);
+  font-weight: 460;
+  letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 72;
+}
+
+@utility eyebrow {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--mute);
+}
+
+@keyframes pulse-dot {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  50% {
+    transform: scale(1.6);
+    opacity: 0.35;
+  }
+}
+
+@keyframes shimmer {
+  from {
+    background-position: -400px 0;
+  }
+  to {
+    background-position: 400px 0;
+  }
+}
+
+@utility skeleton {
+  background: linear-gradient(90deg, var(--line) 0%, var(--bubble) 50%, var(--line) 100%);
+  background-size: 800px 100%;
+  animation: shimmer 1.4s linear infinite;
+  border-radius: 10px;
+}
+
+@keyframes wave {
+  0%,
+  100% {
+    transform: scaleY(0.35);
+  }
+  50% {
+    transform: scaleY(1);
+  }
+}
+
+.scroll-fade {
+  mask-image: linear-gradient(to bottom, transparent 0, black 24px, black calc(100% - 48px), transparent 100%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    transition-duration: 0.01ms !important;
+  }
+}
+
+/* AI notes: bookish headings, airy bullets. */
+.prose-nn {
+  font-size: 17px;
+  line-height: 1.75;
+}
+.prose-nn h1 {
+  display: none;
+}
+.prose-nn h2,
+.prose-nn h3 {
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  margin: 2rem 0 0.5rem;
+}
+.prose-nn ul {
+  list-style: disc;
+  padding-left: 1.4rem;
+}
+.prose-nn ul ul {
+  list-style: square;
+}
+.prose-nn li {
+  margin: 0.3rem 0;
+}
+.prose-nn li::marker {
+  color: var(--mute);
+}
+.prose-nn strong {
+  font-weight: 600;
+}
+.prose-nn code {
+  font-size: 0.9em;
+  background: var(--bubble);
+  padding: 0.1em 0.35em;
+  border-radius: 6px;
+}

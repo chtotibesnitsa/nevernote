@@ -2,7 +2,7 @@
 // no network, so "your lab report is due Friday" becomes a real date the
 // moment the teacher says it.
 
-import { digitize } from "./numwords";
+import { digitize } from "./numwords.ts";
 
 export interface DateHit {
   phrase: string;
