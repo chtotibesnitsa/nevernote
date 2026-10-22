@@ -1,10 +1,11 @@
 import { PRICING } from "@nevernote/core";
-import { Apple, ArrowRight, Check, Github, Monitor, Smartphone, Globe, Lock, Play, Wifi, WifiOff, Mic } from "lucide-react";
+import { Apple, ArrowRight, Check, ChevronDown, Github, Play, Wifi, WifiOff, Mic, Sparkles, MessageCircle, CalendarPlus, FileDown, Layers, Zap } from "lucide-react";
 import { AnimatePresence, motion, useInView, useMotionValue, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Hmu, Logo, soft, spring } from "../components/ui.tsx";
 import { GITHUB_REPO, RELEASES } from "../lib/bridge.ts";
+import { Downloads, IPhone, MacBook } from "./Devices.tsx";
 import { BENCH } from "./bench.ts";
 import { DesktopDemo } from "./DesktopDemo.tsx";
 import { HeroFrames, pickSet, screenRect, type FrameSet } from "./HeroFrames.tsx";
@@ -181,7 +182,7 @@ function Hero() {
   const veil = useTransform(p, [0.8, 0.9], [1, 0]);
 
   return (
-    <div ref={wrap} className="relative h-[600vh]">
+    <div ref={wrap} className="relative h-[340vh]">
       <motion.div style={{ background: bg }} className="sticky top-0 h-[100svh] overflow-hidden">
         <motion.div style={{ opacity: canvasOpacity }} className="absolute inset-0">
           <HeroFrames progress={progress} set={set} />
@@ -199,7 +200,7 @@ function Hero() {
             </motion.p>
             <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...soft, delay: 0.18 }} className="pointer-events-auto mt-6 flex flex-wrap justify-center gap-3">
               <Cta big>Start free</Cta>
-              <Ghost href={RELEASES}><Apple size={17} /> Download</Ghost>
+              <Ghost href="#platforms"><Apple size={17} /> Download</Ghost>
             </motion.div>
           </motion.div>
           {BEATS.map((b, i) => (
@@ -231,17 +232,6 @@ const CHAT: { me?: boolean; t?: string; audio?: string; card?: string[] }[] = [
   { card: ["Test covers the nitrogen cycle too", "Lab report due Fri 11:59 PM", "Read chapter 9 by Monday"] },
 ];
 
-function Phone({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return (
-    <div className={`relative rounded-[54px] bg-[linear-gradient(145deg,#e8e8ed,#b9b9c0_40%,#d7d7dc)] p-[10px] shadow-[0_50px_100px_-40px_rgb(0_0_0/0.45),inset_0_0_0_1px_rgb(255_255_255/0.7)] ${className}`}>
-      <div className="relative overflow-hidden rounded-[45px] bg-white">
-        <div className="absolute left-1/2 top-[10px] z-10 h-[28px] w-[100px] -translate-x-1/2 rounded-full bg-black" />
-        {children}
-      </div>
-    </div>
-  );
-}
-
 function Chat() {
   const ref = useRef<HTMLDivElement>(null);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "center center"] });
@@ -250,7 +240,7 @@ function Chat() {
   return (
     <div ref={ref} className="mt-14 flex justify-center [perspective:1400px]">
       <motion.div style={{ rotateX, scale }} className="w-full max-w-[390px]">
-        <Phone>
+        <IPhone>
           <div className="px-4 pb-6 pt-14">
             <div className="flex flex-col items-center gap-1 border-b border-black/[0.06] pb-3">
               <span className="grid h-12 w-12 place-items-center rounded-full bg-[linear-gradient(180deg,#3a3a3c,#1d1d1f)] text-lg font-semibold text-white">N</span>
@@ -284,7 +274,7 @@ function Chat() {
               <div className="mt-1 text-right text-[11px] text-[#8e8e93]">Delivered</div>
             </div>
           </div>
-        </Phone>
+        </IPhone>
       </motion.div>
     </div>
   );
@@ -328,30 +318,87 @@ const TOASTS = [
   { icon: Wifi, t: "Back online", b: "Your notes are being written now." },
 ];
 
+/** Soft coloured light drifting behind glass. */
+function Aurora({ colors, className = "" }: { colors: string[]; className?: string }) {
+  return (
+    <div className={`pointer-events-none absolute inset-0 overflow-hidden ${className}`}>
+      {colors.map((c, k) => (
+        <motion.span
+          key={k}
+          className="absolute h-[70%] w-[60%] rounded-full blur-3xl"
+          style={{ background: c, left: `${[-10, 45, 15, 60][k % 4]}%`, top: `${[-20, -10, 40, 35][k % 4]}%` }}
+          animate={{ x: [0, 40, -20, 0], y: [0, 30, -25, 0], scale: [1, 1.15, 0.95, 1] }}
+          transition={{ duration: 14 + k * 3, repeat: Infinity, ease: "easeInOut" }}
+        />
+      ))}
+    </div>
+  );
+}
+
+/** A live voice waveform: smooth bars in a blue-violet-pink gradient that go flat when the mic drops. */
+function Waveform({ on, bars = 56, height = 64 }: { on: boolean; bars?: number; height?: number }) {
+  return (
+    <div className="flex items-center justify-center gap-[3px]" style={{ height }}>
+      {Array.from({ length: bars }, (_, k) => {
+        const env = Math.sin((k / (bars - 1)) * Math.PI);
+        const h = 6 + env * (height - 10) * (0.45 + 0.55 * Math.abs(Math.sin(k * 1.7)));
+        return (
+          <motion.span
+            key={k}
+            className="w-[3px] rounded-full"
+            style={{ background: `linear-gradient(180deg, hsl(${215 + (k / bars) * 110} 90% 66%), hsl(${235 + (k / bars) * 110} 85% 58%))` }}
+            animate={on ? { height: [h * 0.35, h, h * 0.55, h * 0.9, h * 0.35] } : { height: 3 }}
+            transition={on ? { duration: 1.1 + (k % 5) * 0.12, repeat: Infinity, ease: "easeInOut", delay: (k % 7) * 0.06 } : { duration: 0.4 }}
+          />
+        );
+      })}
+    </div>
+  );
+}
+
 function Safety() {
-  const [ref, i] = useLoop(TOASTS.length + 1, 1800);
+  const [ref, i] = useLoop(TOASTS.length + 1, 2000);
   const [flash, setFlash] = useState(false);
+  const [saved, setSaved] = useState(1);
   useEffect(() => {
     const t = setInterval(() => setFlash((f) => !f), 900);
-    return () => clearInterval(t);
+    const u = setInterval(() => setSaved((x) => (x >= 4 ? 1 : x + 1)), 1000);
+    return () => {
+      clearInterval(t);
+      clearInterval(u);
+    };
   }, []);
+  const micOff = i === 1;
   return (
-    <motion.div {...fade} ref={ref} className="relative mt-16 overflow-hidden rounded-[32px] bg-[radial-gradient(120%_100%_at_15%_0%,#eef0f5_0%,#d6dbe5_50%,#c3c9d6_100%)] p-4 md:p-8">
-      <div className="absolute -left-10 top-20 h-72 w-[520px] rounded-full bg-white/50 blur-3xl" />
+    <motion.div {...fade} ref={ref} className="relative mt-16 overflow-hidden rounded-[36px] bg-[#eef0fb] p-4 md:p-8">
+      <Aurora colors={["#b9ccff", "#e3c8ff", "#ffd3e2", "#c4ecff"]} />
       {/* a browser tab that flashes while recording */}
-      <div className="relative mx-auto max-w-[760px] overflow-hidden rounded-[16px] bg-white/70 shadow-[0_30px_60px_-30px_rgb(20_30_60/0.4)] backdrop-blur-xl">
-        <div className="flex items-end gap-1 bg-[#e8e9ee]/80 px-3 pt-2.5">
+      <div className="relative mx-auto max-w-[820px] overflow-hidden rounded-[20px] bg-white/60 shadow-[0_40px_80px_-40px_rgb(40_40_120/0.45),inset_0_1px_0_rgb(255_255_255/0.9)] backdrop-blur-2xl">
+        <div className="flex items-end gap-1 bg-white/40 px-3 pt-2.5">
           <div className="flex items-center gap-2 rounded-t-[10px] bg-white px-3.5 py-2 text-[13px]">
-            <span className={`h-2.5 w-2.5 rounded-full transition ${flash ? "bg-[#ff3b30]" : "bg-[#ff3b30]/25"}`} />
-            <span className="font-medium">{flash ? "🔴 Recording · 41:12" : "Biology · Nevernote"}</span>
+            <span className={`h-2.5 w-2.5 rounded-full transition ${micOff ? "bg-[#c7c7cc]" : flash ? "bg-[#ff3b30]" : "bg-[#ff3b30]/25"}`} />
+            <span className="font-medium">{micOff ? "Paused · 41:12" : flash ? "Recording · 41:12" : "Biology · Nevernote"}</span>
           </div>
-          <div className="px-3.5 py-2 text-[13px] text-[#86868b]">Google Docs</div>
-          <div className="px-3.5 py-2 text-[13px] text-[#86868b]">Canvas</div>
+          <div className="px-3.5 py-2 text-[13px] text-[#6e6e73]">Google Docs</div>
+          <div className="hidden px-3.5 py-2 text-[13px] text-[#6e6e73] sm:block">Canvas</div>
         </div>
-        <div className="grid gap-3 p-5 md:grid-cols-[1fr_1.2fr]">
+        <div className="bg-white/70 px-5 pt-5">
+          <div className="flex items-center justify-between text-[13px]">
+            <span className="flex items-center gap-2 font-semibold tracking-tight">
+              <span className={`h-2 w-2 rounded-full ${micOff ? "bg-[#c7c7cc]" : "animate-pulse bg-[#ff3b30]"}`} /> {micOff ? "Mic lost, everything saved" : "Listening to Ms. Rivera"}
+            </span>
+            <span className="tabular-nums text-[#6e6e73]">Saved {saved}s ago</span>
+          </div>
+          <div className="mt-3 rounded-[16px] bg-[linear-gradient(180deg,#f7f7fb,#eef0f8)] py-3">
+            <Waveform on={!micOff} />
+          </div>
+        </div>
+        <div className="grid gap-3 bg-white/70 p-5 md:grid-cols-[1fr_1.2fr]">
           <div className="space-y-2.5">
-            {["Keeps recording in a background tab", "Warns before you close the tab", "Saves every few seconds, never all at the end", "Logs every stop, with one-tap Resume"].map((t) => (
-              <div key={t} className="flex items-center gap-2.5 text-[14.5px]"><Check size={16} className="shrink-0 text-[#34c759]" /> {t}</div>
+            {["Keeps recording in a background tab", "Warns before you close the tab", "Saves every few seconds, never all at the end", "Logs every stop, with one-tap Resume"].map((t, k) => (
+              <motion.div key={t} initial={{ opacity: 0, x: -12 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ ...soft, delay: 0.2 + k * 0.08 }} className="flex items-center gap-2.5 text-[14.5px]">
+                <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#1d1d1f] text-white"><Check size={11} strokeWidth={3} /></span> {t}
+              </motion.div>
             ))}
           </div>
           <div className="relative h-[230px]">
@@ -368,7 +415,7 @@ function Safety() {
                 >
                   <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[linear-gradient(180deg,#3a3a3c,#1d1d1f)] text-white"><n.icon size={17} /></span>
                   <div className="min-w-0 flex-1">
-                    <div className="flex justify-between text-[13px] font-semibold"><span>{n.t}</span><span className="font-normal text-[#86868b]">now</span></div>
+                    <div className="flex justify-between text-[13px] font-semibold"><span>{n.t}</span><span className="font-normal text-[#6e6e73]">now</span></div>
                     <div className="text-[12.5px] leading-snug text-[#424245]">{n.b}</div>
                   </div>
                   {n.action && <span className="self-center rounded-full bg-[#1d1d1f] px-3 py-1 text-[12px] font-medium text-white">{n.action}</span>}
@@ -380,22 +427,24 @@ function Safety() {
       </div>
       <div className="relative mt-6 flex flex-wrap justify-center gap-2">
         {["Phone on the desk", "Laptop open", "Zoom, Teams, Meet", "No Wi-Fi", "Breaks and resumes"].map((r) => (
-          <span key={r} className="lglass rounded-full px-4 py-2 text-[14px] text-[#1d1d1f]">{r}</span>
+          <span key={r} className="lglass rounded-full px-4 py-2 text-[14px] font-medium text-[#1d1d1f]">{r}</span>
         ))}
       </div>
     </motion.div>
   );
 }
 
-// ---------- How it works: four live states, not four icons ----------
+// ---------- How it works: four live states on coloured glass ----------
 
 function RecordButton() {
   return (
-    <div className="relative grid h-[180px] place-items-center">
-      <span className="absolute h-24 w-24 animate-ping rounded-full bg-[#ff3b30]/15 [animation-duration:2.4s]" />
-      <span className="relative grid h-[84px] w-[84px] place-items-center rounded-full bg-[radial-gradient(circle_at_50%_30%,#ffffff,#e5e5ea)] shadow-[0_18px_30px_-12px_rgb(0_0_0/0.35),inset_0_-3px_6px_rgb(0_0_0/0.08)]">
-        <span className="h-[56px] w-[56px] rounded-full bg-[radial-gradient(circle_at_40%_30%,#ff7a70,#ff3b30_55%,#c4161c)] shadow-[inset_0_2px_3px_rgb(255_255_255/0.5),0_6px_14px_-4px_rgb(255_59_48/0.6)]" />
-      </span>
+    <div className="relative grid h-full place-items-center">
+      {[0, 1, 2].map((k) => (
+        <motion.span key={k} className="absolute h-28 w-28 rounded-full border-2 border-[#ff3b30]/40" animate={{ scale: [1, 2.1], opacity: [0.7, 0] }} transition={{ duration: 2.4, repeat: Infinity, delay: k * 0.8, ease: "easeOut" }} />
+      ))}
+      <motion.span whileHover={{ scale: 1.06 }} whileTap={{ scale: 0.92 }} className="relative grid h-[112px] w-[112px] cursor-pointer place-items-center rounded-full bg-[radial-gradient(circle_at_50%_30%,#ffffff,#e5e5ea)] shadow-[0_24px_40px_-14px_rgb(0_0_0/0.4),inset_0_-4px_8px_rgb(0_0_0/0.08)]">
+        <span className="h-[76px] w-[76px] rounded-full bg-[radial-gradient(circle_at_40%_30%,#ff8a80,#ff3b30_55%,#c4161c)] shadow-[inset_0_3px_4px_rgb(255_255_255/0.5),0_8px_18px_-4px_rgb(255_59_48/0.6)]" />
+      </motion.span>
     </div>
   );
 }
@@ -404,54 +453,85 @@ function Listening() {
   const words = "Your lab report is due Friday at 11:59".split(" ");
   const [ref, i] = useLoop(words.length + 4, 260);
   return (
-    <div ref={ref} className="flex h-[180px] flex-col justify-center gap-4 px-5">
-      <div className="flex h-10 items-center justify-center gap-[3px]">
-        {Array.from({ length: 34 }, (_, k) => (
-          <span key={k} className="nn-eq w-[3px] rounded-full bg-[#1d1d1f]/70" style={{ height: 8 + ((k * 13) % 30), animationDelay: `${(k % 9) * 0.08}s` }} />
-        ))}
-      </div>
-      <div className="min-h-[44px] text-[15px] leading-snug">
-        <span className="mr-1.5 text-[12px] font-semibold text-[#ff7a2f]">Ms. Rivera</span>
+    <div ref={ref} className="flex h-full flex-col justify-center gap-4 px-6">
+      <Waveform on bars={40} height={56} />
+      <div className="lglass min-h-[64px] rounded-[16px] px-4 py-3 text-[16px] leading-snug">
+        <span className="mr-1.5 text-[12px] font-semibold text-[#424245]">Ms. Rivera</span>
         {words.slice(0, i).join(" ")}
-        <span className="nn-caret ml-0.5 inline-block h-[15px] w-[1.5px] translate-y-[2px] bg-[#1d1d1f]" />
+        <span className="nn-caret ml-0.5 inline-block h-[16px] w-[1.5px] translate-y-[2px] bg-[#1d1d1f]" />
       </div>
     </div>
   );
 }
 
 function Flag() {
+  const [ref, i] = useLoop(3, 1600);
   return (
-    <div className="flex h-[180px] items-center px-4">
-      <div className="lglass flex w-full items-center gap-3 rounded-[18px] p-3">
-        <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[10px] bg-[linear-gradient(180deg,#3a3a3c,#1d1d1f)] text-sm font-semibold text-white">N</span>
-        <div className="min-w-0">
-          <div className="text-[13px] font-semibold">Due Friday 11:59 PM</div>
-          <div className="truncate text-[12.5px] text-[#424245]">Lab report · Biology · on Canvas</div>
-        </div>
-      </div>
+    <div ref={ref} className="relative flex h-full flex-col items-center justify-center gap-2.5 px-6">
+      {[
+        ["Due Friday 11:59 PM", "Lab report · Biology · on Canvas"],
+        ["Test next Tuesday", "Unit 3 · 40 multiple choice + 2 FRQ"],
+      ].map(([t, b], k) => (
+        <motion.div key={t} animate={{ opacity: i >= k ? 1 : 0, y: i >= k ? 0 : -16, scale: i >= k ? 1 : 0.95 }} transition={spring} className="lglass flex w-full items-center gap-3 rounded-[18px] p-3.5">
+          <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[11px] bg-[linear-gradient(180deg,#3a3a3c,#1d1d1f)] text-sm font-semibold text-white">N</span>
+          <div className="min-w-0">
+            <div className="text-[14px] font-semibold">{t}</div>
+            <div className="truncate text-[13px] text-[#424245]">{b}</div>
+          </div>
+          <span className="ml-auto self-start text-[11px] text-[#6e6e73]">now</span>
+        </motion.div>
+      ))}
     </div>
   );
 }
 
 function CatchUp() {
   return (
-    <div className="flex h-[180px] items-center px-4">
-      <div className="w-full rounded-[16px] bg-white p-3.5 shadow-[0_12px_30px_-16px_rgb(0_0_0/0.35)]">
-        <div className="flex items-baseline justify-between"><span className="text-[15px] font-semibold tracking-tight">The carbon cycle</span><span className="text-[11px] text-[#86868b]">3 min read</span></div>
-        {["Limestone: long-term carbon sink", "Decomposition is a source", "Nitrogen cycle on the test"].map((b) => (
-          <div key={b} className="mt-1.5 flex items-center gap-2 text-[12.5px] text-[#424245]"><span className="h-1 w-1 rounded-full bg-[#aeaeb2]" />{b}</div>
+    <div className="flex h-full items-center px-6">
+      <motion.div whileHover={{ y: -4, rotateX: 4 }} transition={spring} className="w-full rounded-[18px] bg-white/90 p-4 shadow-[0_20px_40px_-20px_rgb(0_0_0/0.4)] backdrop-blur">
+        <div className="flex items-baseline justify-between"><span className="text-[16px] font-semibold tracking-tight">The carbon cycle</span><span className="text-[11px] text-[#6e6e73]">3 min read</span></div>
+        {["Limestone: long-term carbon sink", "Decomposition is a source, not a sink", "Nitrogen cycle is on the test"].map((b, k) => (
+          <motion.div key={b} initial={{ opacity: 0, x: -10 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ ...soft, delay: 0.3 + k * 0.12 }} className="mt-2 flex items-center gap-2 text-[13.5px] text-[#424245]">
+            <span className="h-1.5 w-1.5 rounded-full bg-[#1d1d1f]" />
+            {b}
+          </motion.div>
         ))}
-      </div>
+      </motion.div>
     </div>
   );
 }
 
-const STEPS: { t: string; b: string; v: () => ReactNode }[] = [
-  { t: "Hit record", b: "When class starts. Then do your own thing.", v: RecordButton },
-  { t: "It listens", b: "Every word, every voice, on your device.", v: Listening },
-  { t: "It flags what matters", b: "Due dates and test hints ping you right away.", v: Flag },
-  { t: "Catch up in minutes", b: "Notes, study guide and replay, whenever.", v: CatchUp },
+const STEPS: { t: string; b: string; v: () => ReactNode; glow: string[] }[] = [
+  { t: "Hit record", b: "When class starts. Then do your own thing.", v: RecordButton, glow: ["#ffc2bd", "#ffd9c7", "#ffe9f0"] },
+  { t: "It listens", b: "Every word, every voice, right on your device.", v: Listening, glow: ["#b8ccff", "#d6c8ff", "#c6ecff"] },
+  { t: "It flags what matters", b: "Due dates and test hints ping you right away.", v: Flag, glow: ["#ffe2a8", "#ffd0b8", "#fff1c9"] },
+  { t: "Catch up in minutes", b: "Notes, a study guide and replay, whenever.", v: CatchUp, glow: ["#bfeccc", "#c8e6ff", "#e0f6d6"] },
 ];
+
+function Steps() {
+  return (
+    <div className="mt-16 grid gap-5 md:grid-cols-2">
+      {STEPS.map((s, i) => (
+        <motion.div key={s.t} {...fade} transition={{ ...soft, delay: (i % 2) * 0.08 }} whileHover={{ y: -6 }} className="card group overflow-hidden p-3">
+          <div className="relative h-[280px] overflow-hidden rounded-[24px] bg-[#f4f4f7] [perspective:900px]">
+            <Aurora colors={s.glow} />
+            <div className="absolute inset-0 bg-white/20 backdrop-blur-[2px]" />
+            <div className="relative h-full">
+              <s.v />
+            </div>
+          </div>
+          <div className="flex items-start gap-4 px-4 pb-5 pt-5">
+            <span className="display text-[2.6rem] leading-none text-[#1d1d1f]/15">{i + 1}</span>
+            <div>
+              <div className="text-[22px] font-semibold tracking-tight">{s.t}</div>
+              <p className="mt-1 text-[16px] leading-relaxed text-[#6e6e73]">{s.b}</p>
+            </div>
+          </div>
+        </motion.div>
+      ))}
+    </div>
+  );
+}
 
 // ---------- Accuracy chart ----------
 
@@ -461,28 +541,56 @@ const ROOMS = [
   { label: "Loud room", i: 4 },
 ];
 const pct = (s: string) => parseFloat(s);
+const name = (r: { engine: string; ours: boolean }) => (r.ours ? "Nevernote" : r.engine);
+const BAR: Record<string, string> = {
+  ours: "linear-gradient(90deg,#1d1d1f,#4a4a4f)",
+  whisper: "linear-gradient(90deg,#9a9aa0,#b9b9be)",
+  other: "linear-gradient(90deg,#c9c9ce,#dcdce0)",
+};
+const barOf = (r: { engine: string; ours: boolean }) => (r.ours ? BAR.ours : /whisper/i.test(r.engine) ? BAR.whisper : BAR.other);
+
+/** Counts up from 0 once it scrolls into view. */
+function CountUp({ to, decimals = 1, start }: { to: number; decimals?: number; start: boolean }) {
+  const [v, setV] = useState(0);
+  useEffect(() => {
+    if (!start) return;
+    let raf = 0;
+    const t0 = performance.now();
+    const tick = (t: number) => {
+      const k = Math.min(1, (t - t0) / 1600);
+      setV(to * (1 - Math.pow(1 - k, 4)));
+      if (k < 1) raf = requestAnimationFrame(tick);
+    };
+    raf = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(raf);
+  }, [to, start]);
+  return <>{v.toFixed(decimals)}</>;
+}
 
 function Accuracy() {
   const ref = useRef<HTMLDivElement>(null);
   const seen = useInView(ref, { once: true, margin: "-100px" });
   const ours = BENCH.rows.find((r) => r.ours)!;
   const whisper = BENCH.rows.find((r) => /whisper/i.test(r.engine))!;
-  const times = (pct(whisper.wer[4]) / pct(ours.wer[4])).toFixed(1);
+  const times = pct(whisper.wer[4]) / pct(ours.wer[4]);
   const max = 60;
-  const [hover, setHover] = useState<string | null>(null);
+  const [hover, setHover] = useState<{ room: number; engine: string } | null>(null);
   return (
     <div ref={ref} className="mt-16 grid gap-4 lg:grid-cols-[0.8fr_1.2fr]">
-      <motion.div {...fade} className="card flex flex-col justify-between p-8">
-        <div>
+      <motion.div {...fade} className="card relative flex flex-col justify-between overflow-hidden p-8">
+        <Aurora colors={["#dfe6ff", "#efe3ff", "#e3f3ff"]} className="opacity-70" />
+        <div className="relative">
           <div className="text-[14px] font-medium text-[#6e6e73]">In a loud classroom</div>
-          <div className="display mt-2 text-[5.5rem] leading-none md:text-[7rem]">{times}×</div>
-          <div className="mt-2 text-[20px] font-medium leading-snug tracking-tight">fewer mistakes than Whisper.</div>
-          <p className="mt-3 text-[15px] leading-relaxed text-[#6e6e73]">Same recordings, same rooms. Nevernote runs it on your device, for free, forever.</p>
+          <div className="display mt-2 text-[5.5rem] leading-none tabular-nums md:text-[7.5rem]">
+            <CountUp to={times} start={seen} />×
+          </div>
+          <div className="mt-2 text-[21px] font-semibold leading-snug tracking-tight">fewer mistakes than Whisper.</div>
+          <p className="mt-3 text-[15px] leading-relaxed text-[#6e6e73]">Same recordings, same rooms. The Mac and Windows apps run it on your device, free forever.</p>
         </div>
-        <div className="mt-8 grid grid-cols-3 gap-3 border-t border-black/[0.06] pt-6">
-          {[["$0", "forever"], ["0", "minute caps"], ["100%", "on your device"]].map(([n, l]) => (
+        <div className="relative mt-8 grid grid-cols-3 gap-3 border-t border-black/[0.06] pt-6">
+          {[["$0", "free forever"], ["∞", "hours, no caps"], [`${(100 - pct(ours.wer[1])).toFixed(0)}%`, "words right, quiet room"]].map(([n, l]) => (
             <div key={l}>
-              <div className="display text-[1.8rem] leading-none">{n}</div>
+              <div className="display text-[1.9rem] leading-none">{n}</div>
               <div className="mt-1 text-[12.5px] text-[#6e6e73]">{l}</div>
             </div>
           ))}
@@ -490,39 +598,73 @@ function Accuracy() {
       </motion.div>
       <motion.div {...fade} transition={{ ...soft, delay: 0.08 }} className="card p-6 md:p-8">
         <div className="flex flex-wrap items-baseline justify-between gap-3">
-          <div className="text-[17px] font-semibold tracking-tight">Mistakes per 100 words <span className="font-normal text-[#86868b]">· lower is better</span></div>
+          <div className="text-[17px] font-semibold tracking-tight">Mistakes per 100 words <span className="font-normal text-[#6e6e73]">· lower is better</span></div>
           <div className="flex gap-4 text-[13px] text-[#424245]">
             {BENCH.rows.map((r) => (
               <span key={r.engine} className="flex items-center gap-1.5">
-                <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: r.ours ? "#1d1d1f" : /whisper/i.test(r.engine) ? "#a1a1a6" : "#d2d2d7" }} />
-                {r.ours ? "Nevernote" : r.engine}
+                <span className="h-2.5 w-2.5 rounded-[3px]" style={{ background: barOf(r) }} />
+                {name(r)}
               </span>
             ))}
           </div>
         </div>
-        <div className="mt-6 space-y-6">
+        <div className="mt-6 space-y-6" onMouseLeave={() => setHover(null)}>
           {ROOMS.map((room, ri) => (
             <div key={room.label}>
               <div className="mb-2 text-[13px] font-medium text-[#6e6e73]">{room.label}</div>
-              <div className="space-y-[3px]">
+              <div className="space-y-[5px]">
                 {BENCH.rows.map((r, k) => {
                   const v = pct(r.wer[room.i]);
-                  const id = `${room.label}-${r.engine}`;
+                  const on = hover?.room === ri && hover.engine === r.engine;
+                  const dim = hover && !on;
                   return (
-                    <div key={r.engine} className="group flex items-center gap-3" onMouseEnter={() => setHover(id)} onMouseLeave={() => setHover(null)}>
-                      <div className="relative h-[18px] flex-1">
+                    <div key={r.engine} className="relative flex cursor-default items-center gap-3" onMouseEnter={() => setHover({ room: ri, engine: r.engine })}>
+                      <div className="relative h-[22px] flex-1">
                         <motion.div
                           initial={{ width: 0 }}
-                          animate={{ width: seen ? `${(v / max) * 100}%` : 0 }}
-                          transition={{ ...soft, delay: 0.15 + ri * 0.12 + k * 0.05 }}
-                          className="h-full rounded-r-[4px]"
-                          style={{ background: r.ours ? "#1d1d1f" : /whisper/i.test(r.engine) ? "#a1a1a6" : "#d2d2d7", opacity: hover && hover !== id ? 0.55 : 1 }}
-                        />
-                        {hover === id && (
-                          <div className="absolute -top-9 left-0 z-10 whitespace-nowrap rounded-[10px] bg-[#1d1d1f] px-2.5 py-1 text-[12px] text-white shadow-lg">
-                            {r.ours ? "Nevernote" : r.engine}: {v} of every 100 words wrong
-                          </div>
-                        )}
+                          animate={{ width: seen ? `${(v / max) * 100}%` : 0, opacity: dim ? 0.35 : 1, scaleY: on ? 1.25 : 1 }}
+                          transition={{ type: "spring", stiffness: 90, damping: 16, delay: hover ? 0 : 0.15 + ri * 0.14 + k * 0.06 }}
+                          className="relative h-full origin-left overflow-hidden rounded-full"
+                          style={{ background: barOf(r) }}
+                        >
+                          <motion.span
+                            className="absolute inset-y-0 w-1/3 bg-[linear-gradient(90deg,transparent,rgb(255_255_255/0.45),transparent)]"
+                            animate={{ x: ["-120%", "320%"] }}
+                            transition={{ duration: 2.6, repeat: Infinity, ease: "easeInOut", delay: 1 + k * 0.4 + ri * 0.3, repeatDelay: 2.4 }}
+                          />
+                        </motion.div>
+                        <AnimatePresence>
+                          {on && (
+                            <motion.div
+                              initial={{ opacity: 0, y: 8, scale: 0.96 }}
+                              animate={{ opacity: 1, y: 0, scale: 1 }}
+                              exit={{ opacity: 0, y: 4, scale: 0.98 }}
+                              transition={spring}
+                              className="absolute bottom-[calc(100%+10px)] z-20 w-[260px] rounded-[16px] bg-[#1d1d1f]/95 p-3.5 text-white shadow-[0_20px_40px_-12px_rgb(0_0_0/0.5)] backdrop-blur"
+                              style={{ left: `min(${(v / max) * 100}%, calc(100% - 260px))` }}
+                            >
+                              <div className="flex items-baseline justify-between">
+                                <span className="text-[13px] font-semibold">{name(r)}</span>
+                                <span className="text-[11px] text-white/60">{room.label}</span>
+                              </div>
+                              <div className="mt-1 flex items-baseline gap-2">
+                                <span className="display text-[2rem] leading-none">{(100 - v).toFixed(1)}%</span>
+                                <span className="text-[12px] text-white/70">words right</span>
+                              </div>
+                              <div className="mt-1 text-[12px] text-white/70">{v} of every 100 words wrong{!r.ours && ` · ${(v / pct(ours.wer[room.i])).toFixed(1)}× Nevernote's mistakes`}</div>
+                              <div className="mt-3 grid grid-cols-5 gap-1.5 border-t border-white/10 pt-2.5">
+                                {BENCH.tiers.map((t, ti) => (
+                                  <div key={t} className="text-center">
+                                    <div className="mx-auto flex h-8 w-2.5 items-end overflow-hidden rounded-full bg-white/10">
+                                      <motion.div initial={{ height: 0 }} animate={{ height: `${100 - pct(r.wer[ti])}%` }} transition={{ ...soft, delay: ti * 0.04 }} className="w-full rounded-full bg-white" />
+                                    </div>
+                                    <div className="mt-1 text-[9.5px] leading-tight text-white/60">{t.replace(" room", "").replace("Classroom ", "")}</div>
+                                  </div>
+                                ))}
+                              </div>
+                            </motion.div>
+                          )}
+                        </AnimatePresence>
                       </div>
                       <span className={`w-12 text-right text-[13px] tabular-nums ${r.ours ? "font-semibold text-[#1d1d1f]" : "text-[#6e6e73]"}`}>{v}</span>
                     </div>
@@ -532,8 +674,9 @@ function Accuracy() {
             </div>
           ))}
         </div>
-        <p className="mt-6 text-[12px] text-[#86868b]">
-          {BENCH.note} <a className="underline" href={`${GITHUB_REPO}/tree/main/bench`}>Run it yourself</a>
+        <p className="mt-6 text-[12px] text-[#6e6e73]">
+          {BENCH.note}{" "}
+          <a className="font-medium text-[#1d1d1f] underline decoration-black/20 underline-offset-2 hover:decoration-black" href={`${GITHUB_REPO}/tree/main/bench`}>Run it yourself</a>
         </p>
       </motion.div>
     </div>
@@ -541,19 +684,6 @@ function Accuracy() {
 }
 
 // ---------- Devices ----------
-
-function Mac({ src, alt }: { src: string; alt: string }) {
-  return (
-    <div className="relative">
-      <div className="rounded-[18px] bg-[#1d1d1f] p-[9px] pb-[11px] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1)]">
-        <img src={src} alt={alt} className="block aspect-[16/10] w-full rounded-[8px] bg-white object-cover object-top" loading="lazy" />
-      </div>
-      <div className="mx-[-6%] h-[14px] rounded-b-[14px] bg-[linear-gradient(180deg,#e3e3e8,#b7b7bd)] shadow-[0_30px_50px_-20px_rgb(0_0_0/0.45)]">
-        <div className="mx-auto h-[5px] w-[16%] rounded-b-[6px] bg-[#a6a6ab]" />
-      </div>
-    </div>
-  );
-}
 
 function Devices() {
   const ref = useRef<HTMLDivElement>(null);
@@ -563,46 +693,14 @@ function Devices() {
   const phoneY = useTransform(scrollYProgress, [0, 1], [180, 0]);
   return (
     <div ref={ref} className="mt-16 [perspective:1800px]">
-      <motion.div style={{ rotateX, y }} className="relative mx-auto max-w-[980px]">
-        <Mac src="/shots/mac.webp" alt="Nevernote on a Mac, showing a class transcript with notes" />
-        <motion.div style={{ y: phoneY }} className="absolute -bottom-10 right-[-2%] w-[24%] min-w-[120px] md:right-[-6%]">
-          <Phone className="!rounded-[34px] !p-[6px]">
+      <motion.div style={{ rotateX, y }} className="relative mx-auto max-w-[1040px]">
+        <MacBook src="/shots/mac.webp" alt="Nevernote on a Mac, showing a class transcript with notes" />
+        <motion.div style={{ y: phoneY }} className="absolute -bottom-12 right-[-1%] w-[22%] min-w-[118px] md:right-[-3%]">
+          <IPhone small>
             <img src="/shots/iphone.webp" alt="Nevernote on iPhone" className="block aspect-[390/844] w-full object-cover object-top" loading="lazy" />
-          </Phone>
+          </IPhone>
         </motion.div>
       </motion.div>
-    </div>
-  );
-}
-
-const PLATFORMS: { icon: typeof Apple; name: string; note: string; img: string; href?: string; cta: string }[] = [
-  { icon: Apple, name: "Mac", note: "Apple Silicon and Intel", img: "/shots/mac.webp", href: RELEASES, cta: "Download" },
-  { icon: Monitor, name: "Windows", note: "Windows 10 and 11", img: "/shots/windows.webp", href: RELEASES, cta: "Download" },
-  { icon: Smartphone, name: "iPhone and iPad", note: "Records with the screen locked", img: "/shots/iphone.webp", cta: "App Store soon" },
-  { icon: Globe, name: "Web", note: "Nothing to install", img: "/shots/web.webp", href: "/app", cta: "Open now" },
-];
-
-function Downloads() {
-  return (
-    <div className="mt-24 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-      {PLATFORMS.map((p, i) => {
-        const inner = (
-          <>
-            <div className="relative h-[170px] overflow-hidden rounded-[20px] bg-[linear-gradient(180deg,#f5f5f7,#e8e8ed)]">
-              <img src={p.img} alt="" loading="lazy" className={`absolute left-1/2 top-5 -translate-x-1/2 rounded-[10px] shadow-[0_20px_40px_-18px_rgb(0_0_0/0.45)] transition duration-500 group-hover:-translate-y-1.5 ${p.img.includes("iphone") ? "w-[34%]" : "w-[86%]"}`} />
-            </div>
-            <div className="flex items-center gap-2 px-2 pt-4 text-[17px] font-semibold tracking-tight"><p.icon size={17} /> {p.name}</div>
-            <p className="px-2 text-[14px] text-[#6e6e73]">{p.note}</p>
-            <div className="px-2 pb-2 pt-3 text-[14px] font-medium text-[#0066cc]">{p.cta}{p.href ? " ›" : ""}</div>
-          </>
-        );
-        const cls = "card group block h-full p-2.5 transition duration-500 hover:-translate-y-1";
-        return (
-          <motion.div key={p.name} {...fade} transition={{ ...soft, delay: i * 0.05 }}>
-            {p.href?.startsWith("/") ? <Link to={p.href} className={cls}>{inner}</Link> : p.href ? <a href={p.href} className={cls}>{inner}</a> : <div className={cls}>{inner}</div>}
-          </motion.div>
-        );
-      })}
     </div>
   );
 }
@@ -633,6 +731,111 @@ const FAQ: [string, string][] = [
   ["Is it okay to record class?", "Ask first. Many schools and states require consent from your teacher or everyone in the room. Nevernote reminds you before every recording."],
   ["Can I cancel Pro anytime?", "Yes, in your App Store subscriptions. You keep everything you recorded and go back to the free plan."],
 ];
+
+// ---------- Pricing ----------
+
+const FREE = ["Unlimited recording, every class", "Unlimited transcription on your device", "Every speaker, named", "Due date and test alerts", "AI notes and study guides", "Sync on every device"];
+const PRO: { icon: typeof Sparkles; t: string; b: string }[] = [
+  { icon: Zap, t: "Instant AI notes, every class", b: "Summaries, key terms and a study guide the second class ends." },
+  { icon: MessageCircle, t: "Ask your notes anything", b: "\"What's on Tuesday's test?\" Answered with the moment it was said." },
+  { icon: CalendarPlus, t: "Due dates in your calendar", b: "Every deadline lands in Google or Apple Calendar by itself." },
+  { icon: Layers, t: "Exam packs", b: "A whole unit of lectures turned into one review guide." },
+  { icon: FileDown, t: "Export anywhere", b: "Markdown, docs and flashcards, one tap." },
+];
+
+function Pricing() {
+  return (
+    <div className="mx-auto mt-16 grid max-w-[1040px] gap-5 md:grid-cols-2">
+      <motion.div {...fade} className="card relative flex flex-col overflow-hidden p-8 md:p-10">
+        <div className="text-[15px] font-semibold text-[#424245]">Free forever</div>
+        <div className="mt-1 flex items-baseline gap-2">
+          <span className="display text-[5.5rem] leading-none">$0</span>
+          <span className="text-[15px] text-[#6e6e73]">no limits, no card</span>
+        </div>
+        <ul className="mt-7 space-y-3 text-[16px]">
+          {FREE.map((f) => (
+            <li key={f} className="flex items-center gap-3">
+              <span className="grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[#1d1d1f] text-white"><Check size={11} strokeWidth={3} /></span> {f}
+            </li>
+          ))}
+        </ul>
+        <div className="mt-auto pt-9"><Cta big>Start free</Cta></div>
+        <p className="mt-4 text-[12.5px] leading-relaxed text-[#6e6e73]">Recording and transcription have no limits at all. AI notes: 3 instant a day, the rest arrive overnight or right away after a 5-second sponsor card.</p>
+      </motion.div>
+
+      <motion.div {...fade} transition={{ ...soft, delay: 0.08 }} whileHover={{ y: -6 }} className="relative rounded-[32px] p-[1.5px] [background:conic-gradient(from_var(--a),#6e8bff,#c77dff,#ff8ac2,#7ad7ff,#6e8bff)] [animation:nn-spin_8s_linear_infinite]">
+        <div className="relative flex h-full flex-col overflow-hidden rounded-[31px] bg-[#0b0b0d] p-8 text-white md:p-10">
+          <Aurora colors={["#3048b8", "#7a2fb0", "#b0306e", "#1f7aa8"]} className="opacity-50" />
+          <div className="relative">
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-2 text-[15px] font-semibold"><Sparkles size={16} /> Nevernote Pro</span>
+              <span className="rounded-full bg-white/10 px-3 py-1 text-[12px] font-medium text-white/80 ring-1 ring-white/15">{PRICING.yearly.note} yearly</span>
+            </div>
+            <div className="mt-2 flex items-baseline gap-2">
+              <span className="display text-[4.4rem] leading-none">${PRICING.monthly.price}</span>
+              <span className="text-[15px] text-white/60">/ month · or {PRICING.yearly.label}</span>
+            </div>
+            <div className="mt-7 space-y-2.5">
+              {PRO.map((f, k) => (
+                <motion.div key={f.t} initial={{ opacity: 0, y: 10 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ ...soft, delay: 0.15 + k * 0.07 }} className="flex gap-3.5 rounded-[18px] bg-white/[0.06] p-3.5 ring-1 ring-white/10 backdrop-blur">
+                  <span className="grid h-9 w-9 shrink-0 place-items-center rounded-[11px] bg-white/10 ring-1 ring-white/15"><f.icon size={17} /></span>
+                  <div>
+                    <div className="text-[15px] font-semibold tracking-tight">{f.t}</div>
+                    <div className="text-[13px] leading-snug text-white/60">{f.b}</div>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            <Link to="/app/settings" className="group mt-8 flex w-full items-center justify-center gap-2 rounded-full bg-white py-3.5 text-[16px] font-semibold text-[#1d1d1f] shadow-[0_4px_0_#b9b9c0,0_20px_40px_-14px_rgb(140_120_255/0.6)] transition hover:-translate-y-0.5 active:translate-y-[3px] active:shadow-[0_1px_0_#b9b9c0]">
+              Get Pro <ArrowRight size={17} className="transition group-hover:translate-x-0.5" />
+            </Link>
+            <p className="mt-3 text-center text-[12.5px] text-white/50">Cancel anytime. Everything in Free stays free.</p>
+          </div>
+        </div>
+      </motion.div>
+    </div>
+  );
+}
+
+// ---------- FAQ ----------
+
+function Faq() {
+  const [open, setOpen] = useState<number | null>(0);
+  return (
+    <div className="mx-auto mt-12 max-w-[820px] space-y-3 text-left [perspective:1200px]">
+      {FAQ.map(([q, a], i) => {
+        const on = open === i;
+        return (
+          <motion.div
+            key={q}
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            animate={{ scale: on ? 1.015 : 1 }}
+            transition={{ ...soft, delay: i * 0.03 }}
+            className={`overflow-hidden rounded-[22px] bg-white transition-shadow duration-500 ${on ? "shadow-[0_24px_50px_-24px_rgb(0_0_0/0.3),0_0_0_1px_rgb(0_0_0/0.04)]" : "shadow-[0_1px_2px_rgb(0_0_0/0.06),0_0_0_1px_rgb(0_0_0/0.04)] hover:shadow-[0_10px_30px_-18px_rgb(0_0_0/0.3),0_0_0_1px_rgb(0_0_0/0.05)]"}`}
+          >
+            <button onClick={() => setOpen(on ? null : i)} className="flex w-full items-center justify-between gap-4 px-6 py-5 text-left text-[18px] font-semibold tracking-tight" aria-expanded={on}>
+              {q}
+              <motion.span animate={{ rotate: on ? 180 : 0, backgroundColor: on ? "#1d1d1f" : "#f2f2f5", color: on ? "#fff" : "#424245" }} transition={spring} className="grid h-9 w-9 shrink-0 place-items-center rounded-full">
+                <ChevronDown size={17} strokeWidth={2.5} />
+              </motion.span>
+            </button>
+            <AnimatePresence initial={false}>
+              {on && (
+                <motion.div initial={{ height: 0, opacity: 0 }} animate={{ height: "auto", opacity: 1 }} exit={{ height: 0, opacity: 0 }} transition={{ type: "spring", stiffness: 220, damping: 28 }}>
+                  <motion.p initial={{ rotateX: -35, y: -10, opacity: 0 }} animate={{ rotateX: 0, y: 0, opacity: 1 }} exit={{ rotateX: -20, opacity: 0 }} transition={spring} style={{ transformOrigin: "top" }} className="px-6 pb-6 text-[16px] leading-relaxed text-[#424245]">
+                    {a}
+                  </motion.p>
+                </motion.div>
+              )}
+            </AnimatePresence>
+          </motion.div>
+        );
+      })}
+    </div>
+  );
+}
 
 export function Landing() {
   // The website is light-only, whatever the app's theme is.
@@ -665,24 +868,13 @@ export function Landing() {
       </Section>
 
       <Section id="how" tone="grey" a="Four steps." b="Zero stress.">
-        <div className="mt-16 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-          {STEPS.map((s, i) => (
-            <motion.div key={s.t} {...fade} transition={{ ...soft, delay: i * 0.07 }} className="card overflow-hidden p-2.5">
-              <div className="rounded-[20px] bg-[linear-gradient(180deg,#f7f7f9,#ededf0)]"><s.v /></div>
-              <div className="px-3 pb-4 pt-4">
-                <div className="text-[13px] font-medium text-[#86868b]">Step {i + 1}</div>
-                <div className="mt-0.5 text-[18px] font-semibold tracking-tight">{s.t}</div>
-                <p className="mt-1 text-[15px] leading-relaxed text-[#6e6e73]">{s.b}</p>
-              </div>
-            </motion.div>
-          ))}
-        </div>
+        <Steps />
         <motion.div {...fade} className="mt-12 flex justify-center">
           <Cta big>Try it now</Cta>
         </motion.div>
       </Section>
 
-      <Section id="accuracy" a="More accurate." b="And it's free." sub="Every engine, the same classroom recordings, from a quiet room to a loud one with an echo.">
+      <Section id="accuracy" a="More accurate." b="Free forever." sub="Every engine, the same classroom recordings, from a quiet room to a loud one with an echo.">
         <Accuracy />
       </Section>
 
@@ -692,58 +884,31 @@ export function Landing() {
         <Marquee />
       </Section>
 
-      <Section id="pricing" a="Free." b="Actually free." sub="No trial that runs out. No minute caps. No card. The most accurate free transcriber for class, forever.">
-        <div className="mx-auto mt-16 grid max-w-[940px] gap-4 md:grid-cols-[1.25fr_1fr]">
-          <motion.div {...fade} className="card relative overflow-hidden p-8 md:p-10">
-            <div className="text-[15px] font-medium text-[#6e6e73]">Free, forever</div>
-            <div className="display mt-1 text-[5rem] leading-none">$0</div>
-            <ul className="mt-7 grid gap-2.5 text-[15.5px] sm:grid-cols-2">
-              {["Unlimited recording", "Transcribed on your device", "Speaker names", "Deadline and test alerts", "AI notes and study guides", "Sync across every device"].map((f) => (
-                <li key={f} className="flex gap-2.5"><Check size={18} className="mt-0.5 shrink-0 text-[#34c759]" /> {f}</li>
-              ))}
-            </ul>
-            <div className="mt-8"><Cta big>Start free</Cta></div>
-            <p className="mt-4 text-[12.5px] text-[#86868b]">3 instant AI notes a day. The rest arrive overnight, or right away after a 5-second sponsor card.</p>
-          </motion.div>
-          <motion.div {...fade} transition={{ ...soft, delay: 0.08 }} className="relative overflow-hidden rounded-[28px] bg-[#f5f5f7] p-8 md:p-10">
-            <div className="flex items-center gap-2 text-[15px] font-medium text-[#6e6e73]">Pro <Lock size={13} /></div>
-            <div className="display mt-1 text-[3rem] leading-none">${PRICING.monthly.price}<span className="text-[1.1rem] font-normal tracking-normal text-[#86868b]"> /mo</span></div>
-            <div className="mt-1 text-[13px] text-[#86868b]">or {PRICING.yearly.label} ({PRICING.yearly.note})</div>
-            <ul className="mt-6 space-y-2.5 text-[15px] text-[#424245]">
-              {["Due dates in your calendar", "Ask your notes anything", "Exam packs for a whole unit", "Instant notes every time"].map((f) => (
-                <li key={f} className="flex gap-2.5"><Check size={17} className="mt-0.5 shrink-0 text-[#86868b]" /> {f}</li>
-              ))}
-            </ul>
-            <Link to="/app/settings" className="mt-7 inline-flex text-[15px] font-medium text-[#0066cc]">See Pro ›</Link>
-          </motion.div>
-        </div>
+      <Section id="pricing" a="Free forever." b="Everything unlimited." sub="Record every class, all year. No trial, no minute caps, no card. The free plan never runs out.">
+        <Pricing />
       </Section>
 
       <Section id="faq" tone="grey" a="Questions," b="answered.">
-        <div className="mx-auto mt-12 max-w-[780px] divide-y divide-black/[0.08] text-left">
-          {FAQ.map(([q, a]) => (
-            <details key={q} className="group py-5">
-              <summary className="flex cursor-pointer list-none items-center justify-between gap-4 text-[18px] font-medium tracking-tight">
-                {q}
-                <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-[#86868b] shadow-[0_1px_2px_rgb(0_0_0/0.08)] transition-transform duration-300 group-open:rotate-45">+</span>
-              </summary>
-              <p className="mt-3 text-[15.5px] leading-relaxed text-[#6e6e73]">{a}</p>
-            </details>
-          ))}
-        </div>
+        <Faq />
       </Section>
 
       <section className="mx-auto max-w-[1180px] px-5 py-24">
-        <motion.div {...fade} className="relative overflow-hidden rounded-[36px] bg-[radial-gradient(120%_100%_at_50%_0%,#ffffff,#eef0f4_60%,#e2e5eb)] px-6 py-20 text-center shadow-[0_0_0_1px_rgb(0_0_0/0.04)] md:py-28">
-          <Title a="Lock in." b="We've got class." className="text-[2.6rem] leading-[1.02] md:text-[4.4rem]" />
-          <p className="mx-auto mt-4 max-w-[480px] text-[17px] text-[#6e6e73]">Free on every device. Recording in ten seconds.</p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Cta big>Start free</Cta>
-            <Ghost href={RELEASES}><Apple size={17} /> Download for desktop</Ghost>
+        <motion.div {...fade} className="relative overflow-hidden rounded-[40px] bg-[#0b0b0d] px-6 py-24 text-center md:py-32">
+          <Aurora colors={["#2b3a8f", "#5b2a86", "#1e5a7a"]} className="opacity-60" />
+          <div className="absolute inset-0 bg-[radial-gradient(60%_60%_at_50%_0%,rgb(255_255_255/0.08),transparent)]" />
+          <div className="relative">
+            <h2 className="font-[Geist_Variable] text-[3.4rem] font-[800] leading-[0.92] tracking-[-0.055em] text-white md:text-[7rem]">Lock in.</h2>
+            <h2 className="mt-1 font-[Geist_Variable] text-[3.4rem] font-[800] leading-[0.92] tracking-[-0.055em] text-white/45 md:text-[7rem]">We've got class.</h2>
+            <p className="mx-auto mt-7 max-w-[460px] text-[18px] text-white/70">Free on every device. Recording in ten seconds.</p>
+            <div className="mt-9 flex flex-wrap justify-center gap-3">
+              <Link to="/app" className="group inline-flex items-center gap-2 rounded-full bg-white py-3.5 pl-7 pr-6 text-[16px] font-semibold text-[#1d1d1f] shadow-[0_4px_0_#c7c7cc,0_20px_40px_-12px_rgb(255_255_255/0.25)] transition active:translate-y-[3px] active:shadow-[0_1px_0_#c7c7cc]">
+                Start free <ArrowRight size={17} className="transition group-hover:translate-x-0.5" />
+              </Link>
+              <a href="#platforms" className="inline-flex items-center gap-2 rounded-full bg-white/10 px-6 py-3.5 text-[16px] font-semibold text-white ring-1 ring-white/20 backdrop-blur transition hover:bg-white/15">
+                <Apple size={17} /> Download for desktop
+              </a>
+            </div>
           </div>
-          <p className="mt-10 text-[13.5px] text-[#86868b]">
-            Want even more? <Link to="/app/settings" className="text-[#0066cc]">Pro</Link> adds calendar sync, Ask your notes and instant notes for ${PRICING.monthly.price}/mo. Everything above stays free.
-          </p>
         </motion.div>
       </section>
 

@@ -272,15 +272,111 @@ scene.add(teacher.root);
 teacher.arms[0].upper.rotation.z = -0.15;
 teacher.arms[0].fore.rotation.x = 0.3;
 
-// Sound waves: rings that leave the teacher and roll out over the class.
-const rings = [];
-for (let k = 0; k < 5; k++) {
-  const r = new THREE.Mesh(
-    new THREE.TorusGeometry(1, 0.012, 6, 64),
-    new THREE.MeshBasicMaterial({ color: TEACHER, transparent: true, opacity: 0.5, depthWrite: false }),
-  );
-  scene.add(r);
-  rings.push(r);
+// Sound waves: slow rings of soft smoke that leave the teacher, drift over the
+// class and slide around the glass shield in front of the student on the laptop.
+const WAVE_LOOP = 96; // frames per wave cycle: twice the gesture loop, so loops line up
+const WAVES = 4;
+const PER = 320;
+function smokeTexture() {
+  const c = document.createElement("canvas");
+  c.width = c.height = 128;
+  const g = c.getContext("2d");
+  const grd = g.createRadialGradient(64, 64, 0, 64, 64, 64);
+  grd.addColorStop(0, "rgba(255,255,255,0.9)");
+  grd.addColorStop(0.35, "rgba(255,255,255,0.45)");
+  grd.addColorStop(1, "rgba(255,255,255,0)");
+  g.fillStyle = grd;
+  g.fillRect(0, 0, 128, 128);
+  const t = new THREE.CanvasTexture(c);
+  t.colorSpace = THREE.SRGBColorSpace;
+  return t;
+}
+const smokePos = new Float32Array(WAVES * PER * 3);
+const smokeCol = new Float32Array(WAVES * PER * 4);
+const smokeGeo = new THREE.BufferGeometry();
+smokeGeo.setAttribute("position", new THREE.BufferAttribute(smokePos, 3));
+smokeGeo.setAttribute("color", new THREE.BufferAttribute(smokeCol, 4));
+const smoke = new THREE.Points(
+  smokeGeo,
+  new THREE.PointsMaterial({ size: 0.5, map: smokeTexture(), vertexColors: true, transparent: true, depthWrite: false, sizeAttenuation: true }),
+);
+smoke.frustumCulled = false;
+scene.add(smoke);
+// Fixed per-puff randomness, so every frame of the loop is deterministic.
+const seed = Array.from({ length: PER }, (_, i) => {
+  const r = Math.sin(i * 127.1) * 43758.5453;
+  const f = r - Math.floor(r);
+  const r2 = Math.sin(i * 311.7) * 24634.6345;
+  return { j: f - 0.5, k: r2 - Math.floor(r2) - 0.5 };
+});
+const MOUTH = new THREE.Vector3(-0.6, 1.62, -4.35);
+const FLOW = new THREE.Vector3(0.22, -0.06, 1).normalize();
+const C_NEAR = new THREE.Color(TEACHER);
+const C_FAR = new THREE.Color(0xffd2b0);
+
+// The shield: a faceted glass dome on the teacher's side of the student.
+const SHIELD_C = new THREE.Vector3(HERO.x, 1.0, HERO.z + 0.45);
+const SHIELD_R = 0.95;
+const shieldGeo = new THREE.SphereGeometry(SHIELD_R, 14, 9, Math.PI + 0.3, Math.PI - 0.6, 0.3, 1.65);
+const shieldMat = new THREE.MeshStandardMaterial({ color: 0x8fbaff, emissive: 0x3b7bff, emissiveIntensity: 0.15, transparent: true, opacity: 0.14, side: THREE.DoubleSide, depthWrite: false, flatShading: true, roughness: 0.15, metalness: 0.1 });
+const shield = new THREE.Mesh(shieldGeo, shieldMat);
+shield.position.copy(SHIELD_C);
+scene.add(shield);
+const shieldEdges = new THREE.LineSegments(new THREE.EdgesGeometry(shieldGeo, 1), new THREE.LineBasicMaterial({ color: 0x9cc4ff, transparent: true, opacity: 0.5, depthWrite: false }));
+shieldEdges.position.copy(SHIELD_C);
+scene.add(shieldEdges);
+const shieldDist = SHIELD_C.clone().sub(MOUTH).dot(FLOW);
+
+function smokeFrame(frameNo) {
+  const ph = (frameNo % WAVE_LOOP) / WAVE_LOOP;
+  const side = new THREE.Vector3().crossVectors(FLOW, new THREE.Vector3(0, 1, 0)).normalize();
+  const up = new THREE.Vector3().crossVectors(side, FLOW).normalize();
+  const p = new THREE.Vector3();
+  let hit = 0;
+  for (let k = 0; k < WAVES; k++) {
+    const q = (ph + k / WAVES) % 1;
+    const dist = q * 7.6;
+    const R = 0.18 + q * 2.9;
+    const center = MOUTH.clone().addScaledVector(FLOW, dist).add(new THREE.Vector3(0, q * 0.25, 0));
+    hit = Math.max(hit, Math.exp(-(((dist - shieldDist) / 0.7) ** 2)) * Math.sin(q * Math.PI));
+    const life = Math.pow(Math.sin(q * Math.PI), 1.3);
+    const col = C_NEAR.clone().lerp(C_FAR, q);
+    for (let i = 0; i < PER; i++) {
+      const s = seed[i];
+      const th = (i / PER) * Math.PI * 2 + s.j * 0.05;
+      // Curling, breathing turbulence: the ring wobbles like smoke instead of a hard line.
+      const wob = 0.12 + q * 0.35;
+      const rr = R * (1 + s.j * 0.16 + Math.sin(th * 3 + q * 9 + k) * 0.06) + Math.sin(th * 5 - q * 7) * wob * 0.3;
+      const along = Math.sin(th * 2 + q * 6 + k * 1.3) * wob * 0.6 + s.k * wob;
+      p.copy(center)
+        .addScaledVector(side, Math.cos(th) * rr)
+        .addScaledVector(up, Math.sin(th) * rr * 0.6)
+        .addScaledVector(FLOW, along);
+      let a = life * (0.16 + 0.1 * (0.5 + s.k));
+      // Slide around the shield instead of passing through it.
+      const d = p.distanceTo(SHIELD_C);
+      if (d < SHIELD_R + 0.08 && p.z < SHIELD_C.z) {
+        p.sub(SHIELD_C).setLength(SHIELD_R + 0.08).add(SHIELD_C);
+        a *= 0.55;
+      }
+      if (p.y < 0.08) a = 0;
+      const o = (k * PER + i) * 3;
+      smokePos[o] = p.x;
+      smokePos[o + 1] = p.y;
+      smokePos[o + 2] = p.z;
+      const c = (k * PER + i) * 4;
+      smokeCol[c] = col.r;
+      smokeCol[c + 1] = col.g;
+      smokeCol[c + 2] = col.b;
+      smokeCol[c + 3] = a;
+    }
+  }
+  smokeGeo.attributes.position.needsUpdate = true;
+  smokeGeo.attributes.color.needsUpdate = true;
+  // The shield brightens a little as each wave reaches it.
+  shieldMat.emissiveIntensity = 0.15 + hit * 0.55;
+  shieldMat.opacity = 0.12 + hit * 0.1;
+  shieldEdges.material.opacity = 0.4 + hit * 0.45;
 }
 
 // ---------- camera path ----------
@@ -296,7 +392,41 @@ function screenPose() {
 const ease = (t) => t * t * (3 - 2 * t);
 const smoother = (t) => t * t * t * (t * (t * 6 - 15) + 10);
 
+let camPath = null;
+let atPath = null;
+let pathAspect = 0;
+/** Fritsch-Carlson monotone cubic through (xs, ys): smooth, never overshoots, never stalls. */
+function monotone(xs, ys, x) {
+  const n = xs.length;
+  const d = [];
+  for (let i = 0; i < n - 1; i++) d.push((ys[i + 1] - ys[i]) / (xs[i + 1] - xs[i]));
+  const m = [d[0]];
+  for (let i = 1; i < n - 1; i++) m.push(d[i - 1] * d[i] <= 0 ? 0 : (d[i - 1] + d[i]) / 2);
+  m.push(d[n - 2]);
+  for (let i = 0; i < n - 1; i++) {
+    const a = m[i] / d[i];
+    const b = m[i + 1] / d[i];
+    const h = a * a + b * b;
+    if (h > 9) {
+      const t = 3 / Math.sqrt(h);
+      m[i] = t * a * d[i];
+      m[i + 1] = t * b * d[i];
+    }
+  }
+  let i = 0;
+  while (i < n - 2 && x > xs[i + 1]) i++;
+  const hh = xs[i + 1] - xs[i];
+  const t = (x - xs[i]) / hh;
+  const t2 = t * t;
+  const t3 = t2 * t;
+  return (2 * t3 - 3 * t2 + 1) * ys[i] + (t3 - 2 * t2 + t) * hh * m[i] + (-2 * t3 + 3 * t2) * ys[i + 1] + (t3 - t2) * hh * m[i + 1];
+}
+
 function cameraAt(p, aspect) {
+  if (aspect !== pathAspect) {
+    camPath = atPath = null;
+    pathAspect = aspect;
+  }
   screenPose();
   // How far from the screen to fill the frame with it.
   const vfov = THREE.MathUtils.degToRad(camera.fov);
@@ -313,19 +443,15 @@ function cameraAt(p, aspect) {
     { t: 0.9, pos: new THREE.Vector3(1.66, 1.12, 1.98), at: screenCenter.clone() },
     { t: 1, pos: end, at: screenCenter.clone() },
   ];
-  let i = 0;
-  while (i < keys.length - 2 && p > keys[i + 1].t) i++;
-  const a = keys[i];
-  const b = keys[i + 1];
-  const u = smoother(THREE.MathUtils.clamp((p - a.t) / (b.t - a.t), 0, 1));
-  // Catmull-Rom through the neighbours keeps the motion one smooth curve.
-  const P = (k) => keys[Math.max(0, Math.min(keys.length - 1, k))];
-  const cr = (f) => {
-    const c = new THREE.CatmullRomCurve3([f(P(i - 1)), f(a), f(b), f(P(i + 2))], false, "centripetal");
-    return c.getPoint((1 + u) / 3);
-  };
-  camera.position.copy(cr((k) => k.pos));
-  camera.lookAt(cr((k) => k.at));
+  // One continuous move: map the scroll through the key
+  // times with a monotone cubic, so the camera never stops at a key (that was the
+  // stop-and-go "jutting"). Both paths are single Catmull-Rom curves.
+  const n = keys.length - 1;
+  const q = monotone(keys.map((k) => k.t), keys.map((_, i) => i / n), THREE.MathUtils.clamp(p, 0, 1));
+  camPath ??= new THREE.CatmullRomCurve3(keys.map((k) => k.pos), false, "centripetal");
+  atPath ??= new THREE.CatmullRomCurve3(keys.map((k) => k.at), false, "centripetal");
+  camera.position.copy(camPath.getPoint(q));
+  camera.lookAt(atPath.getPoint(q));
   camera.aspect = aspect;
   camera.updateProjectionMatrix();
 }
@@ -348,21 +474,26 @@ function animate(frameNo) {
   // The hero types.
   hero.arms[0].fore.rotation.x = 0.55 + Math.max(0, Math.sin(w * 4)) * 0.08;
   hero.arms[1].fore.rotation.x = 0.55 + Math.max(0, Math.sin(w * 4 + 2)) * 0.08;
-  // Ripples.
-  rings.forEach((r, k) => {
-    const q = (ph + k / rings.length) % 1;
-    const z = -4.4 + q * 7.5;
-    r.position.set(-0.6 + q * 0.8, 1.65 - q * 0.35, z);
-    const s = 0.25 + q * 3.2;
-    r.scale.set(s, s * 0.62, s);
-    r.material.opacity = Math.sin(q * Math.PI) * 0.55;
-  });
+  smokeFrame(frameNo);
 }
 
 window.renderFrame = (p, frameNo, w, h, quality = 0.82) => {
   renderer.setPixelRatio(1);
   renderer.setSize(w, h, false);
   animate(frameNo);
+  // On the last stretch the camera glides through where the student sits, so they
+  // (and their shield) melt away instead of an arm sweeping across the lens.
+  const fade = 1 - ease(THREE.MathUtils.clamp((p - 0.6) / 0.16, 0, 1));
+  const heroMat = hero.root.children[0].material;
+  if (heroMat.transparent !== fade < 1) {
+    heroMat.transparent = fade < 1;
+    heroMat.needsUpdate = true;
+  }
+  heroMat.opacity = fade;
+  heroMat.depthWrite = fade === 1;
+  hero.root.visible = fade > 0.01;
+  shieldMat.opacity *= fade;
+  shieldEdges.visible = shield.visible = fade > 0.01;
   cameraAt(p, w / h);
   renderer.render(scene, camera);
   return renderer.domElement.toDataURL("image/webp", quality);

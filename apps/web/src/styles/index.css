@@ -261,13 +261,13 @@ html.desktop body {
 .site .title-serif,
 .site .display {
   font-family: "Geist Variable", var(--font-sans);
-  font-weight: 600;
+  font-weight: 680;
   letter-spacing: -0.038em;
   padding: 0;
   border-radius: 0;
 }
 .site .soft {
-  color: #86868b;
+  color: #6e6e73;
 }
 .site .card {
   background: #fff;
@@ -295,3 +295,15 @@ html.desktop body {
 .nn-marquee { animation: nn-marquee 60s linear infinite; }
 .nn-marquee-r { animation: nn-marquee 70s linear infinite reverse; }
 @media (prefers-reduced-motion: reduce) { .nn-marquee, .nn-marquee-r { animation: none; } }
+
+/* Spinning gradient border (Pro card). */
+@property --a {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes nn-spin {
+  to {
+    --a: 360deg;
+  }
+}

@@ -12,8 +12,8 @@ export interface FrameSet {
   w: number;
   h: number;
 }
-export const DESKTOP: FrameSet = { dir: "/hero/d", count: 150, idle: 24, w: 1600, h: 900 };
-export const MOBILE: FrameSet = { dir: "/hero/m", count: 120, idle: 24, w: 720, h: 1400 };
+export const DESKTOP: FrameSet = { dir: "/hero/d", count: 150, idle: 48, w: 1600, h: 900 };
+export const MOBILE: FrameSet = { dir: "/hero/m", count: 120, idle: 48, w: 720, h: 1400 };
 export const pickSet = () => (typeof matchMedia !== "undefined" && matchMedia("(max-aspect-ratio: 1/1)").matches ? MOBILE : DESKTOP);
 
 const name = (set: FrameSet, kind: "s" | "i", i: number) => `${set.dir}/${kind}${String(i).padStart(kind === "s" ? 3 : 2, "0")}.webp`;
@@ -88,44 +88,33 @@ export function HeroFrames({ progress, set, className = "" }: { progress: () => 
     let raf = 0;
     const t0 = performance.now();
     let last = t0;
-    let slow = 0; // smoothed frame time
-    let strain = 0;
-    let blendOff = false; // once a device struggles, stop blending for good (no flip-flopping)
-    let shown = -1;
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
-      slow = slow * 0.9 + (now - last) * 0.1;
+      const dt = Math.min(0.05, (now - last) / 1000);
       last = now;
       if (!visible) return;
-      strain = slow > 18 ? strain + 1 : 0;
-      if (strain > 30) blendOff = true;
-      const blend = !blendOff;
       const target = progress() * (set.count - 1);
       const diff = target - cur;
-      // Frame-rate independent ease toward the scroll position.
-      cur = Math.abs(diff) < 0.002 ? target : cur + diff * (1 - Math.exp(-(1 / 60) * 14));
+      // Frame-rate independent glide toward the scroll position. Every draw blends
+      // the two nearest frames, so the motion stays liquid between them.
+      cur = Math.abs(diff) < 0.002 ? target : cur + diff * (1 - Math.exp(-dt * 9));
       const atTop = cur < 0.02 && target < 0.02;
       if (atTop && idle[set.idle - 1]) {
-        // At the top: loop the teacher talking and the waves rolling out, at 24fps with blending.
-        const f = (((now - t0) / 1000) * 24) % set.idle;
+        // At the top: loop the teacher talking and the smoke drifting out, 48 frames over 4 s.
+        const f = (((now - t0) / 1000) * 12) % set.idle;
         const i = Math.floor(f);
-        if (blend || i !== shown) {
-          draw(idle[i], 1);
-          if (blend) draw(idle[(i + 1) % set.idle], f - i);
-          shown = i;
-        }
+        draw(idle[i], 1);
+        draw(idle[(i + 1) % set.idle], f - i);
         dirty = true;
         return;
       }
       if (!dirty && Math.abs(diff) < 0.002) return;
-      const i = blend ? Math.floor(cur) : Math.round(cur);
-      if (!dirty && !blend && i === shown) return;
+      const i = Math.floor(cur);
       dirty = false;
       const a = frames[i] ?? nearest(i);
       draw(a, 1);
       const b = frames[i + 1];
-      if (blend && b && a === frames[i]) draw(b, cur - i);
-      shown = a === frames[i] ? i : -1;
+      if (b && a === frames[i]) draw(b, cur - i);
     };
     raf = requestAnimationFrame(tick);
     return () => {
