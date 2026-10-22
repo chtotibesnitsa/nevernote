@@ -4,15 +4,36 @@ import {
   Laptop, Lock, MessageCircleQuestion, Mic, Monitor, Pause, Scale, School, Smartphone, Stethoscope, Tablet, Users, Video,
 } from "lucide-react";
 import { AnimatePresence, motion, useMotionValue, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "motion/react";
-import { lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Hmu, Logo, soft, spring } from "../components/ui.tsx";
 import { GITHUB_REPO, RELEASES } from "../lib/bridge.ts";
 import { BENCH } from "./bench.ts";
 import type { Anchors } from "./Classroom.tsx";
+import { FlatHero } from "./FlatHero.tsx";
 import { AppIcon, AskScene, CalendarScene, DeadlineScene, NotesScene, SpeakersScene, TranscriptScene } from "./Scenes.tsx";
 
 const Classroom = lazy(() => import("./Classroom.tsx"));
+
+function hasWebGL() {
+  try {
+    const c = document.createElement("canvas");
+    return !!(c.getContext("webgl2") || c.getContext("webgl"));
+  } catch {
+    return false;
+  }
+}
+
+/** If the 3D scene can't start for any reason, show the flat hero instead of a blank page. */
+class SceneBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
+  state = { failed: false };
+  static getDerivedStateFromError() {
+    return { failed: true };
+  }
+  render() {
+    return this.state.failed ? this.props.fallback : this.props.children;
+  }
+}
 
 const fade = { initial: { opacity: 0, y: 24 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, margin: "-80px" }, transition: soft };
 
@@ -124,6 +145,7 @@ function Callout({ ref, children }: { ref: React.Ref<HTMLDivElement>; children: 
 
 function Hero() {
   const wrap = useRef<HTMLDivElement>(null);
+  const [webgl] = useState(hasWebGL);
   const { scrollYProgress } = useScroll({ target: wrap, offset: ["start start", "end end"] });
   // A plain copy of the scroll progress: the titles and the camera read the same number.
   const p = useMotionValue(0);
@@ -152,11 +174,17 @@ function Hero() {
       <div className="sticky top-0 h-[100svh] overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_0%,#fff7ee_0%,#fbefe2_45%,#f4e3d1_100%)]" />
         <div className="absolute inset-0">
-          <Suspense fallback={null}>
-            <Classroom progress={progress} onAnchors={onAnchors} />
-          </Suspense>
-          <Callout ref={panel}>Live transcript, by speaker</Callout>
-          <Callout ref={pill}>Recording, offline</Callout>
+          {webgl ? (
+            <SceneBoundary fallback={<FlatHero progress={progress} />}>
+              <Suspense fallback={null}>
+                <Classroom progress={progress} onAnchors={onAnchors} />
+              </Suspense>
+              <Callout ref={panel}>Live transcript, by speaker</Callout>
+              <Callout ref={pill}>Recording, offline</Callout>
+            </SceneBoundary>
+          ) : (
+            <FlatHero progress={progress} />
+          )}
         </div>
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[44%] bg-gradient-to-b from-[#fff7ee] via-[#fff7ee]/85 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#fdfcfa] to-transparent" />
