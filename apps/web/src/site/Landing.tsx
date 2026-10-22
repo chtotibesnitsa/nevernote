@@ -145,9 +145,12 @@ function Handover({ p, set }: { p: MotionValue<number>; set: FrameSet }) {
   const scale = useTransform(p, range, [from.w / to.w, 1]);
   const radius = useTransform(p, range, [0, portrait ? 14 : 22]);
   const shadow = useTransform(p, range, ["0 0 0 rgb(0 0 0 / 0)", "0 40px 80px -30px rgb(0 0 0 / 0.35)"]);
+  // New lines only start arriving once the page has taken over, so the hand-off matches the last frame exactly.
+  const [live, setLive] = useState(false);
+  useMotionValueEvent(p, "change", (v) => setLive((was) => was || v > 0.97));
   return (
     <motion.div style={{ opacity, x, y, width: to.w, scale, borderRadius: radius, boxShadow: shadow, transformOrigin: "0 0" }} className="absolute left-0 top-0 overflow-hidden will-change-transform">
-      <DesktopDemo live />
+      <DesktopDemo live={live} />
     </motion.div>
   );
 }
