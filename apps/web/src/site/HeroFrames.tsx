@@ -88,14 +88,18 @@ export function HeroFrames({ progress, set, className = "" }: { progress: () => 
     let raf = 0;
     const t0 = performance.now();
     let last = t0;
-    let slow = 0; // smoothed frame time; when the device struggles, skip the in-between blend
+    let slow = 0; // smoothed frame time
+    let strain = 0;
+    let blendOff = false; // once a device struggles, stop blending for good (no flip-flopping)
     let shown = -1;
     const tick = (now: number) => {
       raf = requestAnimationFrame(tick);
       slow = slow * 0.9 + (now - last) * 0.1;
       last = now;
       if (!visible) return;
-      const blend = slow < 22;
+      strain = slow > 18 ? strain + 1 : 0;
+      if (strain > 30) blendOff = true;
+      const blend = !blendOff;
       const target = progress() * (set.count - 1);
       const diff = target - cur;
       // Frame-rate independent ease toward the scroll position.
