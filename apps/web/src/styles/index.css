@@ -41,6 +41,8 @@
   --mute: var(--color-mute);
   --ink-2: var(--color-ink-2);
   --bubble: #f0ebe3;
+  --edge: #1c1915;
+  --accent: #ff9a2e;
 }
 
 .dark {
@@ -57,6 +59,7 @@
   --mute: #8e8e93;
   --ink-2: #c7c7cc;
   --bubble: #26262a;
+  --edge: #55555d;
 }
 
 html,
@@ -114,10 +117,9 @@ html.desktop body {
 }
 
 @utility title-serif {
-  font-family: var(--font-serif);
-  font-weight: 460;
-  letter-spacing: -0.02em;
-  font-variation-settings: "opsz" 72;
+  font-family: var(--font-sans);
+  font-weight: 850;
+  letter-spacing: -0.04em;
 }
 
 @utility eyebrow {
@@ -189,10 +191,10 @@ html.desktop body {
 }
 .prose-nn h2,
 .prose-nn h3 {
-  font-family: var(--font-serif);
-  font-size: 1.45rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-family: var(--font-sans);
+  font-size: 1.4rem;
+  font-weight: 850;
+  letter-spacing: -0.03em;
   margin: 2rem 0 0.5rem;
 }
 .prose-nn ul {
@@ -243,3 +245,34 @@ html.desktop body {
 }
 .liquid { animation: liquid 18s var(--ease-liquid) infinite; }
 @media (prefers-reduced-motion: reduce) { .liquid { animation: none; } }
+
+/* Front-page classroom */
+@keyframes nn-ring {
+  0% { transform: translate(-50%, -50%) scale(0.04); opacity: 0.75; }
+  100% { transform: translate(-50%, -50%) scale(1); opacity: 0; }
+}
+@keyframes nn-sway { 0%, 100% { transform: rotate(-1.5deg); } 50% { transform: rotate(1.5deg); } }
+@keyframes nn-wave { 0%, 100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+@keyframes nn-point { 0%, 100% { transform: rotate(0deg); } 50% { transform: rotate(-14deg); } }
+@keyframes nn-talk { 0%, 100% { transform: scaleY(0.35); } 50% { transform: scaleY(1.1); } }
+@keyframes nn-pop { 0% { transform: translateX(-50%) scale(0.6); opacity: 0; } 15% { transform: translateX(-50%) scale(1.05); opacity: 1; } 85% { opacity: 1; } 100% { transform: translateX(-50%) scale(1); opacity: 0; } }
+@keyframes nn-bob { 0%, 100% { margin-top: 0; } 50% { margin-top: -5px; } }
+@keyframes nn-blink { 0%, 100% { opacity: 1; } 50% { opacity: 0.25; } }
+.nn-ring { animation: nn-ring 3.2s linear infinite; }
+.nn-sway { animation: nn-sway 4s ease-in-out infinite; transform-origin: 50% 100%; }
+.nn-wave { animation: nn-wave 1.1s ease-in-out infinite; }
+.nn-point { animation: nn-point 1.6s ease-in-out infinite; }
+.nn-talk { animation: nn-talk 0.42s ease-in-out infinite; }
+.nn-pop { animation: nn-pop 2.6s ease-out forwards; }
+.nn-bob { animation: nn-bob 1.8s ease-in-out infinite; }
+.nn-blink { animation: nn-blink 1s ease-in-out infinite; }
+
+/* The website: heavy, tight type instead of the app's bookish serif. */
+.site .title-serif {
+  font-family: var(--font-sans, Inter, system-ui, sans-serif);
+  font-weight: 900;
+  letter-spacing: -0.045em;
+  font-variation-settings: normal;
+}
+@keyframes nn-ripple { 0% { transform: scale(0.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 0; } }
+.nn-ripple { animation: nn-ripple 3.2s ease-out infinite; }

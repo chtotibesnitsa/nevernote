@@ -4,36 +4,13 @@ import {
   Laptop, Lock, MessageCircleQuestion, Mic, Monitor, Pause, Scale, School, Smartphone, Stethoscope, Tablet, Users, Video,
 } from "lucide-react";
 import { AnimatePresence, motion, useMotionValue, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "motion/react";
-import { Component, lazy, Suspense, useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
+import { useCallback, useEffect, useRef, useState, type ComponentType, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Hmu, Logo, soft, spring } from "../components/ui.tsx";
 import { GITHUB_REPO, RELEASES } from "../lib/bridge.ts";
 import { BENCH } from "./bench.ts";
-import type { Anchors } from "./Classroom.tsx";
-import { FlatHero } from "./FlatHero.tsx";
+import { ClassStory } from "./ClassStory.tsx";
 import { AppIcon, AskScene, CalendarScene, DeadlineScene, NotesScene, SpeakersScene, TranscriptScene } from "./Scenes.tsx";
-
-const Classroom = lazy(() => import("./Classroom.tsx"));
-
-function hasWebGL() {
-  try {
-    const c = document.createElement("canvas");
-    return !!(c.getContext("webgl2") || c.getContext("webgl"));
-  } catch {
-    return false;
-  }
-}
-
-/** If the 3D scene can't start for any reason, show the flat hero instead of a blank page. */
-class SceneBoundary extends Component<{ fallback: ReactNode; children: ReactNode }, { failed: boolean }> {
-  state = { failed: false };
-  static getDerivedStateFromError() {
-    return { failed: true };
-  }
-  render() {
-    return this.state.failed ? this.props.fallback : this.props.children;
-  }
-}
 
 const fade = { initial: { opacity: 0, y: 24 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, margin: "-80px" }, transition: soft };
 
@@ -42,10 +19,10 @@ function Cta({ to = "/app", children, big }: { to?: string; children: ReactNode;
   return (
     <Link
       to={to}
-      className={`group inline-flex items-center gap-2.5 rounded-full bg-gradient-to-b from-[#f0a25a] to-[#d9772f] font-semibold text-white shadow-[0_1px_0_rgb(255_255_255/0.45)_inset,0_10px_24px_-10px_rgb(217_119_47/0.9)] ring-1 ring-[#c96a24] transition hover:-translate-y-0.5 hover:brightness-105 ${big ? "py-3 pl-6 pr-3 text-[16px]" : "py-1.5 pl-4 pr-1.5 text-sm"}`}
+      className={`group inline-flex items-center gap-2.5 whitespace-nowrap rounded-full border-[2.5px] border-[#1c1915] bg-[#ff9a2e] font-extrabold text-[#1c1915] shadow-[4px_4px_0_#1c1915] transition hover:-translate-y-0.5 hover:shadow-[6px_6px_0_#1c1915] active:translate-x-0.5 active:translate-y-0.5 active:shadow-[2px_2px_0_#1c1915] ${big ? "py-3 pl-6 pr-3 text-[16px]" : "py-1.5 pl-4 pr-1.5 text-sm"}`}
     >
       {children}
-      <span className={`grid place-items-center rounded-full bg-white/25 transition group-hover:translate-x-0.5 ${big ? "h-8 w-8" : "h-6 w-6"}`}>
+      <span className={`grid place-items-center rounded-full bg-[#1c1915] text-white transition group-hover:translate-x-0.5 ${big ? "h-8 w-8" : "h-6 w-6"}`}>
         <ArrowRight size={big ? 16 : 13} strokeWidth={2.6} />
       </span>
     </Link>
@@ -63,7 +40,7 @@ function Nav() {
       <motion.nav
         layout
         transition={spring}
-        className={`flex w-full items-center gap-6 ${condensed ? "max-w-[760px] rounded-full border border-white/80 bg-white/70 py-1.5 pl-5 pr-1.5 shadow-[0_1px_0_rgb(255_255_255/0.9)_inset,0_18px_40px_-18px_rgb(60_40_20/0.35)] backdrop-blur-2xl backdrop-saturate-[180%]" : "max-w-[1180px] rounded-none border border-transparent bg-transparent px-3 py-2"}`}
+        className={`flex w-full items-center gap-6 ${condensed ? "max-w-[760px] rounded-full border-[2.5px] border-[#1c1915] bg-white/85 py-1.5 pl-5 pr-1.5 shadow-[4px_4px_0_#1c1915] backdrop-blur-2xl" : "max-w-[1180px] rounded-none border border-transparent bg-transparent px-3 py-2"}`}
       >
         <Link to="/" aria-label="Nevernote home" className="shrink-0">
           <Logo size={20} />
@@ -108,7 +85,7 @@ function Section({ id, title, sub, children, className = "" }: { id?: string; ti
   );
 }
 
-const Accent = ({ children }: { children: ReactNode }) => <em className="text-[var(--color-clay)]">{children}</em>;
+const Accent = ({ children }: { children: ReactNode }) => <span className="text-[#ff7a00]">{children}</span>;
 
 // ---------- Hero ----------
 
@@ -122,9 +99,9 @@ const BEATS: { at: number; title: ReactNode; sub: string }[] = [
 function Beat({ p, at, next, children }: { p: MotionValue<number>; at: number; next: number; children: ReactNode }) {
   // Scroll-driven ranges must stay within 0..1; the last beat simply stays.
   const last = next >= 1;
-  const opacity = useTransform(p, last ? [at - 0.06, at] : [at - 0.06, at, next - 0.06, next], last ? [0, 1] : [0, 1, 1, 0]);
-  const y = useTransform(p, last ? [at - 0.06, at] : [at - 0.06, at, next - 0.06, next], last ? [24, 0] : [24, 0, 0, -24]);
-  const filter = useTransform(p, [at - 0.06, at], ["blur(8px)", "blur(0px)"]);
+  const opacity = useTransform(p, last ? [at - 0.035, at] : [at - 0.035, at, next - 0.035, next], last ? [0, 1] : [0, 1, 1, 0]);
+  const y = useTransform(p, last ? [at - 0.035, at] : [at - 0.035, at, next - 0.035, next], last ? [24, 0] : [24, 0, 0, -24]);
+  const filter = useTransform(p, [at - 0.035, at], ["blur(8px)", "blur(0px)"]);
   return (
     <motion.div style={{ opacity, y, filter }} className="pointer-events-none absolute inset-x-0 top-0 mx-auto max-w-[860px] px-5 text-center">
       {children}
@@ -132,20 +109,8 @@ function Beat({ p, at, next, children }: { p: MotionValue<number>; at: number; n
   );
 }
 
-function Callout({ ref, children }: { ref: React.Ref<HTMLDivElement>; children: ReactNode }) {
-  return (
-    <div ref={ref} className="pointer-events-none absolute left-0 top-0 z-10 opacity-0 transition-opacity duration-500 will-change-transform">
-      <div className="absolute bottom-[12px] left-0 -translate-x-1/2 whitespace-nowrap rounded-full border border-white/80 bg-white/80 px-3 py-1.5 text-[13px] font-semibold shadow-[0_12px_28px_-12px_rgb(60_40_20/0.5)] backdrop-blur-xl">
-        {children}
-      </div>
-      <div className="absolute left-0 top-0 h-3 w-3 -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white bg-[var(--color-clay)] shadow" />
-    </div>
-  );
-}
-
 function Hero() {
   const wrap = useRef<HTMLDivElement>(null);
-  const [webgl] = useState(hasWebGL);
   const { scrollYProgress } = useScroll({ target: wrap, offset: ["start start", "end end"] });
   // A plain copy of the scroll progress: the titles and the camera read the same number.
   const p = useMotionValue(0);
@@ -155,16 +120,6 @@ function Hero() {
     p.set(v);
   });
   const progress = useCallback(() => pv.current, []);
-  const panel = useRef<HTMLDivElement>(null);
-  const pill = useRef<HTMLDivElement>(null);
-  const onAnchors = useCallback((a: Anchors) => {
-    const show = pv.current > 0.5;
-    for (const [el, pt] of [[panel.current, a.panel], [pill.current, a.pill]] as const) {
-      if (!el || !pt) continue;
-      el.style.transform = `translate(${Math.min(Math.max(pt.x, 100), innerWidth - 100)}px, ${pt.y}px)`;
-      el.style.opacity = show ? "1" : "0";
-    }
-  }, []);
   const introOpacity = useTransform(p, [0, 0.07], [1, 0]);
   const introY = useTransform(p, [0, 0.07], [0, -20]);
   const hint = useTransform(p, [0, 0.04], [1, 0]);
@@ -174,24 +129,14 @@ function Hero() {
       <div className="sticky top-0 h-[100svh] overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(120%_80%_at_50%_0%,#fff7ee_0%,#fbefe2_45%,#f4e3d1_100%)]" />
         <div className="absolute inset-0">
-          {webgl ? (
-            <SceneBoundary fallback={<FlatHero progress={progress} />}>
-              <Suspense fallback={null}>
-                <Classroom progress={progress} onAnchors={onAnchors} />
-              </Suspense>
-              <Callout ref={panel}>Live transcript, by speaker</Callout>
-              <Callout ref={pill}>Recording, offline</Callout>
-            </SceneBoundary>
-          ) : (
-            <FlatHero progress={progress} />
-          )}
+          <ClassStory progress={progress} />
         </div>
         <div className="pointer-events-none absolute inset-x-0 top-0 h-[44%] bg-gradient-to-b from-[#fff7ee] via-[#fff7ee]/85 to-transparent" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#fdfcfa] to-transparent" />
 
         <div className="absolute inset-x-0 top-[96px] md:top-[112px]">
           <motion.div style={{ opacity: introOpacity, y: introY }} className="mx-auto max-w-[860px] px-5 text-center">
-            <motion.h1 initial={{ opacity: 0, y: 18, filter: "blur(10px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={soft} className="title-serif whitespace-nowrap text-[2.4rem] leading-[0.98] sm:text-[4.2rem] md:text-[5.2rem]">
+            <motion.h1 initial={{ opacity: 0, y: 18, filter: "blur(10px)" }} animate={{ opacity: 1, y: 0, filter: "blur(0px)" }} transition={soft} className="title-serif whitespace-nowrap text-[2.3rem] leading-[0.98] sm:text-[3.6rem] md:text-[4.4rem]">
               Save class <Accent>for later.</Accent>
             </motion.h1>
             <motion.p initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ ...soft, delay: 0.1 }} className="mx-auto mt-4 max-w-[520px] text-[17px] text-[var(--ink-2)] md:text-lg">
@@ -203,7 +148,7 @@ function Hero() {
           </motion.div>
           {BEATS.map((b, i) => (
             <Beat key={i} p={p} at={b.at} next={BEATS[i + 1]?.at ?? 1.2}>
-              <h2 className="title-serif text-balance text-[2.2rem] leading-[1] sm:text-[3.6rem] md:whitespace-nowrap md:text-[4.4rem]">{b.title}</h2>
+              <h2 className="title-serif text-balance text-[2.1rem] leading-[1] sm:text-[3.2rem] md:whitespace-nowrap md:text-[3.8rem]">{b.title}</h2>
               <p className="mx-auto mt-4 max-w-[540px] text-[17px] text-[var(--ink-2)]">{b.sub}</p>
             </Beat>
           ))}
@@ -295,12 +240,12 @@ function Features() {
   return (
     <div className="mt-14 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
       {FEATURES.map((f, i) => (
-        <motion.div key={f.t} {...fade} transition={{ ...soft, delay: (i % 3) * 0.07 }} className="group rounded-[30px] border border-white bg-white/80 p-2.5 shadow-[0_1px_0_white_inset,0_24px_50px_-30px_rgb(60_40_20/0.4)] backdrop-blur-xl transition duration-500 hover:-translate-y-1.5 hover:shadow-[0_1px_0_white_inset,0_34px_70px_-30px_rgb(60_40_20/0.5)]">
+        <motion.div key={f.t} {...fade} transition={{ ...soft, delay: (i % 3) * 0.07 }} className="group rounded-[30px] border-[2.5px] border-[#1c1915] bg-white shadow-[5px_5px_0_#1c1915] p-2.5 transition duration-300 hover:-translate-y-1.5 hover:shadow-[8px_10px_0_#1c1915]">
           <f.scene />
           <div className="px-3 pb-3 pt-4">
             <div className="flex items-center gap-2 text-[17px] font-semibold">
               {f.t}
-              {f.pro && <span className="rounded-full bg-gradient-to-b from-[#f0a25a] to-[#d9772f] px-2 py-0.5 text-[10px] font-bold uppercase text-white">Pro</span>}
+              {f.pro && <span className="rounded-full bg-[#1c1915] px-2 py-0.5 text-[10px] font-extrabold uppercase text-white">Pro</span>}
             </div>
             <p className="mt-1 text-[14.5px] leading-relaxed text-[var(--ink-2)]">{f.b}</p>
             <Link to={f.pro ? "/app/settings" : "/app"} className="mt-4 inline-flex items-center gap-1.5 rounded-full border border-[var(--line)] bg-white px-3.5 py-1.5 text-[13px] font-medium shadow-[0_1px_2px_rgb(0_0_0/0.05)] transition group-hover:border-[var(--color-clay)]/40">
@@ -358,7 +303,7 @@ const FAQ: [string, string][] = [
 
 function Tile({ icon, c, t, b, i }: { icon: Icon; c: readonly [string, string]; t: string; b: string; i: number }) {
   return (
-    <motion.div {...fade} transition={{ ...soft, delay: i * 0.05 }} className="rounded-[26px] border border-white bg-white/75 p-5 text-left shadow-[0_1px_0_white_inset,0_18px_40px_-28px_rgb(60_40_20/0.45)] backdrop-blur-xl transition duration-500 hover:-translate-y-1">
+    <motion.div {...fade} transition={{ ...soft, delay: i * 0.05 }} className="rounded-[26px] border-[2.5px] border-[#1c1915] bg-white shadow-[5px_5px_0_#1c1915] p-5 text-left  transition duration-500 hover:-translate-y-1">
       <AppIcon icon={icon} from={c[0]} to={c[1]} size={46} />
       <div className="mt-4 font-semibold">{t}</div>
       <p className="mt-0.5 text-sm text-[var(--ink-2)]">{b}</p>
@@ -401,7 +346,7 @@ export function Landing() {
       <Section id="how" title={<>Four steps, <Accent>zero</Accent> stress.</>}>
         <div className="mt-12 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
           {STEPS.map((s, i) => (
-            <motion.div key={s.t} {...fade} transition={{ ...soft, delay: i * 0.07 }} className="relative rounded-[26px] border border-white bg-white/75 p-6 text-left shadow-[0_1px_0_white_inset,0_18px_40px_-28px_rgb(60_40_20/0.45)] backdrop-blur-xl">
+            <motion.div key={s.t} {...fade} transition={{ ...soft, delay: i * 0.07 }} className="relative rounded-[26px] border-[2.5px] border-[#1c1915] bg-white shadow-[5px_5px_0_#1c1915] p-6 text-left ">
               <span className="absolute right-5 top-5 font-serif text-3xl text-[var(--line)]">{i + 1}</span>
               <AppIcon icon={s.icon} from={s.c[0]} to={s.c[1]} />
               <div className="mt-5 text-lg font-semibold">{s.t}</div>
@@ -415,7 +360,7 @@ export function Landing() {
       </Section>
 
       <Section id="accuracy" title={<>Tested in <Accent>real</Accent> classrooms.</>} sub="Every engine, the same recordings, from a quiet room to a loud one with an echo. Lower is better.">
-        <motion.div {...fade} className="mt-10 overflow-x-auto rounded-[26px] border border-white bg-white/80 shadow-[0_1px_0_white_inset,0_18px_40px_-28px_rgb(60_40_20/0.45)] backdrop-blur-xl">
+        <motion.div {...fade} className="mt-10 overflow-x-auto rounded-[26px] border-[2.5px] border-[#1c1915] bg-white shadow-[5px_5px_0_#1c1915]">
           <table className="w-full min-w-[560px] text-left text-[15px]">
             <thead>
               <tr className="border-b border-[var(--line)] text-[var(--mute)]">
@@ -428,7 +373,7 @@ export function Landing() {
                 <tr key={r.engine} className="border-b border-[var(--line)] last:border-0">
                   <td className="px-5 py-3">
                     <span className={r.ours ? "font-semibold" : ""}>{r.engine}</span>
-                    {r.ours && <span className="ml-2 rounded-full bg-gradient-to-b from-[#f0a25a] to-[#d9772f] px-2 py-0.5 text-[10px] font-bold uppercase text-white">ours</span>}
+                    {r.ours && <span className="ml-2 rounded-full bg-[#1c1915] px-2 py-0.5 text-[10px] font-extrabold uppercase text-white">ours</span>}
                   </td>
                   {r.wer.map((w, i) => <td key={i} className={`px-4 py-3 tabular-nums ${r.ours ? "font-semibold" : "text-[var(--ink-2)]"}`}>{w}</td>)}
                 </tr>
@@ -458,7 +403,7 @@ export function Landing() {
                 <div className="mt-3 text-sm font-medium text-[var(--color-clay)]">{p.href ? (p.name === "Web" ? "Open now →" : "Download →") : "App Store soon"}</div>
               </>
             );
-            const cls = "block h-full rounded-[26px] border border-white bg-white/75 p-5 text-left shadow-[0_1px_0_white_inset,0_18px_40px_-28px_rgb(60_40_20/0.45)] backdrop-blur-xl transition duration-500 hover:-translate-y-1";
+            const cls = "block h-full rounded-[26px] border-[2.5px] border-[#1c1915] bg-white shadow-[5px_5px_0_#1c1915] p-5 text-left  transition duration-500 hover:-translate-y-1";
             return (
               <motion.div key={p.name} {...fade} transition={{ ...soft, delay: i * 0.05 }}>
                 {p.href?.startsWith("/") ? <Link to={p.href} className={cls}>{inner}</Link> : p.href ? <a href={p.href} className={cls}>{inner}</a> : <div className={cls}>{inner}</div>}
@@ -470,7 +415,7 @@ export function Landing() {
 
       <Section id="pricing" title={<>Free. <Accent>Actually</Accent> free.</>} sub="No trial that runs out. No minute caps. No card.">
         <div className="mx-auto mt-12 grid max-w-[880px] gap-4 md:grid-cols-2">
-          <motion.div {...fade} className="rounded-[30px] border border-white bg-white/80 p-8 text-left shadow-[0_1px_0_white_inset,0_24px_50px_-30px_rgb(60_40_20/0.4)] backdrop-blur-xl">
+          <motion.div {...fade} className="rounded-[30px] border-[2.5px] border-[#1c1915] bg-white shadow-[5px_5px_0_#1c1915] p-8 text-left ">
             <div className="text-lg font-semibold">Free</div>
             <div className="title-serif mt-1 text-5xl">$0</div>
             <ul className="mt-6 space-y-2.5 text-[15px]">
@@ -479,9 +424,9 @@ export function Landing() {
               ))}
             </ul>
             <p className="mt-5 text-xs text-[var(--mute)]">3 instant AI notes a day. The rest arrive overnight, or right away after a 5-second sponsor card.</p>
-            <Link to="/app" className="mt-6 block rounded-full border border-[var(--line)] bg-white py-3 text-center font-medium transition hover:bg-[var(--bubble)]">Start free</Link>
+            <Link to="/app" className="mt-6 block rounded-full border-[2.5px] border-[#1c1915] bg-[#ff9a2e] py-3 text-center font-extrabold shadow-[3px_3px_0_#1c1915] transition hover:-translate-y-0.5">Start free</Link>
           </motion.div>
-          <motion.div {...fade} transition={{ ...soft, delay: 0.08 }} className="relative overflow-hidden rounded-[30px] border border-[#f3c79c] bg-gradient-to-b from-[#fff4e8] to-[#ffe7cf] p-8 text-left shadow-[0_1px_0_white_inset,0_30px_60px_-30px_rgb(217_119_47/0.55)]">
+          <motion.div {...fade} transition={{ ...soft, delay: 0.08 }} className="relative overflow-hidden rounded-[30px] border-[2.5px] border-[#1c1915] bg-[#ffd27a] p-8 text-left shadow-[5px_5px_0_#1c1915]">
             <div className="liquid pointer-events-none absolute -right-16 -top-16 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgb(240_162_90/0.45),transparent_60%)] blur-2xl" />
             <div className="relative">
               <div className="flex items-center gap-2 text-lg font-semibold">Pro <Lock size={15} className="text-[var(--color-clay)]" /></div>
@@ -492,7 +437,7 @@ export function Landing() {
                   <li key={f} className="flex gap-2.5"><Check size={18} className="mt-0.5 shrink-0 text-[var(--color-clay)]" /> {f}</li>
                 ))}
               </ul>
-              <div className="mt-6 flex"><Link to="/app/settings" className="block w-full rounded-full bg-gradient-to-b from-[#f0a25a] to-[#d9772f] py-3 text-center font-semibold text-white shadow-[0_1px_0_rgb(255_255_255/0.45)_inset]">Go Pro</Link></div>
+              <div className="mt-6 flex"><Link to="/app/settings" className="block w-full rounded-full border-[2.5px] border-[#1c1915] bg-[#1c1915] py-3 text-center font-extrabold text-white shadow-[3px_3px_0_#ff9a2e]">Go Pro</Link></div>
             </div>
           </motion.div>
         </div>
@@ -513,16 +458,28 @@ export function Landing() {
       </Section>
 
       <section className="mx-auto max-w-[1120px] px-5 pb-20">
-        <motion.div {...fade} className="relative overflow-hidden rounded-[40px] border border-white bg-gradient-to-b from-[#fff6ec] to-[#fde6cf] px-6 py-16 text-center shadow-[0_1px_0_white_inset,0_40px_80px_-40px_rgb(217_119_47/0.5)] md:py-24">
+        <motion.div {...fade} className="relative overflow-hidden rounded-[40px] border-[3px] border-[#1c1915] bg-[#ffd27a] px-6 py-16 text-center shadow-[8px_8px_0_#1c1915] md:py-24">
           <div className="liquid pointer-events-none absolute left-1/2 top-1/2 h-[480px] w-[720px] -translate-x-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(ellipse,rgb(240_162_90/0.35),transparent_60%)] blur-3xl" />
           <div className="relative">
             <h2 className="title-serif text-[2.6rem] leading-[1.02] md:whitespace-nowrap md:text-6xl">Lock in. <Accent>We've got class.</Accent></h2>
             <p className="mx-auto mt-4 max-w-[480px] text-[var(--ink-2)]">Free on every device. Recording in ten seconds.</p>
             <div className="mt-8 flex flex-wrap justify-center gap-3">
               <Cta big>Start free</Cta>
-              <a href={RELEASES} className="inline-flex items-center gap-2 rounded-full border border-white bg-white/80 px-6 py-3 font-medium shadow-sm backdrop-blur-xl">Download for desktop</a>
+              <a href={RELEASES} className="inline-flex items-center gap-2 rounded-full border-[2.5px] border-[#1c1915] bg-white px-6 py-3 font-extrabold shadow-[4px_4px_0_#1c1915]">Download for desktop</a>
             </div>
           </div>
+        </motion.div>
+      </section>
+
+      <section className="mx-auto max-w-[1120px] px-5 pb-16">
+        <motion.div {...fade} className="flex flex-col items-center justify-between gap-5 rounded-[28px] border-[2.5px] border-[#1c1915] bg-white p-6 shadow-[5px_5px_0_#1c1915] md:flex-row md:p-7">
+          <div className="text-left">
+            <div className="flex items-center gap-2 text-lg font-extrabold">
+              Want even more? <span className="rounded-full bg-[#1c1915] px-2 py-0.5 text-[11px] uppercase text-white">Pro</span>
+            </div>
+            <p className="mt-1 text-[15px] text-[var(--ink-2)]">Due dates straight into your calendar, ask your notes anything, exam packs across a whole unit, instant notes every time. ${PRICING.monthly.price}/mo, cancel anytime. Everything above stays free.</p>
+          </div>
+          <Link to="/app/settings" className="shrink-0 rounded-full border-[2.5px] border-[#1c1915] bg-[#ffd27a] px-6 py-2.5 font-extrabold shadow-[3px_3px_0_#1c1915] transition hover:-translate-y-0.5">See Pro</Link>
         </motion.div>
       </section>
 

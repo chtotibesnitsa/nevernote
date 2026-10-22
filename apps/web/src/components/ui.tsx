@@ -56,8 +56,8 @@ export function Wave({ level, bars = 9, color = "var(--color-dot-green)", active
 type Variant = "primary" | "glass" | "ghost" | "danger";
 export function Button({ variant = "glass", className = "", children, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; children: ReactNode }) {
   const v: Record<Variant, string> = {
-    primary: "bg-[var(--fg)] text-[var(--bg)] shadow-[0_8px_24px_-10px_rgb(28_25_21/0.6)] hover:opacity-90",
-    glass: "glass text-[var(--fg)] hover:brightness-[1.03]",
+    primary: "border-2 border-[#1c1915] bg-[var(--accent)] font-bold text-[#1c1915] shadow-[3px_3px_0_#1c1915] hover:-translate-y-0.5 hover:shadow-[4px_5px_0_#1c1915]",
+    glass: "glass border-[1.5px] !border-[var(--edge)] font-semibold text-[var(--fg)] hover:brightness-[1.03]",
     ghost: "text-[var(--ink-2)] hover:bg-[var(--bubble)]",
     danger: "bg-[var(--color-dot-red)] text-white",
   };
@@ -65,7 +65,7 @@ export function Button({ variant = "glass", className = "", children, ...rest }:
     <motion.button
       whileTap={{ scale: 0.96 }}
       transition={spring}
-      className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-[background,opacity,filter] disabled:opacity-50 ${v[variant]} ${className}`}
+      className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-[background,opacity,filter,transform,box-shadow] disabled:opacity-50 ${v[variant]} ${className}`}
       {...(rest as object)}
     >
       {children}
@@ -77,7 +77,7 @@ export function Chip({ children, dashed, onClick }: { children: ReactNode; dashe
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] text-[var(--ink-2)] transition hover:bg-[var(--bubble)] ${dashed ? "border-dashed" : ""} border-[var(--line)]`}
+      className={`inline-flex items-center gap-1.5 rounded-lg border-[1.5px] px-2.5 py-1 text-[13px] font-medium text-[var(--ink-2)] transition hover:bg-[var(--bubble)] ${dashed ? "border-dashed" : ""} border-[var(--edge)]/60`}
     >
       {children}
     </button>
@@ -114,7 +114,7 @@ export function Hmu({ compact }: { compact?: boolean }) {
 }
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-[var(--radius-glass)] border border-[var(--line)] bg-[var(--card)] ${className}`}>{children}</div>;
+  return <div className={`rounded-[var(--radius-glass)] border-2 border-[var(--edge)] bg-[var(--card)] shadow-[4px_4px_0_var(--edge)] ${className}`}>{children}</div>;
 }
 
 export function fmtClock(sec: number): string {
