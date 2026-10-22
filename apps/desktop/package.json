@@ -31,6 +31,7 @@
   "build": {
     "appId": "app.nevernote.desktop",
     "productName": "Nevernote",
+    "electronVersion": "38.8.6",
     "directories": {
       "output": "release",
       "buildResources": "build"
