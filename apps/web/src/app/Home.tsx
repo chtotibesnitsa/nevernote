@@ -30,17 +30,15 @@ export function Home() {
         {name ? `, ${name}` : ""}
       </h1>
       <div className="mt-6 grid gap-5 lg:grid-cols-[1fr_300px]">
-        <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="relative overflow-hidden rounded-[26px] border-2 border-[#1c1915] bg-[#ffd27a] p-8 text-[#1c1915] shadow-[6px_6px_0_#1c1915] md:p-10">
-          {/* voice ripples, like the front page */}
-          {[0, 1, 2].map((i) => (
-            <span key={i} className="nn-ripple pointer-events-none absolute -right-24 top-[calc(50%-260px)] h-[520px] w-[520px] rounded-full border-[6px] border-[#ff8a1f]/60" style={{ animationDelay: `${i * 1.05}s` }} />
-          ))}
+        <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="relative overflow-hidden rounded-[26px] bg-[#14110e] p-8 text-[#f4efe6] md:p-10">
+          <div className="pointer-events-none absolute -right-10 -top-16 h-80 w-80 rounded-full bg-[radial-gradient(circle,rgb(200_121_74/0.55),transparent_60%)] blur-2xl" />
+          <div className="pointer-events-none absolute -bottom-24 right-32 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgb(107_79_58/0.7),transparent_60%)] blur-3xl" />
           <div className="relative">
-            <div className="title-serif text-[2.2rem] leading-[1.02] md:text-[2.8rem]">
-              Never miss <span className="text-[#e85d00]">a word.</span>
+            <div className="title-serif text-[2.2rem] leading-[1.05] md:text-[2.6rem]">
+              Never miss <em>a word.</em>
             </div>
-            <p className="mt-2 max-w-md text-[15px] font-medium text-[#4a3a22]">Start it when class begins. Every word and every speaker, transcribed on this device. Notes and due dates when you're done.</p>
-            <StartButton className="mt-6" />
+            <p className="mt-2 max-w-md text-[15px] text-[#d8cfc3]">Start it when class begins. Every word and every speaker, transcribed on this device. Notes and due dates when you're done.</p>
+            <StartButton className="mt-6 !bg-[#f4efe6] !text-[#14110e]" />
           </div>
         </motion.div>
         <Card className="p-6">

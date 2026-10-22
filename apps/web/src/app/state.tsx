@@ -52,6 +52,12 @@ const DEFAULT_SETTINGS: Settings = {
   name: "",
 };
 
+export interface AsrState {
+  state: "idle" | "loading" | "ready" | "error";
+  p?: number;
+  error?: string;
+}
+
 export type RecState = "idle" | "starting" | "recording" | "paused" | "finishing";
 
 interface Toast {
@@ -68,7 +74,10 @@ interface Ctx {
   load(id: string): Promise<Note | undefined>;
   update(id: string, patch: Partial<Note>): void;
   remove(id: string): Promise<void>;
-  rec: { state: RecState; noteId?: string; elapsed: number; level: () => number; engineProgress?: number; error?: string; stopReason?: string; engine?: "loading" | "ready" | "error"; engineError?: string };
+  rec: { state: RecState; noteId?: string; elapsed: number; level: () => number; engineProgress?: number; error?: string; stopReason?: string };
+  /** The in-browser transcriber (web only): downloaded once when the app opens. */
+  asr: AsrState;
+  retryAsr(): void;
   start(opts?: { title?: string; folder?: string }): Promise<string | undefined>;
   pause(): void;
   resume(): Promise<void>;
@@ -408,6 +417,45 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }, 250);
   }, []);
 
+  // ---------- in-browser transcriber ----------
+  const [asr, setAsr] = useState<AsrState>({ state: isDesktop ? "ready" : "idle" });
+  const onSegmentRef = useRef(onSegment);
+  onSegmentRef.current = onSegment;
+  const ensureAsr = useCallback(() => {
+    if (isDesktop) return null;
+    if (!browserAsr.current) {
+      const w = new Worker(new URL("../lib/browser-asr.worker.ts", import.meta.url), { type: "module" });
+      w.onmessage = (e) => {
+        const m = e.data;
+        if (m.type === "progress") setAsr((a) => (a.state === "ready" ? a : { state: "loading", p: m.p }));
+        else if (m.type === "ready") setAsr({ state: "ready" });
+        else if (m.type === "retry") setAsr((a) => ({ ...a, state: "loading" }));
+        else if (m.type === "error") setAsr({ state: "error", error: String(m.message).slice(0, 200) });
+        else if (m.type === "text" && m.text && m.note) {
+          let tr = trackers.current.get(m.note);
+          if (!tr) trackers.current.set(m.note, (tr = new SpeakerTracker()));
+          const speaker = tr.assign(m.vp ? { vec: Float32Array.from(m.vp.vec), voiced: m.vp.voiced } : null);
+          const off = m.offset ?? 0;
+          onSegmentRef.current(m.note, { id: m.id, start: m.start + off, end: m.end + off, text: m.text, speaker });
+        }
+      };
+      browserAsr.current = w;
+      setAsr((a) => (a.state === "idle" ? { state: "loading", p: 0 } : a));
+      w.postMessage({ type: "load" });
+    }
+    return browserAsr.current;
+  }, []);
+  const retryAsr = useCallback(() => {
+    setAsr({ state: "loading", p: 0 });
+    ensureAsr()?.postMessage({ type: "load" });
+  }, [ensureAsr]);
+  // Download the transcriber as soon as the app opens, not when class starts.
+  useEffect(() => {
+    if (isDesktop || (cloudEnabled && !session)) return;
+    ensureAsr();
+    void navigator.storage?.persist?.().catch(() => {});
+  }, [session, ensureAsr]);
+
   /** The mic is lost for good: keep everything so far, pause, and let the student resume. */
   const cutOff = useCallback(
     (noteId: string, detail: string) => {
@@ -431,26 +479,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         capture.current = await startCapture((s) => d.recorder.audio(s), settings.roomMode, onLost);
         return;
       }
-      browserAsr.current ??= new Worker(new URL("../lib/browser-asr.worker.ts", import.meta.url), { type: "module" });
-      const w = browserAsr.current;
-      w.onmessage = (e) => {
-        const m = e.data;
-        if (m.type === "progress") setRec((r) => ({ ...r, engine: "loading", engineProgress: m.p < 1 ? m.p : undefined }));
-        if (m.type === "ready") setRec((r) => ({ ...r, engine: "ready", engineProgress: undefined, engineError: undefined }));
-        if (m.type === "error") setRec((r) => (r.engine === "ready" && !String(m.message).includes("Failed to fetch") ? r : { ...r, engine: "error", engineProgress: undefined, engineError: String(m.message).slice(0, 200) }));
-        if (m.type === "text" && m.text) {
-          let tr = trackers.current.get(noteId);
-          if (!tr) trackers.current.set(noteId, (tr = new SpeakerTracker()));
-          const speaker = tr.assign(m.vp ? { vec: Float32Array.from(m.vp.vec), voiced: m.vp.voiced } : null);
-          onSegment(noteId, { id: m.id, start: m.start + offset, end: m.end + offset, text: m.text, speaker });
-        }
-      };
-      setRec((r) => (r.engine === "ready" ? r : { ...r, engine: "loading" }));
-      w.postMessage({ type: "load" });
-      chunker.current = new Chunker((samples, s, e) => w.postMessage({ type: "chunk", id: `${noteId.slice(-6)}-${++segN.current}`, samples, start: s, end: e }, [samples.buffer]));
+      const w = ensureAsr()!;
+      chunker.current = new Chunker((samples, s, e) => w.postMessage({ type: "chunk", id: `${noteId.slice(-6)}-${++segN.current}`, note: noteId, offset, samples, start: s, end: e }, [samples.buffer]));
       capture.current = await startCapture((s) => chunker.current!.push(s), settings.roomMode, onLost);
     },
-    [settings.roomMode, onSegment, cutOff],
+    [settings.roomMode, cutOff, ensureAsr],
   );
 
   const start = useCallback(
@@ -654,6 +687,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     resume,
     resumeNote,
     stop,
+    asr,
+    retryAsr,
     summarize,
     session,
     authReady,

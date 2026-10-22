@@ -11,10 +11,10 @@ import { MicOverlay } from "./RecordingUI.tsx";
 import { useApp } from "./state.tsx";
 
 const NAV = [
-  { to: "/app", label: "Home", icon: Home, end: true, tint: ["#f7b267", "#e07a2c"] },
-  { to: "/app/notes", label: "Notetaker", icon: CircleDot, tint: ["#ff8a7a", "#ff3b30"] },
-  { to: "/app/insights", label: "Insights", icon: BarChart3, tint: ["#6fdc8c", "#24a148"] },
-  { to: "/app/settings", label: "Settings", icon: Cog, tint: ["#8e8e93", "#4a4a50"] },
+  { to: "/app", label: "Home", icon: Home, end: true },
+  { to: "/app/notes", label: "Notetaker", icon: CircleDot },
+  { to: "/app/insights", label: "Insights", icon: BarChart3 },
+  { to: "/app/settings", label: "Settings", icon: Cog },
 ];
 
 function LiveCard() {
@@ -85,14 +85,12 @@ export function Shell({ children }: { children: ReactNode }) {
           {plan === "pro" && <span className="rounded-md bg-[var(--color-clay)]/15 px-1.5 py-0.5 text-[11px] font-semibold text-[var(--color-leather)] dark:text-[var(--color-clay)]">Pro</span>}
         </div>
         <nav className="flex flex-col gap-0.5" style={{ WebkitAppRegion: "no-drag" } as never}>
-          {NAV.map(({ to, label, icon: Icon, end, tint }) => (
+          {NAV.map(({ to, label, icon: Icon, end }) => (
             <NavLink key={to} to={to} end={end} className="relative">
               {({ isActive }) => (
-                <span className={`relative flex items-center gap-3 rounded-2xl px-2 py-2 text-[15px] font-bold transition-colors ${isActive ? "text-[var(--fg)]" : "text-[var(--ink-2)] hover:text-[var(--fg)]"}`}>
-                  {isActive && <motion.span layoutId="nav-pill" transition={spring} className="absolute inset-0 rounded-2xl border-2 border-[var(--edge)] bg-[var(--card)] shadow-[3px_3px_0_var(--edge)]" />}
-                  <span className="relative grid h-8 w-8 place-items-center rounded-[10px] text-white shadow-[0_1px_0_rgb(255_255_255/0.5)_inset,0_4px_10px_-4px_rgb(0_0_0/0.4)]" style={{ background: `linear-gradient(${tint[0]},${tint[1]})` }}>
-                    <Icon size={17} strokeWidth={2.4} />
-                  </span>
+                <span className={`relative flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] transition-colors ${isActive ? "text-[var(--fg)]" : "text-[var(--ink-2)] hover:text-[var(--fg)]"}`}>
+                  {isActive && <motion.span layoutId="nav-pill" transition={spring} className="glass absolute inset-0 rounded-xl" />}
+                  <Icon size={18} className="relative" />
                   <span className="relative">{label}</span>
                 </span>
               )}
@@ -111,7 +109,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col md:py-3 md:pr-3">
-        <main className="relative flex min-h-[calc(100dvh-1.5rem)] flex-1 flex-col bg-[var(--card)] md:rounded-[26px] md:border-[2.5px] md:border-[var(--edge)] md:shadow-[6px_6px_0_var(--edge)]">
+        <main className="relative flex min-h-[calc(100dvh-1.5rem)] flex-1 flex-col bg-[var(--card)] md:rounded-[26px] md:border md:border-[var(--line)] md:shadow-[0_1px_0_rgb(255_255_255/0.6)_inset,0_30px_80px_-40px_rgb(60_40_20/0.25)]">
           <header className="sticky top-0 z-30 flex items-center justify-between gap-3 px-5 pb-2 pt-3 md:px-8" style={{ WebkitAppRegion: "drag" } as never}>
             <span className="md:hidden">
               <Logo size={20} />
@@ -128,18 +126,10 @@ export function Shell({ children }: { children: ReactNode }) {
               <Hmu compact={isDesktop} />
             </div>
           </header>
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={loc.pathname.split("/").slice(0, 3).join("/")}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -6 }}
-              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="flex flex-1 flex-col"
-            >
-              {children}
-            </motion.div>
-          </AnimatePresence>
+          {/* A slide-in only: the page is never hidden waiting on an exit animation, so a tab click always shows it. */}
+          <div key={loc.pathname.split("/").slice(0, 3).join("/")} className="nn-page flex flex-1 flex-col">
+            {children}
+          </div>
         </main>
         {/* Phone-width tab bar */}
         <nav className="glass-strong fixed inset-x-3 bottom-3 z-40 flex justify-around rounded-2xl py-2 md:hidden">

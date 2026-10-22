@@ -86,31 +86,32 @@ export function MicOverlay() {
 
 /** Grey highlight over the transcript while the on-device model loads, or why it couldn't. */
 export function EnginePanel({ empty }: { empty: boolean }) {
-  const { rec } = useApp();
+  const { rec, asr, retryAsr } = useApp();
   if (isDesktop) return null;
-  const loading = rec.engine === "loading";
-  const pct = Math.round((rec.engineProgress ?? 0) * 100);
-  if (rec.engine === "error")
+  const loading = asr.state === "loading" || asr.state === "idle";
+  const pct = Math.round((asr.p ?? 0) * 100);
+  if (asr.state === "error")
     return (
       <div className="mb-4 flex items-start gap-3 rounded-2xl border border-[var(--color-dot-orange)]/40 bg-[var(--bubble)] p-4">
         <TriangleAlert className="mt-0.5 shrink-0 text-[var(--color-dot-orange)]" size={20} />
-        <div className="text-sm">
-          <div className="font-bold">The transcriber couldn't load</div>
-          <p className="mt-0.5 text-[var(--ink-2)]">Your audio is still being recorded. Check your connection (it's a one-time download), then reload this page. {rec.engineError}</p>
+        <div className="flex-1 text-sm">
+          <div className="font-semibold">The transcriber couldn't download</div>
+          <p className="mt-0.5 text-[var(--ink-2)]">Your audio is still being recorded and nothing is lost. Words fill in as soon as it's ready.</p>
         </div>
+        <Button variant="glass" className="!py-1.5" onClick={retryAsr}>
+          <RefreshCw size={14} /> Try again
+        </Button>
       </div>
     );
   if (!loading && !(empty && rec.state === "recording")) return null;
   return (
     <motion.div initial={{ opacity: 0, y: 6 }} animate={{ opacity: 1, y: 0 }} className="relative mb-4 overflow-hidden rounded-2xl bg-[var(--bubble)] p-4">
-      <motion.div className="absolute inset-y-0 left-0 bg-[var(--fg)]/10" animate={{ width: loading ? `${Math.max(pct, 4)}%` : "100%" }} transition={{ duration: 0.4 }} />
+      <motion.div className="absolute inset-y-0 left-0 bg-[var(--fg)]/[0.07]" animate={{ width: loading ? `${Math.max(pct, 3)}%` : "100%" }} transition={{ duration: 0.4 }} />
       <div className="relative flex items-center gap-3 text-sm">
-        <span className="grid h-9 w-9 place-items-center rounded-xl bg-[var(--fg)] text-[var(--bg)]">
-          <Mic size={17} strokeWidth={2.6} />
-        </span>
+        <Mic size={18} className="text-[var(--ink-2)]" />
         <div className="flex-1">
-          <div className="font-bold">{loading ? `Loading the on-device transcriber${pct ? ` · ${pct}%` : ""}` : "Listening. Words land a moment after each pause."}</div>
-          <div className="text-[var(--ink-2)]">{loading ? "One-time download, then it works offline. Keep talking, nothing is lost." : "Everything stays on this device."}</div>
+          <div className="font-medium">{loading ? `Getting the on-device transcriber ready${pct ? ` · ${pct}%` : ""}` : "Listening. Words land a moment after each pause."}</div>
+          <div className="text-[var(--mute)]">{loading ? "A one-time download. Keep talking: everything you say now is transcribed once it's ready." : "Everything stays on this device."}</div>
         </div>
       </div>
     </motion.div>

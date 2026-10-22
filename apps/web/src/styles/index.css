@@ -117,9 +117,10 @@ html.desktop body {
 }
 
 @utility title-serif {
-  font-family: var(--font-sans);
-  font-weight: 850;
-  letter-spacing: -0.04em;
+  font-family: var(--font-serif);
+  font-weight: 460;
+  letter-spacing: -0.02em;
+  font-variation-settings: "opsz" 72;
 }
 
 @utility eyebrow {
@@ -191,10 +192,10 @@ html.desktop body {
 }
 .prose-nn h2,
 .prose-nn h3 {
-  font-family: var(--font-sans);
-  font-size: 1.4rem;
-  font-weight: 850;
-  letter-spacing: -0.03em;
+  font-family: var(--font-serif);
+  font-size: 1.45rem;
+  font-weight: 500;
+  letter-spacing: -0.01em;
   margin: 2rem 0 0.5rem;
 }
 .prose-nn ul {
@@ -276,3 +277,5 @@ html.desktop body {
 }
 @keyframes nn-ripple { 0% { transform: scale(0.1); opacity: 0.8; } 100% { transform: scale(1); opacity: 0; } }
 .nn-ripple { animation: nn-ripple 3.2s ease-out infinite; }
+@keyframes nn-page { from { transform: translateY(8px); } to { transform: none; } }
+.nn-page { animation: nn-page 0.32s var(--ease-liquid); }
