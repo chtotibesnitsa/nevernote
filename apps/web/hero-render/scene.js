@@ -328,19 +328,27 @@ scene.add(teacher.root);
 teacher.arms[0].upper.rotation.z = -0.12;
 teacher.arms[0].fore.rotation.x = 0.25;
 
-// Her voice, drawn as a real audio waveform: a ribbon of rounded bars that
-// leaves her, arcs over the class and runs into the student's laptop. Loud and
-// quiet syllables travel along it, the way a recorder's level meter scrolls.
+// Her voice, drawn as real audio waveforms: rings of level bars ripple out from
+// her across the whole room, and one straight waveform runs from her to the
+// student's laptop. Loud and quiet syllables travel along both, the way a
+// recorder's level meter scrolls.
 const WAVE_LOOP = 96; // frames per cycle: twice the gesture loop, so loops line up
-const BARS = 170;
+const BARS = 110;
 const MOUTH = new THREE.Vector3(-0.66, 1.66, -4.32);
-const LAPTOP_MIC = new THREE.Vector3(1.2, 1.02, 1.74);
-const wavePath = new THREE.CatmullRomCurve3([MOUTH, new THREE.Vector3(0.5, 2.15, -3.9), new THREE.Vector3(2.3, 2.45, -2.8), new THREE.Vector3(3.0, 2.45, -0.8), new THREE.Vector3(2.4, 2.1, 1.0), new THREE.Vector3(1.6, 1.5, 1.6), LAPTOP_MIC], false, "centripetal");
+const LAPTOP_MIC = new THREE.Vector3(1.2, 1.06, 1.72);
+const wavePath = new THREE.LineCurve3(MOUTH.clone().add(new THREE.Vector3(0.05, 0, 0.12)), LAPTOP_MIC); // one straight line to the laptop
 const barGeo = new THREE.CylinderGeometry(0.5, 0.5, 1, 16); // scaled per bar below
 const barMat = new THREE.MeshStandardMaterial({ roughness: 0.35, metalness: 0.15, emissive: 0x6f7bb0, emissiveIntensity: 0.25, transparent: true, opacity: 0.92, depthWrite: false });
 const bars = new THREE.InstancedMesh(barGeo, barMat, BARS);
 bars.frustumCulled = false;
 scene.add(bars);
+const RINGS = 3;
+const RING_BARS = 240;
+const ARC = 1.6; // radians each side of straight ahead: the ripples spread over the room, not into the wall
+const ringMat = new THREE.MeshStandardMaterial({ color: 0xa3a7c6, roughness: 0.4, metalness: 0.1, emissive: 0x8287ad, emissiveIntensity: 0.22, transparent: true, opacity: 0.9, depthWrite: false });
+const rings = new THREE.InstancedMesh(barGeo, ringMat, RINGS * RING_BARS);
+rings.frustumCulled = false;
+scene.add(rings);
 const C_FROM = new THREE.Color(0x9a9cc0); // soft lavender grey at her end
 const C_TO = new THREE.Color(0x5b7fc7); // the student's blue at the laptop
 const barDummy = new THREE.Object3D();
@@ -396,6 +404,27 @@ function waveFrame(frameNo, fade = 1) {
     bars.setColorAt(i, col);
     if (u > 0.82) near = Math.max(near, a);
   }
+  // The ripples: each ring widens from her over the class and fades as it goes.
+  const face = teacher.root.rotation.y + Math.PI; // the way she faces, as an angle around y
+  for (let k = 0; k < RINGS; k++) {
+    const q = (ph + k / RINGS) % 1;
+    const R = 0.35 + q * 7.8;
+    const life = Math.pow(Math.sin(q * Math.PI), 1.2) * Math.pow(1 - q, 0.35) * fade;
+    for (let j = 0; j < RING_BARS; j++) {
+      const u = j / (RING_BARS - 1);
+      const th = face + (u * 2 - 1) * ARC;
+      const edge = Math.min(1, Math.min(u, 1 - u) / 0.12);
+      const a = loud(u * 3 + q * 2 + k * 0.37);
+      const len = (0.03 + 0.36 * a) * life * edge;
+      barDummy.position.set(MOUTH.x + Math.sin(th) * R, MOUTH.y + 0.1 + q * 0.3, MOUTH.z + Math.cos(th) * R);
+      barDummy.quaternion.identity();
+      barDummy.scale.set(0.046 * life + 1e-4, Math.max(1e-4, len), 0.032 * life + 1e-4);
+      barDummy.updateMatrix();
+      rings.setMatrixAt(k * RING_BARS + j, barDummy.matrix);
+    }
+  }
+  rings.instanceMatrix.needsUpdate = true;
+  rings.visible = fade > 0.01;
   bars.instanceMatrix.needsUpdate = true;
   bars.instanceColor.needsUpdate = true;
   bars.visible = fade > 0.01;

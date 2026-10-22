@@ -44,10 +44,12 @@ const IDLE = 10000; // idle frames live in the same cache, offset by this
  * drawn frame with the (fractional) frame shown, so things laid over the
  * canvas can follow it exactly.
  */
-export function HeroFrames({ progress, set, onFrame, className = "" }: { progress: () => number; set: FrameSet; onFrame?: (f: number) => void; className?: string }) {
+export function HeroFrames({ progress, set, onFrame, onReady, className = "" }: { progress: () => number; set: FrameSet; onFrame?: (f: number) => void; onReady?: () => void; className?: string }) {
   const ref = useRef<HTMLCanvasElement>(null);
   const frameCb = useRef(onFrame);
   frameCb.current = onFrame;
+  const readyCb = useRef(onReady);
+  readyCb.current = onReady;
 
   useEffect(() => {
     const canvas = ref.current!;
@@ -123,8 +125,13 @@ export function HeroFrames({ progress, set, onFrame, className = "" }: { progres
       }
       return ready.get(IDLE);
     };
+    let shown = false;
     const draw = (img: Drawable | undefined, alpha = 1) => {
       if (!img) return;
+      if (!shown) {
+        shown = true;
+        readyCb.current?.();
+      }
       g.globalAlpha = alpha;
       g.drawImage(img, 0, 0);
     };

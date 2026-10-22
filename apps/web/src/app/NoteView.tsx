@@ -61,6 +61,15 @@ export function NoteView() {
                 >
                   Export Markdown
                 </button>
+                {note.summary && (
+                  <button
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-[var(--bubble)]"
+                    onClick={() => download(`${note.title} flashcards.txt`, flashcards(note.summary!), "text/tab-separated-values")}
+                    title="Imports into Anki and Quizlet"
+                  >
+                    Export flashcards
+                  </button>
+                )}
                 <button
                   className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-[var(--color-dot-red)] hover:bg-[var(--bubble)]"
                   onClick={async () => {
@@ -444,6 +453,14 @@ function FlagTag({ e }: { e: Extraction }) {
 }
 
 // ---------------- Summary ----------------
+
+/** Study guide and key terms as tab-separated front/back pairs: Anki and Quizlet both import this as is. */
+function flashcards(s: NonNullable<Note["summary"]>) {
+  const clean = (t: string) => t.replace(/[\t\n]+/g, " ").trim();
+  const qa = [...s.studyGuide, ...(s.updates ?? []).flatMap((u) => u.studyGuide)].map((q) => [q.question, q.answer]);
+  const terms = [...s.keyTerms, ...(s.updates ?? []).flatMap((u) => u.keyTerms)].map((t) => [t.term, t.definition]);
+  return [...qa, ...terms].map(([a, b]) => `${clean(a)}\t${clean(b)}`).join("\n");
+}
 
 const clock = (sec: number) => {
   const t = Math.max(0, Math.round(sec));

@@ -283,11 +283,15 @@ html.desktop body {
 
 @keyframes nn-eq { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
 .nn-eq { animation: nn-eq 0.9s ease-in-out infinite; }
+/* Voice bars: transform-only so they stay on the compositor. */
+@keyframes nn-bar { 0%, 100% { transform: scaleY(var(--lo, 0.3)); } 50% { transform: scaleY(1); } }
+.nn-bar { transform-origin: 50% 50%; animation: nn-bar var(--d, 1s) ease-in-out var(--dl, 0s) infinite; }
+.nn-bar-off { transform: scaleY(0.1); transition: transform 0.4s; }
 @keyframes nn-caret { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
 .nn-caret { animation: nn-caret 1s steps(1) infinite; }
 @keyframes nn-line-in { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
 .nn-line-in { animation: nn-line-in 0.5s var(--ease-liquid) both; }
-@media (prefers-reduced-motion: reduce) { .nn-eq, .nn-caret, .nn-line-in { animation: none; } }
+@media (prefers-reduced-motion: reduce) { .nn-eq, .nn-bar, .nn-caret, .nn-line-in { animation: none; } }
 
 @keyframes nn-page { from { transform: translateY(8px); } to { transform: none; } }
 .nn-page { animation: nn-page 0.32s var(--ease-liquid); }

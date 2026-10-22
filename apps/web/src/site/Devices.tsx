@@ -10,37 +10,62 @@ import { GITHUB_REPO, RELEASES } from "../lib/bridge.ts";
 
 const fade = { initial: { opacity: 0, y: 28 }, whileInView: { opacity: 1, y: 0 }, viewport: { once: true, margin: "-80px" }, transition: soft };
 
-/** iPhone 16 Pro style: brushed titanium band, side buttons, black bezel, Dynamic Island. */
+/**
+ * iPhone 16 Pro, to scale: a 393x852 screen in a brushed-steel band with chamfered
+ * edges, the real button layout (action button and volume left, side button and
+ * Camera Control right), antenna lines, Dynamic Island, status bar and home bar.
+ * Everything is in percentages, so it stays a real phone at any width.
+ */
 export function IPhone({ children, className = "", small }: { children: ReactNode; className?: string; small?: boolean }) {
-  const r = small ? 30 : 58;
-  const band = small ? 3 : 5;
-  const bezel = small ? 4 : 8;
+  const btn = "absolute w-[1.1%] bg-[linear-gradient(90deg,#6f6f73,#d9d9dc_45%,#8a8a8e)]";
   return (
-    <div className={`relative ${className}`}>
-      {/* side buttons */}
-      <span className="absolute -left-[2px] top-[17%] h-[5%] w-[3px] rounded-l bg-[linear-gradient(90deg,#8d8a86,#c9c6c1)]" />
-      <span className="absolute -left-[2px] top-[25%] h-[9%] w-[3px] rounded-l bg-[linear-gradient(90deg,#8d8a86,#c9c6c1)]" />
-      <span className="absolute -left-[2px] top-[36%] h-[9%] w-[3px] rounded-l bg-[linear-gradient(90deg,#8d8a86,#c9c6c1)]" />
-      <span className="absolute -right-[2px] top-[28%] h-[13%] w-[3px] rounded-r bg-[linear-gradient(270deg,#8d8a86,#c9c6c1)]" />
+    <div className={`relative aspect-[433/882] ${className}`}>
+      {/* buttons */}
+      <span className={`${btn} -left-[0.6%] top-[17.5%] h-[4.4%] rounded-l-[2px]`} />
+      <span className={`${btn} -left-[0.6%] top-[24.5%] h-[7.6%] rounded-l-[2px]`} />
+      <span className={`${btn} -left-[0.6%] top-[33.5%] h-[7.6%] rounded-l-[2px]`} />
+      <span className={`${btn} -right-[0.6%] top-[27%] h-[11%] rounded-r-[2px]`} />
+      <span className={`${btn} -right-[0.6%] top-[60%] h-[5.2%] rounded-r-[2px] opacity-80`} />
+      {/* the steel band */}
       <div
-        className="relative shadow-[0_60px_100px_-40px_rgb(0_0_0/0.55),0_20px_40px_-20px_rgb(0_0_0/0.3)]"
+        className="absolute inset-0 rounded-[17%/8.3%] p-[1.7%] shadow-[0_60px_90px_-40px_rgb(0_0_0/0.55),0_24px_40px_-24px_rgb(0_0_0/0.35)]"
         style={{
-          borderRadius: r,
-          padding: band,
-          background: "linear-gradient(135deg,#d9d6d1 0%,#a7a39d 18%,#eceae6 34%,#8f8b85 52%,#cfccc6 70%,#9c9892 86%,#e2dfda 100%)",
+          background: "linear-gradient(100deg,#b9b9bd 0%,#f4f4f6 9%,#8d8d92 22%,#d6d6da 38%,#a2a2a7 55%,#efeff1 72%,#86868b 88%,#c8c8cc 100%)",
+          boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 0.7), inset 0 0 0 2px rgb(0 0 0 / 0.18), inset 0 2px 3px rgb(255 255 255 / 0.6), 0 60px 90px -40px rgb(0 0 0 / 0.55), 0 24px 40px -24px rgb(0 0 0 / 0.35)",
         }}
       >
-        <div className="relative bg-black" style={{ borderRadius: r - band, padding: bezel, boxShadow: "inset 0 0 0 1px rgb(255 255 255 / 0.12)" }}>
-          <div className="relative overflow-hidden bg-white" style={{ borderRadius: r - band - bezel }}>
-            <div className={`absolute left-1/2 z-10 -translate-x-1/2 rounded-full bg-black ${small ? "top-[5px] h-[10px] w-[34%]" : "top-[11px] h-[30px] w-[32%]"}`}>
-              <span className={`absolute top-1/2 -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#3b4a6b,#0b0d14_60%)] ${small ? "right-[8%] h-[5px] w-[5px]" : "right-[10%] h-[11px] w-[11px]"}`} />
+        {/* antenna lines */}
+        <span className="absolute left-0 top-[11%] h-[0.5%] w-[1.7%] bg-[#6d6d72]/60" />
+        <span className="absolute right-0 top-[11%] h-[0.5%] w-[1.7%] bg-[#6d6d72]/60" />
+        <span className="absolute bottom-[11%] left-0 h-[0.5%] w-[1.7%] bg-[#6d6d72]/60" />
+        <span className="absolute bottom-[11%] right-0 h-[0.5%] w-[1.7%] bg-[#6d6d72]/60" />
+        {/* black glass with the screen inside */}
+        <div className="relative h-full w-full rounded-[15.5%/7.5%] bg-black p-[3.2%] shadow-[inset_0_0_0_1px_rgb(255_255_255/0.1)]">
+          <div className="relative h-full w-full overflow-hidden rounded-[12.5%/5.9%] bg-white">
+            {!small && <StatusBar />}
+            <div className="absolute left-1/2 top-[1.25%] z-20 h-[4.1%] w-[31%] -translate-x-1/2 rounded-full bg-black">
+              <span className="absolute right-[9%] top-1/2 h-[46%] aspect-square -translate-y-1/2 rounded-full bg-[radial-gradient(circle_at_35%_35%,#3d4658,#0b0d12_62%)]" />
             </div>
-            {children}
+            <div className="absolute inset-0">{children}</div>
+            <div className="absolute bottom-[0.9%] left-1/2 z-20 h-[0.6%] min-h-[3px] w-[34%] -translate-x-1/2 rounded-full bg-black/85" />
           </div>
           {/* glass glare */}
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(115deg,rgb(255_255_255/0.16)_0%,transparent_30%,transparent_70%,rgb(255_255_255/0.05)_100%)]" style={{ borderRadius: r - band }} />
+          <div className="pointer-events-none absolute inset-0 rounded-[15.5%/7.5%] bg-[linear-gradient(118deg,rgb(255_255_255/0.14)_0%,transparent_28%,transparent_72%,rgb(255_255_255/0.05)_100%)]" />
         </div>
       </div>
+    </div>
+  );
+}
+
+function StatusBar() {
+  return (
+    <div className="absolute inset-x-0 top-0 z-10 flex h-[6.2%] items-center justify-between px-[9%] pt-[1.2%] text-[15px] font-semibold tracking-tight text-black">
+      <span className="w-[24%] text-center">9:41</span>
+      <span className="flex w-[24%] items-center justify-center gap-[5px]">
+        <svg width="18" height="11" viewBox="0 0 18 11" aria-hidden><rect x="0" y="7" width="3" height="4" rx="1" fill="currentColor" /><rect x="5" y="5" width="3" height="6" rx="1" fill="currentColor" /><rect x="10" y="2.5" width="3" height="8.5" rx="1" fill="currentColor" /><rect x="15" y="0" width="3" height="11" rx="1" fill="currentColor" /></svg>
+        <svg width="16" height="11" viewBox="0 0 16 11" aria-hidden><path fill="currentColor" d="M8 2.2c2.2 0 4.2.9 5.7 2.3l1.1-1.1C13 1.6 10.6.6 8 .6S3 1.6 1.2 3.4l1.1 1.1C3.8 3.1 5.8 2.2 8 2.2zm0 3.2c1.3 0 2.5.5 3.4 1.3l1.1-1.1C11.3 4.5 9.7 3.8 8 3.8s-3.3.7-4.5 1.8l1.1 1.1c.9-.8 2.1-1.3 3.4-1.3zm0 3.2c-.5 0-1 .2-1.3.5L8 10.4l1.3-1.3c-.3-.3-.8-.5-1.3-.5z" /></svg>
+        <svg width="26" height="12" viewBox="0 0 26 12" aria-hidden><rect x="0.5" y="0.5" width="22" height="11" rx="3.2" fill="none" stroke="currentColor" opacity="0.4" /><rect x="2" y="2" width="17" height="8" rx="2" fill="currentColor" /><path d="M24 4v4c.8-.3 1.3-1.1 1.3-2S24.8 4.3 24 4z" fill="currentColor" opacity="0.45" /></svg>
+      </span>
     </div>
   );
 }
@@ -103,7 +128,7 @@ function BrowserWindow({ src }: { src: string }) {
 
 // ---------- downloads ----------
 
-type Os = "mac" | "win" | "ios" | "web";
+export type Os = "mac" | "win" | "ios" | "web";
 interface Asset {
   name: string;
   browser_download_url: string;
@@ -240,7 +265,7 @@ function Art({ os }: { os: Os }) {
     return (
       <motion.div className="mt-6 w-[34%]" whileHover={{ y: -10, rotateZ: -4 }} transition={spring}>
         <IPhone small>
-          <img src="/shots/iphone.webp" alt="" loading="lazy" className="block aspect-[390/844] w-full object-cover object-top" />
+          <img src="/shots/iphone.webp" alt="" loading="lazy" className="block h-full w-full object-cover object-top" />
         </IPhone>
       </motion.div>
     );
@@ -258,7 +283,8 @@ const TINT: Record<Os, string> = {
   web: "radial-gradient(90% 80% at 50% 0%,#eef4ef,#dde8df)",
 };
 
-export function Downloads() {
+/** Starts the right installer download for a platform and shows how to install it. */
+export function useInstaller() {
   const release = useRelease();
   const nav = useNavigate();
   const [sheet, setSheet] = useState<{ os: Os; file?: string } | null>(null);
@@ -276,6 +302,23 @@ export function Downloads() {
     else window.open(RELEASES, "_blank", "noopener");
     setSheet({ os, file: asset ? `${asset.name} · ${mb(asset)}` : "Pick your file on the release page" });
   };
+  const ui = <AnimatePresence>{sheet && <InstallSheet os={sheet.os} file={sheet.file} onClose={() => setSheet(null)} />}</AnimatePresence>;
+  return { release, go, setSheet, ui };
+}
+
+/** Which installer fits the device this page is open on. */
+export function deviceOs(): Os {
+  if (typeof navigator === "undefined") return "web";
+  const ua = navigator.userAgent;
+  if (/iPhone|iPad|iPod/.test(ua) || (/Macintosh/.test(ua) && navigator.maxTouchPoints > 1)) return "ios";
+  if (/Android/.test(ua)) return "web";
+  if (/Mac/.test(ua)) return "mac";
+  if (/Win/.test(ua)) return "win";
+  return "web";
+}
+
+export function Downloads() {
+  const { release, go, setSheet, ui } = useInstaller();
   const intelMac = release && pick(release.assets, (n) => n.endsWith(".dmg") && !n.includes("arm64"));
   return (
     <>
@@ -309,7 +352,7 @@ export function Downloads() {
         ))}
       </div>
       {release && <p className="mt-4 text-center text-[12.5px] text-[#6e6e73]">Latest version {release.version}. Free and open source.</p>}
-      <AnimatePresence>{sheet && <InstallSheet os={sheet.os} file={sheet.file} onClose={() => setSheet(null)} />}</AnimatePresence>
+      {ui}
     </>
   );
 }
