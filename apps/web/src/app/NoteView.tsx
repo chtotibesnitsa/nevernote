@@ -26,11 +26,12 @@ export function NoteView() {
   useEffect(() => {
     void load(id);
   }, [id, load]);
+  // Show the notes as soon as they're written: on opening a summarised note, when
+  // class ends, and again when a resumed class adds an update.
   useEffect(() => {
     if (note?.summary && rec.noteId !== id) setTab((t) => (t === "transcript" ? "summary" : t));
-    // only on first load of a summarised note
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [id, !!note?.summary]);
+  }, [id, !!note?.summary, note?.summary?.updates?.length]);
 
   if (!note) return <div className="p-10 text-[var(--mute)]">Opening…</div>;
   const live = rec.noteId === id && rec.state !== "idle";
@@ -444,6 +445,14 @@ function FlagTag({ e }: { e: Extraction }) {
 
 // ---------------- Summary ----------------
 
+const clock = (sec: number) => {
+  const t = Math.max(0, Math.round(sec));
+  const h = Math.floor(t / 3600);
+  const m = Math.floor((t % 3600) / 60);
+  const ss = String(t % 60).padStart(2, "0");
+  return h ? `${h}:${String(m).padStart(2, "0")}:${ss}` : `${m}:${ss}`;
+};
+
 function SummaryTab({ note }: { note: Note }) {
   const { session, online, summarize, plan } = useApp();
   const [sponsor, setSponsor] = useState(false);
@@ -506,8 +515,35 @@ function SummaryTab({ note }: { note: Note }) {
         className="prose-nn"
         dangerouslySetInnerHTML={{ __html: marked.parse(s.notes, { async: false }) as string }}
       />
+      {(s.updates ?? []).map((u, i) => (
+        <section key={u.at} className="relative rounded-3xl border border-[var(--line)] bg-[var(--card)] p-5 md:p-6">
+          <div className="mb-3 flex flex-wrap items-center gap-2">
+            <span className="rounded-full bg-[var(--fg)] px-2.5 py-0.5 text-[11.5px] font-semibold text-[var(--bg)]">Update {i + 1}</span>
+            <span className="text-[13px] font-medium">{new Date(u.at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
+            <span className="text-[13px] text-[var(--mute)]">· from {clock(u.fromSec)} to {clock(u.toSec)} of the recording</span>
+          </div>
+          <article className="prose-nn" dangerouslySetInnerHTML={{ __html: marked.parse(u.notes, { async: false }) as string }} />
+          {u.keyTerms.length > 0 && (
+            <div className="mt-4 flex flex-wrap gap-1.5">
+              {u.keyTerms.map((t) => (
+                <span key={t.term} title={t.definition} className="rounded-full bg-[var(--bubble)] px-2.5 py-1 text-[12.5px]">{t.term}</span>
+              ))}
+            </div>
+          )}
+        </section>
+      ))}
+      {note.stage === "summarising" && (
+        <section className="rounded-3xl border border-dashed border-[var(--line)] p-5 md:p-6">
+          <div className="mb-3 text-[13px] font-medium text-[var(--ink-2)]">Adding what was said since…</div>
+          <div className="space-y-2.5">
+            {[88, 72, 80].map((w, i) => (
+              <div key={i} className="skeleton h-3.5" style={{ width: `${w}%` }} />
+            ))}
+          </div>
+        </section>
+      )}
       {important.length > 0 && <Important items={important} />}
-      {s.studyGuide.length > 0 && <StudyGuide qa={s.studyGuide} />}
+      {[...s.studyGuide, ...(s.updates ?? []).flatMap((u) => u.studyGuide)].length > 0 && <StudyGuide qa={[...s.studyGuide, ...(s.updates ?? []).flatMap((u) => u.studyGuide)]} />}
       {s.keyTerms.length > 0 && (
         <section>
           <h3 className="eyebrow mb-3">Key terms</h3>

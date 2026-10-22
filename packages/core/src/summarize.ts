@@ -47,18 +47,33 @@ export function chunkSegments(segments: Segment[], maxWords = CHUNK_WORDS): Segm
   return out;
 }
 
-export function summaryMessages(segments: Segment[], recordedAt: Date, opts: { course?: string; thoughts?: string; part?: [number, number]; style?: string; speakers?: { id: string; name: string }[] } = {}): ChatMessage[] {
+export function summaryMessages(segments: Segment[], recordedAt: Date, opts: { course?: string; thoughts?: string; part?: [number, number]; style?: string; speakers?: { id: string; name: string }[]; earlier?: Summary } = {}): ChatMessage[] {
   const day = recordedAt.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const head = [
     `Recording date: ${day}.`,
     opts.course ? `Class: ${opts.course}.` : "",
     opts.part ? `This is part ${opts.part[0]} of ${opts.part[1]} of the lecture.` : "",
     opts.thoughts?.trim() ? `The student's own notes:\n${opts.thoughts.trim()}` : "",
+    opts.earlier ? earlierBrief(opts.earlier) : "",
   ].filter(Boolean);
   return [
     { role: "system", content: opts.style ? `${SYSTEM}\n${opts.style}` : SYSTEM },
     { role: "user", content: `${head.join("\n")}\n\nTranscript:\n${transcriptText(segments, opts.speakers)}` },
   ];
+}
+
+/**
+ * For a class that was resumed: what the notes already cover, so the model writes
+ * only what's new instead of repeating it. Headings and terms are enough context.
+ */
+function earlierBrief(s: Summary): string {
+  const heads = [s.notes, ...(s.updates ?? []).map((u) => u.notes)].join("\n").split("\n").filter((l) => l.startsWith("#")).map((l) => l.replace(/^#+\s*/, ""));
+  const terms = [...s.keyTerms, ...(s.updates ?? []).flatMap((u) => u.keyTerms)].map((t) => t.term);
+  return [
+    `This class was resumed. The student already has notes titled "${s.title}" covering: ${heads.join("; ") || "the start of class"}.`,
+    terms.length ? `Key terms already defined: ${terms.join(", ")}.` : "",
+    "The transcript below is only the new part. Write notes for what's new in it; don't repeat what's already covered. Leave \"title\" as the existing title. Use fewer sections if there's less to say.",
+  ].filter(Boolean).join("\n");
 }
 
 /** Merges per-chunk summaries of a long lecture into one. */

@@ -56,6 +56,22 @@ export interface Summary {
   extractions: Extraction[];
   model: string;
   createdAt: string;
+  /** How many transcript segments these notes cover; anything after came in later (a resumed class). */
+  covered?: number;
+  /** Notes for what was added later, each kept in its own dated section (unless the student chose to merge). */
+  updates?: SummaryUpdate[];
+}
+
+export interface SummaryUpdate {
+  /** When this update was written. */
+  at: string;
+  /** Transcript time it covers, in seconds from the start of the note. */
+  fromSec: number;
+  toSec: number;
+  notes: string;
+  studyGuide: { question: string; answer: string }[];
+  keyTerms: { term: string; definition: string }[];
+  model: string;
 }
 
 export interface Note {

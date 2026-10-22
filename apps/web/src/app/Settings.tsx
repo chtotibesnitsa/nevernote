@@ -127,6 +127,19 @@ function NoteStyle() {
           </button>
         ))}
       </div>
+      <div className="mt-5 text-sm font-medium">When you resume a class</div>
+      <p className="text-sm text-[var(--mute)]">What happens to the notes when more gets recorded into a note that already has them.</p>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        {([
+          ["separate", "Add a dated update", "Your notes stay as they were. What's new goes in its own section with the date and time."],
+          ["merge", "Rewrite as one", "Everything is rewritten together into a single set of notes."],
+        ] as const).map(([id, label, blurb]) => (
+          <button key={id} onClick={() => save({ ...prefs, updates: id })} className={`rounded-2xl border p-3 text-left transition ${(prefs.updates ?? "separate") === id ? "border-[var(--fg)] bg-[var(--bubble)]" : "border-[var(--line)] hover:bg-[var(--bubble)]"}`}>
+            <div className="font-medium">{label}</div>
+            <div className="text-sm text-[var(--mute)]">{blurb}</div>
+          </button>
+        ))}
+      </div>
       <label className="mt-5 block text-sm font-medium" htmlFor="rules">Your own rules</label>
       <textarea
         id="rules"
