@@ -78,6 +78,8 @@ interface Ctx {
   /** The in-browser transcriber (web only): downloaded once when the app opens. */
   asr: AsrState;
   retryAsr(): void;
+  /** Web only: the sentence the teacher is saying right now, before it's final. */
+  preview: { note: string; text: string } | null;
   start(opts?: { title?: string; folder?: string }): Promise<string | undefined>;
   pause(): void;
   resume(): Promise<void>;
@@ -419,6 +421,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   // ---------- in-browser transcriber ----------
   const [asr, setAsr] = useState<AsrState>({ state: isDesktop ? "ready" : "idle" });
+  const [preview, setPreview] = useState<{ note: string; text: string } | null>(null);
   const onSegmentRef = useRef(onSegment);
   onSegmentRef.current = onSegment;
   const ensureAsr = useCallback(() => {
@@ -431,7 +434,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
         else if (m.type === "ready") setAsr({ state: "ready" });
         else if (m.type === "retry") setAsr((a) => ({ ...a, state: "loading" }));
         else if (m.type === "error") setAsr({ state: "error", error: String(m.message).slice(0, 200) });
-        else if (m.type === "text" && m.text && m.note) {
+        else if (m.type === "partial") setPreview(m.text ? { note: m.note, text: m.text } : null);
+        else if (m.type === "text") setPreview(null);
+        if (m.type === "text" && m.text && m.note) {
           let tr = trackers.current.get(m.note);
           if (!tr) trackers.current.set(m.note, (tr = new SpeakerTracker()));
           const speaker = tr.assign(m.vp ? { vec: Float32Array.from(m.vp.vec), voiced: m.vp.voiced } : null);
@@ -480,7 +485,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         return;
       }
       const w = ensureAsr()!;
-      chunker.current = new Chunker((samples, s, e) => w.postMessage({ type: "chunk", id: `${noteId.slice(-6)}-${++segN.current}`, note: noteId, offset, samples, start: s, end: e }, [samples.buffer]));
+      chunker.current = new Chunker(
+        (samples, s, e) => w.postMessage({ type: "chunk", id: `${noteId.slice(-6)}-${++segN.current}`, note: noteId, offset, samples, start: s, end: e }, [samples.buffer]),
+        16000,
+        (samples, s) => w.postMessage({ type: "partial", note: noteId, start: s + offset, samples }, [samples.buffer]),
+      );
       capture.current = await startCapture((s) => chunker.current!.push(s), settings.roomMode, onLost);
     },
     [settings.roomMode, cutOff, ensureAsr],
@@ -689,6 +698,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     stop,
     asr,
     retryAsr,
+    preview,
     summarize,
     session,
     authReady,

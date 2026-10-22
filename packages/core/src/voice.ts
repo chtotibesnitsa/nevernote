@@ -122,36 +122,58 @@ export function voiceprint(samples: Float32Array): Voiceprint | null {
   return { vec, voiced: (voiced * HOP) / SR };
 }
 
-/** Online clustering: each phrase joins the closest known voice or starts a new one. */
+/**
+ * Online clustering: each phrase joins the closest known voice. A new voice is
+ * only opened once two phrases (of a second or more of voiced speech) agree on
+ * it and both sit well away from every known voice, so one teacher moving
+ * around the room, turning to the board or raising their voice stays one
+ * speaker. The first phrase of a new voice keeps the previous label.
+ */
 export class SpeakerTracker {
   private centers: { v: Float32Array; n: number }[] = [];
   private last = "S1";
-  constructor(private maxSpeakers = 6, private threshold = 0.55) {}
+  private candidate: { v: Float32Array; age: number } | null = null;
+  constructor(
+    private maxSpeakers = 6,
+    private threshold = 0.75,
+    private agree = 0.45,
+  ) {}
 
   assign(p: Voiceprint | null): string {
     if (!p || p.voiced < 0.25) return this.last;
-    let best = -1;
+    const dist = (v: Float32Array) => {
+      let d = 0;
+      for (let k = 0; k < v.length; k++) d += (v[k] - p.vec[k]) ** 2;
+      return Math.sqrt(d);
+    };
+    if (!this.centers.length) {
+      this.centers.push({ v: Float32Array.from(p.vec), n: 1 });
+      return (this.last = "S1");
+    }
+    let best = 0;
     let bd = Infinity;
     this.centers.forEach((c, i) => {
-      let d = 0;
-      for (let k = 0; k < c.v.length; k++) d += (c.v[k] - p.vec[k]) ** 2;
-      d = Math.sqrt(d);
-      if (d < bd) {
-        bd = d;
-        best = i;
-      }
+      const d = dist(c.v);
+      if (d < bd) [bd, best] = [d, i];
     });
-    if (best < 0 || (bd > this.threshold && this.centers.length < this.maxSpeakers)) {
-      this.centers.push({ v: Float32Array.from(p.vec), n: 1 });
-      best = this.centers.length - 1;
-    } else {
-      const c = this.centers[best];
-      c.n++;
-      const a = Math.max(1 / c.n, 0.08);
-      for (let k = 0; k < c.v.length; k++) c.v[k] += (p.vec[k] - c.v[k]) * a;
+    if (this.candidate && ++this.candidate.age > 4) this.candidate = null;
+    if (bd > this.threshold && this.centers.length < this.maxSpeakers && p.voiced >= 1) {
+      if (this.candidate && dist(this.candidate.v) < this.agree) {
+        const v = Float32Array.from(this.candidate.v);
+        for (let k = 0; k < v.length; k++) v[k] = (v[k] + p.vec[k]) / 2;
+        this.centers.push({ v, n: 2 });
+        this.candidate = null;
+        return (this.last = `S${this.centers.length}`);
+      }
+      this.candidate = { v: Float32Array.from(p.vec), age: 0 };
+      return this.last;
     }
-    this.last = `S${best + 1}`;
-    return this.last;
+    if (bd > this.threshold) return this.last; // a one-off odd phrase: don't drag a voice towards it
+    const c = this.centers[best];
+    c.n++;
+    const a = Math.max(1 / c.n, 0.05);
+    for (let k = 0; k < c.v.length; k++) c.v[k] += (p.vec[k] - c.v[k]) * a;
+    return (this.last = `S${best + 1}`);
   }
 }
 

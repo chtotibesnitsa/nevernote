@@ -19,10 +19,21 @@ describe("voice clustering", () => {
     const b1 = t.assign(voiceprint(voice(230, 1.6)));
     const a2 = t.assign(voiceprint(voice(112, 1.0)));
     const b2 = t.assign(voiceprint(voice(228, 1.6)));
+    const a3 = t.assign(voiceprint(voice(111, 1.0)));
+    const b3 = t.assign(voiceprint(voice(231, 1.6)));
     expect(a1).toBe("S1");
-    expect(b1).toBe("S2");
-    expect(a2).toBe(a1);
-    expect(b2).toBe(b1);
+    // A new voice needs a second phrase to confirm it.
+    expect(b1).toBe("S1");
+    expect(a2).toBe("S1");
+    expect(b2).toBe("S2");
+    expect(a3).toBe("S1");
+    expect(b3).toBe("S2");
+  });
+  it("keeps one voice as one speaker when its pitch and tone wander", () => {
+    const t = new SpeakerTracker();
+    const seen = new Set<string>();
+    for (let i = 0; i < 30; i++) seen.add(t.assign(voiceprint(voice(105 + ((i * 7) % 25), 0.9 + ((i * 3) % 5) * 0.06))));
+    expect([...seen]).toEqual(["S1"]);
   });
   it("returns null for silence", () => {
     expect(voiceprint(new Float32Array(16000))).toBeNull();

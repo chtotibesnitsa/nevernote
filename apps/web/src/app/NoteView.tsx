@@ -284,11 +284,13 @@ function FolderChip({ note }: { note: Note }) {
 // ---------------- Transcript ----------------
 
 function Transcript({ note, live }: { note: Note; live: boolean }) {
-  const { update, rec } = useApp();
+  const { update, rec, preview } = useApp();
   const [banner, setBanner] = useState(true);
   const [find, setFind] = useState("");
-  const end = useRef<HTMLDivElement>(null);
-  const stick = useRef(true);
+  const box = useRef<HTMLDivElement>(null);
+  const stick = useRef(live); // a finished class opens at the top, a live one follows along
+  const [behind, setBehind] = useState(false);
+  const draft = live && preview?.note === note.id ? preview.text : "";
   const speakers = useMemo(() => {
     const ids = [...new Set(note.segments.map((s) => s.speaker).filter(Boolean))] as string[];
     return new Map(ids.map((id, i) => [id, { color: SPEAKER_TINTS[i % SPEAKER_TINTS.length], name: note.speakers.find((s) => s.id === id)?.name ?? id }]));
@@ -296,14 +298,24 @@ function Transcript({ note, live }: { note: Note; live: boolean }) {
   const flagged = useMemo(() => new Map(note.extractions.filter((e) => e.segmentId).map((e) => [e.segmentId!, e])), [note.extractions]);
   const shown = find ? note.segments.filter((s) => s.text.toLowerCase().includes(find.toLowerCase())) : note.segments;
 
+  // The transcript scrolls inside its own box, so the page never grows. It follows
+  // new words only while you're at the bottom; scroll up and it stays put.
+  const onScroll = () => {
+    const el = box.current!;
+    stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
+    if (stick.current) setBehind(false);
+  };
+  const toEnd = () => {
+    const el = box.current;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    stick.current = true;
+    setBehind(false);
+  };
   useEffect(() => {
-    const onScroll = () => (stick.current = window.innerHeight + window.scrollY > document.body.scrollHeight - 200);
-    addEventListener("scroll", onScroll);
-    return () => removeEventListener("scroll", onScroll);
-  }, []);
-  useEffect(() => {
-    if (live && stick.current) end.current?.scrollIntoView({ behavior: "smooth", block: "end" });
-  }, [note.segments.length, live]);
+    if (stick.current) requestAnimationFrame(toEnd);
+    else if (live) setBehind(true);
+  }, [note.segments.length, draft, live]);
 
   const rename = (id: string) => {
     const name = prompt(`Who is ${speakers.get(id)?.name}?`, speakers.get(id)?.name);
@@ -335,11 +347,13 @@ function Transcript({ note, live }: { note: Note; live: boolean }) {
       </div>
 
       {live && <div className="mt-4"><EnginePanel empty={note.segments.length === 0} /></div>}
-      {note.segments.length === 0 ? (
+      <div className="relative mt-3">
+      <div ref={box} onScroll={onScroll} className="h-[calc(100dvh-420px)] min-h-[300px] overflow-y-auto md:h-[calc(100dvh-370px)] overscroll-contain rounded-2xl pb-28 pr-1 [overflow-anchor:none] md:pb-20">
+      {note.segments.length === 0 && !draft ? (
         <div className="mt-16 text-center text-[var(--mute)]">
           {live ? (
             <span className="inline-flex items-center gap-2">
-              <StatusDot dot="red" live /> Listening. Words appear a moment after each pause.
+              <StatusDot dot="red" live /> Listening. Words appear as they're spoken.
             </span>
           ) : (
             "No words in this note yet."
@@ -372,10 +386,29 @@ function Transcript({ note, live }: { note: Note; live: boolean }) {
               );
             })}
           </AnimatePresence>
+          {draft && (
+            <div className="flex items-start gap-3 px-1 py-1 md:gap-4">
+              <span className="mt-[5px] hidden w-12 shrink-0 text-right font-mono text-[11.5px] text-[var(--mute)] md:block">now</span>
+              <div className="min-w-0 flex-1 border-l-2 border-dashed border-[var(--line)] pl-3 text-[17px] leading-relaxed text-[var(--mute)]">
+                {draft}
+                <span className="ml-0.5 inline-block h-[1.05em] w-[2px] translate-y-[3px] animate-pulse bg-[var(--mute)]" />
+              </div>
+            </div>
+          )}
         </div>
       )}
-      <div ref={end} />
       <p className="mt-10 text-center text-[13px] text-[var(--mute)]">Always get consent when recording others.</p>
+      </div>
+      <AnimatePresence>
+        {behind && (
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="absolute inset-x-0 bottom-28 z-10 flex justify-center md:bottom-24">
+            <button onClick={toEnd} className="rounded-full bg-[var(--fg)] px-4 py-2 text-[13px] font-medium text-[var(--bg)] shadow-lg">
+              ↓ New words
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      </div>
     </div>
   );
 }
