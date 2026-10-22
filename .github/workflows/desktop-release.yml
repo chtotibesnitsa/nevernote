@@ -13,6 +13,7 @@ permissions:
 
 jobs:
   # When started by hand, tag this commit v<desktop version> so the release has a tag.
+  # A re-run before the release is published moves the tag to the new commit.
   tag:
     runs-on: ubuntu-latest
     steps:
@@ -20,10 +21,13 @@ jobs:
       - if: github.event_name == 'workflow_dispatch'
         run: |
           v="v$(node -p "require('./apps/desktop/package.json').version")"
-          git fetch --tags -q
-          if ! git rev-parse -q --verify "refs/tags/$v" >/dev/null; then
-            git tag "$v" && git push origin "$v"
+          if gh release view "$v" --json isDraft -q .isDraft 2>/dev/null | grep -q false; then
+            echo "$v is already published; leaving its tag alone"
+          else
+            git tag -f "$v" && git push -f origin "refs/tags/$v"
           fi
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build:
     needs: tag
     strategy:
