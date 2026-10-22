@@ -14,8 +14,11 @@ import {
   tombstone,
   type Extraction,
   type Note,
+  type Feature,
   type Plan,
   type Segment,
+  type Tier,
+  unlockStep,
   type Stage,
   type UpsellMoment,
   type UpsellState,
@@ -105,6 +108,13 @@ interface Ctx {
   proOpen: string | false;
   openPro(reason?: string): void;
   closePro(): void;
+  /** Guest (no account yet), free account, or Pro. */
+  tier: Tier;
+  signupOpen: string | false;
+  openSignup(reason?: string): void;
+  closeSignup(): void;
+  /** True if this tier can use the feature; otherwise opens the sign-up or Pro sheet and returns false. */
+  need(f: Feature, reason?: string): boolean;
   nudge(moment: UpsellMoment): void;
   modelsReady: boolean | undefined;
   downloadModels(): Promise<void>;
@@ -142,6 +152,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [settings, setSettingsState] = useState<Settings>(() => readJSON("nn:settings", DEFAULT_SETTINGS));
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [proOpen, setProOpen] = useState<string | false>(false);
+  const [signupOpen, setSignupOpen] = useState<string | false>(false);
   const [rec, setRec] = useState<Omit<Ctx["rec"], "level">>({ state: "idle", elapsed: 0 });
   const [modelsReady, setModelsReady] = useState<boolean | undefined>(isDesktop ? undefined : true);
 
@@ -208,6 +219,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setProOpen(reason ?? "menu");
     track("pro_opened", { reason });
   }, []);
+
+  // Without a sync server there's no account to make, so everything that doesn't need Pro is open.
+  const tier: Tier = plan === "pro" ? "pro" : cloudEnabled && (!session || session.user.is_anonymous) ? "guest" : "free";
+  const openSignup = useCallback((reason?: string) => {
+    setSignupOpen(reason ?? "menu");
+    track("signup_opened", { reason });
+  }, []);
+  const need = useCallback(
+    (f: Feature, reason?: string) => {
+      const step = unlockStep(tier, f);
+      if (step === "signup") openSignup(reason ?? f);
+      else if (step === "pro") openPro(reason ?? f);
+      return step === null;
+    },
+    [tier, openSignup, openPro],
+  );
 
   const nudge = useCallback(
     (moment: UpsellMoment) => {
@@ -299,6 +326,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (id: string, sponsored = false) => {
       const n = notesRef.current.find((x) => x.id === id);
       if (!n || !n.segments.length) return;
+      // Guests get their transcript; AI notes are the first thing a free account adds.
+      if (session?.user.is_anonymous) {
+        openSignup("summary");
+        return;
+      }
       if (!session || !online) {
         update(id, { stage: "queued" });
         return;
@@ -325,7 +357,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         toast({ title: "Couldn't write notes yet", body: "Saved; Nevernote will try again when the connection is better." });
       }
     },
-    [session, online, update, syncNow, nudge, toast],
+    [session, online, update, syncNow, nudge, toast, openSignup],
   );
 
   // Back online: write notes for everything that was waiting.
@@ -784,6 +816,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     proOpen,
     openPro,
     closePro: () => setProOpen(false),
+    tier,
+    signupOpen,
+    openSignup,
+    closeSignup: () => setSignupOpen(false),
+    need,
     nudge,
     modelsReady,
     downloadModels,

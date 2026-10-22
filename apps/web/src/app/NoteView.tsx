@@ -8,16 +8,19 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button, Chip, fmtClock, soft, spring, StageDots, StatusDot } from "../components/ui.tsx";
 import { ask, cloudEnabled } from "../lib/cloud.ts";
 import { download, icsFor } from "../lib/ics.ts";
+import { cardsOf, exportDoc, exportFlashcards, exportMarkdown, exportPdf, noteMarkdown } from "../lib/export.ts";
+import { unlockStep } from "@nevernote/core";
+import { LockBadge } from "../components/ui.tsx";
 import { CutBanner, EnginePanel } from "./RecordingUI.tsx";
 import { useApp } from "./state.tsx";
 
 type Tab = "thoughts" | "transcript" | "summary";
 
-const SPEAKER_TINTS = ["#6b4f3a", "#3f6f8a", "#7a5a8c", "#3f8a64", "#a2613a", "#5d6b3a", "#8a3f4f"];
+const SPEAKER_TINTS = ["#1d1d1f", "#4a6890", "#7d6d5b", "#5d6b62", "#6b5f78", "#3f5f6f", "#8a6a6a"];
 
 export function NoteView() {
   const { id = "" } = useParams();
-  const { get, load, update, remove, rec, pause, resume, stop } = useApp();
+  const { get, load, update, remove, rec, pause, resume, stop, need, tier, toast } = useApp();
   const nav = useNavigate();
   const note = get(id);
   const [tab, setTab] = useState<Tab>("transcript");
@@ -35,7 +38,7 @@ export function NoteView() {
 
   if (!note) return <div className="p-10 text-[var(--mute)]">Opening…</div>;
   const live = rec.noteId === id && rec.state !== "idle";
-  const md = note.summary ? `# ${note.title}\n\n${note.summary.notes}` : note.segments.map((s) => `${s.speaker ?? ""} ${s.text}`).join("\n");
+  const md = noteMarkdown(note);
 
   return (
     <div className="flex w-full flex-1 gap-8 px-5 md:px-8 xl:px-10">
@@ -46,7 +49,7 @@ export function NoteView() {
         </button>
         <div className="relative flex items-center gap-2">
           <CalendarButton note={note} />
-          <Button variant="glass" className="!py-1.5" onClick={() => navigator.clipboard.writeText(md)}>
+          <Button variant="glass" className="!py-1.5" onClick={() => void navigator.clipboard.writeText(md).then(() => toast({ title: "Copied", body: "Paste it anywhere, it's Markdown." }))}>
             <Copy size={14} /> Copy
           </Button>
           <button onClick={() => setMenu((m) => !m)} className="grid h-9 w-9 place-items-center rounded-full hover:bg-[var(--bubble)]" aria-label="More">
@@ -54,22 +57,23 @@ export function NoteView() {
           </button>
           <AnimatePresence>
             {menu && (
-              <motion.div initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={spring} className="glass-strong absolute right-0 top-11 z-20 w-48 rounded-2xl p-1.5">
-                <button
-                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-[var(--bubble)]"
-                  onClick={() => download(`${note.title}.md`, md, "text/markdown")}
-                >
-                  Export Markdown
-                </button>
-                {note.summary && (
-                  <button
-                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm hover:bg-[var(--bubble)]"
-                    onClick={() => download(`${note.title} flashcards.txt`, flashcards(note.summary!), "text/tab-separated-values")}
-                    title="Imports into Anki and Quizlet"
-                  >
-                    Export flashcards
-                  </button>
-                )}
+              <motion.div initial={{ opacity: 0, scale: 0.95, y: -4 }} animate={{ opacity: 1, scale: 1, y: 0 }} exit={{ opacity: 0, scale: 0.95 }} transition={spring} className="panel absolute right-0 top-11 z-20 w-[272px] !rounded-2xl p-1.5">
+                <div className="px-3 pb-1 pt-1.5 text-[10.5px] font-semibold uppercase tracking-[0.08em] text-[var(--mute)]">Export</div>
+                {([
+                  ["Notion or Obsidian (Markdown)", "export", () => exportMarkdown(note)],
+                  ["Google Docs or Word", "export", () => exportDoc(note)],
+                  ["PDF", "export", () => exportPdf(note) || toast({ title: "Allow pop-ups to save a PDF" })],
+                  ["Flashcards for Anki, Quizlet", "flashcards", () => (note.summary ? exportFlashcards(note.title, cardsOf(note.summary)) : toast({ title: "Flashcards come from the AI notes", body: "Write this class's notes first." }))],
+                ] as const).map(([label, f, run]) => {
+                  const step = unlockStep(tier, f);
+                  return (
+                    <button key={label} className="flex w-full items-center justify-between gap-2 rounded-xl px-3 py-2 text-left text-sm hover:bg-[var(--bubble)]" onClick={() => need(f, f) && (run(), setMenu(false))}>
+                      {label}
+                      {step && <LockBadge step={step} />}
+                    </button>
+                  );
+                })}
+                <div className="my-1 h-px bg-[var(--line)]" />
                 <button
                   className="flex w-full items-center gap-2 rounded-xl px-3 py-2 text-sm text-[var(--color-dot-red)] hover:bg-[var(--bubble)]"
                   onClick={async () => {
@@ -89,7 +93,7 @@ export function NoteView() {
       <input
         value={note.title}
         onChange={(e) => update(note.id, { title: e.target.value })}
-        className="title-serif mt-4 w-full bg-transparent text-[2.6rem] leading-tight outline-none md:text-[3.2rem]"
+        className="title-serif mt-4 w-full bg-transparent text-[2.4rem] leading-tight outline-none md:text-[3rem]"
         aria-label="Title"
       />
       <div className="mt-3 flex flex-wrap items-center gap-2">
@@ -130,7 +134,7 @@ export function NoteView() {
                 value={note.thoughts}
                 onChange={(e) => update(note.id, { thoughts: e.target.value })}
                 placeholder="Jot anything. Your notes get folded into the AI summary."
-                className="min-h-[50vh] w-full resize-none bg-transparent font-serif text-[19px] leading-relaxed outline-none placeholder:text-[var(--mute)]"
+                className="min-h-[50vh] w-full resize-none bg-transparent text-[18px] leading-relaxed outline-none placeholder:text-[var(--mute)]"
               />
             )}
           </motion.div>
@@ -163,7 +167,7 @@ function Inspector({ note, live }: { note: Note; live: boolean }) {
     const exists = note.speakers.some((s) => s.id === id);
     update(note.id, { speakers: exists ? note.speakers.map((s) => (s.id === id ? { ...s, name } : s)) : [...note.speakers, { id, name, share: 0 }] });
   };
-  const box = "rounded-[20px] border border-[var(--line)] bg-[var(--card)] p-4";
+  const box = "panel !rounded-[20px] p-4";
   return (
     <aside className="sticky top-16 hidden h-fit max-h-[calc(100dvh-5rem)] w-[320px] shrink-0 space-y-3 overflow-y-auto pb-6 pt-12 lg:block">
       <div className={box}>
@@ -434,7 +438,7 @@ function highlight(text: string, q: string) {
   return (
     <>
       {text.slice(0, i)}
-      <mark className="rounded bg-[var(--color-clay)]/30 px-0.5 text-inherit">{text.slice(i, i + q.length)}</mark>
+      <mark className="rounded bg-[#ffe58a] px-0.5 text-inherit">{text.slice(i, i + q.length)}</mark>
       {text.slice(i + q.length)}
     </>
   );
@@ -454,14 +458,6 @@ function FlagTag({ e }: { e: Extraction }) {
 
 // ---------------- Summary ----------------
 
-/** Study guide and key terms as tab-separated front/back pairs: Anki and Quizlet both import this as is. */
-function flashcards(s: NonNullable<Note["summary"]>) {
-  const clean = (t: string) => t.replace(/[\t\n]+/g, " ").trim();
-  const qa = [...s.studyGuide, ...(s.updates ?? []).flatMap((u) => u.studyGuide)].map((q) => [q.question, q.answer]);
-  const terms = [...s.keyTerms, ...(s.updates ?? []).flatMap((u) => u.keyTerms)].map((t) => [t.term, t.definition]);
-  return [...qa, ...terms].map(([a, b]) => `${clean(a)}\t${clean(b)}`).join("\n");
-}
-
 const clock = (sec: number) => {
   const t = Math.max(0, Math.round(sec));
   const h = Math.floor(t / 3600);
@@ -471,7 +467,7 @@ const clock = (sec: number) => {
 };
 
 function SummaryTab({ note }: { note: Note }) {
-  const { session, online, summarize, plan } = useApp();
+  const { session, online, summarize, plan, tier, openSignup } = useApp();
   const [sponsor, setSponsor] = useState(false);
   const s = note.summary;
   const due = note.extractions.filter((e) => e.kind !== "important");
@@ -481,7 +477,7 @@ function SummaryTab({ note }: { note: Note }) {
     const info = stageInfo(note.stage);
     return (
       <div className="space-y-8">
-        <div className="rounded-3xl border border-dashed border-[var(--line)] p-8 text-center">
+        <div className="panel !rounded-3xl p-8 text-center">
           <div className="inline-flex items-center gap-2">
             <StatusDot dot={info.dot} live={info.live} />
             <span className="font-medium">{info.label}</span>
@@ -496,7 +492,9 @@ function SummaryTab({ note }: { note: Note }) {
             <p className="mx-auto mt-3 max-w-md text-[15px] text-[var(--ink-2)]">
               {!cloudEnabled
                 ? "AI notes need the Nevernote sync server. Your transcript and the due dates below are already here."
-                : !session
+                : tier === "guest"
+                  ? "Your transcript is saved. Sign up free and Nevernote writes the notes, a study guide and key terms for this class."
+                  : !session
                   ? "Sign in (free) and Nevernote writes notes, a study guide and key terms for every class."
                   : !online
                     ? "You're offline. This class is saved, and its notes get written the moment you're back on Wi-Fi."
@@ -505,7 +503,14 @@ function SummaryTab({ note }: { note: Note }) {
                       : "Ready when you are."}
             </p>
           )}
-          {cloudEnabled && session && online && note.segments.length > 0 && note.stage !== "summarising" && (
+          {tier === "guest" && (
+            <div className="mt-5 flex justify-center">
+              <Button variant="primary" className="!px-6 !py-3" onClick={() => openSignup("summary")}>
+                <Sparkles size={15} /> Sign up free to write my notes
+              </Button>
+            </div>
+          )}
+          {cloudEnabled && tier !== "guest" && session && online && note.segments.length > 0 && note.stage !== "summarising" && (
             <div className="mt-5 flex justify-center gap-2">
               <Button variant="primary" onClick={() => summarize(note.id)}>
                 <Sparkles size={15} /> Write my notes
@@ -533,7 +538,7 @@ function SummaryTab({ note }: { note: Note }) {
         dangerouslySetInnerHTML={{ __html: marked.parse(s.notes, { async: false }) as string }}
       />
       {(s.updates ?? []).map((u, i) => (
-        <section key={u.at} className="relative rounded-3xl border border-[var(--line)] bg-[var(--card)] p-5 md:p-6">
+        <section key={u.at} className="panel relative !rounded-3xl p-5 md:p-6">
           <div className="mb-3 flex flex-wrap items-center gap-2">
             <span className="rounded-full bg-[var(--fg)] px-2.5 py-0.5 text-[11.5px] font-semibold text-[var(--bg)]">Update {i + 1}</span>
             <span className="text-[13px] font-medium">{new Date(u.at).toLocaleString(undefined, { weekday: "short", month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
@@ -567,7 +572,7 @@ function SummaryTab({ note }: { note: Note }) {
           <dl className="grid gap-3 sm:grid-cols-2">
             {s.keyTerms.map((t) => (
               <div key={t.term} className="rounded-2xl bg-[var(--bubble)] p-4">
-                <dt className="font-serif text-lg">{t.term}</dt>
+                <dt className="text-[16px] font-semibold">{t.term}</dt>
                 <dd className="mt-1 text-sm text-[var(--ink-2)]">{t.definition}</dd>
               </div>
             ))}
@@ -580,18 +585,19 @@ function SummaryTab({ note }: { note: Note }) {
 }
 
 function DueList({ items, note }: { items: Extraction[]; note: Note }) {
+  const { need } = useApp();
   if (!items.length) return null;
   return (
     <section>
       <h3 className="eyebrow mb-3">Due dates & tests</h3>
-      <div className="divide-y divide-[var(--line)] overflow-hidden rounded-2xl border border-[var(--line)]">
+      <div className="panel divide-y divide-[var(--line)] overflow-hidden !rounded-2xl">
         {items.map((e) => (
           <div key={e.id} className="flex items-center gap-4 bg-[var(--card)] px-4 py-3">
             <div className="w-14 shrink-0 text-center">
               {e.when ? (
                 <>
                   <div className="text-[11px] font-semibold uppercase text-[var(--color-dot-red)]">{new Date(e.when).toLocaleDateString(undefined, { month: "short" })}</div>
-                  <div className="font-serif text-2xl leading-none">{new Date(e.when).getDate()}</div>
+                  <div className="title-serif text-2xl leading-none">{new Date(e.when).getDate()}</div>
                 </>
               ) : (
                 <span className="text-xs text-[var(--mute)]">no date</span>
@@ -602,7 +608,7 @@ function DueList({ items, note }: { items: Extraction[]; note: Note }) {
               <div className="truncate text-[13px] text-[var(--mute)]">“{e.phrase}”</div>
             </div>
             {e.when && (
-              <button onClick={() => download(`${e.title}.ics`, icsFor([e], note.folder))} className="rounded-full p-2 text-[var(--ink-2)] hover:bg-[var(--bubble)]" title="Add to calendar">
+              <button onClick={() => need("calendarFile", "calendarFile") && download(`${e.title}.ics`, icsFor([e], note.folder))} className="rounded-full p-2 text-[var(--ink-2)] hover:bg-[var(--bubble)]" title="Add to calendar">
                 <CalendarPlus size={17} />
               </button>
             )}
@@ -619,7 +625,7 @@ function Important({ items }: { items: Extraction[] }) {
       <h3 className="eyebrow mb-3">They said this matters</h3>
       <ul className="space-y-2">
         {items.map((e) => (
-          <li key={e.id} className="rounded-2xl border-l-[3px] border-[var(--color-clay)] bg-[var(--bubble)] px-4 py-3 font-serif text-[17px] italic">
+          <li key={e.id} className="rounded-2xl border-l-[3px] border-[var(--fg)] bg-[var(--bubble)] px-4 py-3 text-[16.5px] font-medium">
             “{e.phrase}”
           </li>
         ))}
@@ -645,8 +651,8 @@ function StudyGuide({ qa }: { qa: { question: string; answer: string }[] }) {
               style={{ transformStyle: "preserve-3d" }}
               className="relative min-h-[120px] rounded-2xl text-left"
             >
-              <span className="absolute inset-0 rounded-2xl border border-[var(--line)] bg-[var(--card)] p-4 [backface-visibility:hidden]">
-                <span className="font-serif text-lg leading-snug">{q.question}</span>
+              <span className="panel absolute inset-0 !rounded-2xl p-4 [backface-visibility:hidden]">
+                <span className="text-[16px] font-semibold leading-snug">{q.question}</span>
               </span>
               <span className="absolute inset-0 rounded-2xl bg-[var(--fg)] p-4 text-[15px] text-[var(--bg)] [backface-visibility:hidden] [transform:rotateY(180deg)]">{q.answer}</span>
             </motion.button>
@@ -678,7 +684,7 @@ function SponsorCard({ open, onDone, onClose }: { open: boolean; onDone: () => v
           <div className="text-xs uppercase tracking-widest opacity-60">Sponsored · {left}s</div>
           <div className="title-serif mt-2 text-2xl">Nevernote is free because of people like you.</div>
           <p className="mt-1 text-sm opacity-80">Star it on GitHub, tell a friend in your class, or go Pro to skip this forever.</p>
-          <motion.div className="absolute bottom-0 left-0 h-1 bg-[var(--color-clay)]" initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 5, ease: "linear" }} />
+          <motion.div className="absolute bottom-0 left-0 h-1 bg-white/70" initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 5, ease: "linear" }} />
         </motion.div>
       )}
     </AnimatePresence>
@@ -688,16 +694,15 @@ function SponsorCard({ open, onDone, onClose }: { open: boolean; onDone: () => v
 // ---------------- Bottom bar ----------------
 
 function BottomBar({ note, live, onPause, onResume, onStop }: { note: Note; live: boolean; onPause: () => void; onResume: () => void; onStop: () => Promise<void> }) {
-  const { rec, plan, nudge, openPro, session } = useApp();
+  const { rec, plan, nudge, openPro, need } = useApp();
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
 
   const submit = async (question: string) => {
     if (!question.trim()) return;
-    if (plan !== "pro" || !session) {
-      nudge("askedQuestion");
-      openPro("ask");
+    if (!need("askNotes", "ask")) {
+      if (plan !== "pro") nudge("askedQuestion");
       return;
     }
     setAsking(true);
@@ -749,8 +754,8 @@ function BottomBar({ note, live, onPause, onResume, onStop }: { note: Note; live
               What did I miss?
             </button>
             {plan !== "pro" && (
-              <button type="button" onClick={() => openPro("ask")} className="hidden rounded-full px-2 text-[11px] font-semibold text-[var(--color-leather)] sm:block dark:text-[var(--color-clay)]">
-                PRO
+              <button type="button" onClick={() => openPro("ask")} className="hidden sm:block">
+                <LockBadge step="pro" />
               </button>
             )}
           </form>
@@ -762,18 +767,19 @@ function BottomBar({ note, live, onPause, onResume, onStop }: { note: Note; live
 }
 
 function CalendarButton({ note }: { note: Note }) {
-  const { plan, openPro } = useApp();
+  const { tier, need, openPro } = useApp();
+  const nav = useNavigate();
   const dated = note.extractions.filter((e) => e.when && e.kind !== "important");
   return (
     <Button
       variant="glass"
       className="!py-1.5"
       onClick={() => {
-        if (plan === "pro") download(`${note.title}.ics`, icsFor(dated, note.folder));
-        else if (dated.length) {
-          download(`${note.title}.ics`, icsFor(dated, note.folder));
-          setTimeout(() => openPro("calendar"), 600);
-        } else openPro("calendar");
+        if (!need("calendarFile", "calendarFile")) return;
+        if (tier === "pro" && !dated.length) return nav("/app/settings");
+        if (dated.length) download(`${note.title}.ics`, icsFor(dated, note.folder));
+        // Free: the file, then a nudge that Pro adds every new date on its own.
+        if (tier === "free") setTimeout(() => openPro("calendar"), dated.length ? 600 : 0);
       }}
     >
       <CalendarPlus size={14} /> {dated.length ? `${dated.length} to calendar` : "Connect calendar"}

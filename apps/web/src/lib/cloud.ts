@@ -72,3 +72,11 @@ export function track(kind: string, meta: Record<string, unknown> = {}, device?:
     if (data.session) void supabase!.from("usage_events").insert({ user_id: data.session.user.id, kind, device, meta });
   });
 }
+
+/** Pro: the student's live calendar feed, as https and webcal links. */
+export async function calendarFeed(): Promise<{ https: string; webcal: string } | { error: string }> {
+  const { data, error } = await supabase!.functions.invoke("calendar", { body: {} });
+  if (error || !data?.token) return { error: (error as { context?: { status?: number } } | null)?.context?.status === 402 ? "pro" : "unavailable" };
+  const https = `${url}/functions/v1/calendar?t=${data.token}`;
+  return { https, webcal: https.replace(/^https:/, "webcal:") };
+}

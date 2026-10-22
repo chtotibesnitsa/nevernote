@@ -8,6 +8,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   const user = await userFrom(req);
   if (!user) return json({ error: "sign in first" }, 401);
+  if (user.guest) return json({ error: "signup" }, 403);
   if (user.plan !== "pro") return json({ error: "pro", upsell: "askedQuestion" }, 402);
   const { question, noteIds } = await req.json().catch(() => ({}));
   if (typeof question !== "string" || !question.trim()) return json({ error: "question required" }, 400);

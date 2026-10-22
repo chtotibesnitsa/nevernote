@@ -15,12 +15,35 @@ export type Feature =
   | "calendarSync"
   | "instantUnlimitedSummaries"
   | "examPack"
-  | "export";
+  | "export"
+  | "flashcards"
+  | "calendarFile";
 
-const PRO_ONLY = new Set<Feature>(["askNotes", "calendarSync", "instantUnlimitedSummaries", "examPack", "export"]);
+const PRO_ONLY = new Set<Feature>(["askNotes", "calendarSync", "instantUnlimitedSummaries", "examPack", "export", "flashcards"]);
 
 export function can(plan: Plan, f: Feature): boolean {
   return plan === "pro" || !PRO_ONLY.has(f);
+}
+
+/**
+ * Who's using the app: a guest (no account yet, notes only in this browser),
+ * a free account (signed in with Google) or Pro.
+ */
+export type Tier = "guest" | "free" | "pro";
+
+/** What a guest can't do until they sign up (free). Recording and transcription are never limited. */
+const ACCOUNT_ONLY = new Set<Feature>(["summary", "studyGuide", "sync", "insights", "calendarFile"]);
+
+export function tierCan(tier: Tier, f: Feature): boolean {
+  if (tier === "pro") return true;
+  if (PRO_ONLY.has(f)) return false;
+  return tier === "free" || !ACCOUNT_ONLY.has(f);
+}
+
+/** The step that unlocks a feature: "signup" (free account) or "pro". */
+export function unlockStep(tier: Tier, f: Feature): "signup" | "pro" | null {
+  if (tierCan(tier, f)) return null;
+  return PRO_ONLY.has(f) ? (tier === "guest" ? "signup" : "pro") : "signup";
 }
 
 export const PRICING = {

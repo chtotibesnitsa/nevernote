@@ -18,14 +18,14 @@ function dayLabel(d: Date): string {
   return d.toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" });
 }
 
-export function StartButton({ className = "" }: { className?: string }) {
+export function StartButton({ className = "", big }: { className?: string; big?: boolean }) {
   const { rec, start, modelsReady, rec: { engineProgress } } = useApp();
   const nav = useNavigate();
   const busy = rec.state !== "idle";
   return (
     <Button
       variant={busy ? "glass" : "primary"}
-      className={`!px-5 !py-2.5 ${className}`}
+      className={`${big ? "!px-7 !py-3.5 !text-[16px]" : "!px-5 !py-2.5"} ${className}`}
       onClick={async () => {
         if (busy && rec.noteId) return nav(`/app/note/${rec.noteId}`);
         const id = await start();
@@ -34,7 +34,7 @@ export function StartButton({ className = "" }: { className?: string }) {
     >
       <span className="relative grid h-4 w-4 place-items-center">
         <span className={`absolute inset-0 rounded-full border-2 ${busy ? "border-[var(--color-dot-red)]" : "border-current"}`} />
-        <motion.span layout className="h-1.5 w-1.5 rounded-full" style={{ background: busy ? "var(--color-dot-red)" : "currentColor" }} />
+        <motion.span layout className="h-2 w-2 rounded-full" style={{ background: "var(--color-dot-red)" }} />
       </span>
       {engineProgress !== undefined
         ? `Getting the offline engine… ${Math.round(engineProgress * 100)}%`
@@ -91,7 +91,7 @@ export function NoteCard({ n, i }: { n: Note; i: number }) {
     <motion.div layout initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: Math.min(i, 9) * 0.03 }}>
       <Link
         to={`/app/note/${n.id}`}
-        className="group flex h-full flex-col rounded-[20px] border border-[var(--line)] bg-[var(--card)] p-4 transition duration-300 hover:-translate-y-0.5 hover:shadow-[0_18px_40px_-24px_rgb(0_0_0/0.35)]"
+        className="panel group flex h-full flex-col !rounded-[20px] p-4 transition duration-300 hover:-translate-y-0.5"
       >
         <div className="flex items-center gap-2 text-[12px] text-[var(--mute)]">
           {n.folder && <span className="rounded-md bg-[var(--bubble)] px-1.5 py-0.5 font-medium text-[var(--ink-2)]">{n.folder}</span>}
@@ -178,7 +178,7 @@ export function Notes() {
       <aside className="sticky top-16 hidden h-fit w-[210px] shrink-0 lg:block">
         <div className="eyebrow px-3 pb-2">Classes</div>
         {[[null, "All notes", notes.length] as const, ...folders.map(([f, c]) => [f, f, c] as const)].map(([f, label, c]) => (
-          <button key={label} onClick={() => pick(f)} className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[14.5px] transition ${folder === f ? "bg-[var(--bubble)] font-medium text-[var(--fg)]" : "text-[var(--ink-2)] hover:bg-[var(--bubble)]/60"}`}>
+          <button key={label} onClick={() => pick(f)} className={`flex w-full items-center justify-between rounded-[12px] px-3 py-2 text-left text-[14.5px] transition ${folder === f ? "bg-[var(--card)] font-semibold text-[var(--fg)] shadow-[0_0_0_1px_var(--line),0_4px_10px_-6px_rgb(0_0_0/0.2)]" : "text-[var(--ink-2)] hover:bg-[var(--bubble)]"}`}>
             <span className="truncate">{label}</span>
             <span className="text-[12px] tabular-nums text-[var(--mute)]">{c}</span>
           </button>
@@ -187,17 +187,17 @@ export function Notes() {
 
       <div className="min-w-0 flex-1">
         <div className="flex flex-wrap items-center justify-between gap-4">
-          <h1 className="text-[2rem] font-semibold tracking-tight">{folder ?? "Notetaker"}</h1>
+          <h1 className="title-serif text-[2.2rem] leading-tight">{folder ?? "Notetaker"}</h1>
           <StartButton />
         </div>
         <div className="mt-6 flex items-center gap-3">
-          <div className="flex flex-1 items-center gap-3 rounded-2xl border border-[var(--line)] bg-[var(--card)] px-4">
+          <div className="flex flex-1 items-center gap-3 rounded-full bg-[var(--bubble)] px-4 shadow-[inset_0_0_0_1px_var(--line)]">
             <Search size={16} className="text-[var(--mute)]" />
             <input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search every word you've recorded" className="flex-1 bg-transparent py-2.5 text-[15px] outline-none placeholder:text-[var(--mute)]" />
           </div>
-          <div className="flex rounded-xl border border-[var(--line)] bg-[var(--card)] p-1">
+          <div className="flex rounded-full bg-[var(--bubble)] p-1 shadow-[inset_0_0_0_1px_var(--line)]">
             {(["grid", "list"] as const).map((v) => (
-              <button key={v} onClick={() => setMode(v)} aria-label={`${v} view`} className={`grid h-8 w-8 place-items-center rounded-lg transition ${view === v ? "bg-[var(--bubble)] text-[var(--fg)]" : "text-[var(--mute)]"}`}>
+              <button key={v} onClick={() => setMode(v)} aria-label={`${v} view`} className={`grid h-8 w-8 place-items-center rounded-full transition ${view === v ? "bg-[var(--card)] text-[var(--fg)] shadow-[0_1px_3px_rgb(0_0_0/0.15)]" : "text-[var(--mute)]"}`}>
                 {v === "grid" ? <LayoutGrid size={15} /> : <List size={15} />}
               </button>
             ))}
@@ -258,11 +258,11 @@ export function Skeletons({ rows = 5 }: { rows?: number }) {
 function Empty({ searching }: { searching: boolean }) {
   return (
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="mx-auto mt-20 max-w-sm text-center">
-      <div className="title-serif text-3xl">{searching ? "Nothing said that." : "A blank notebook."}</div>
+      <div className="title-serif text-[2rem]">{searching ? "Nothing said that." : "A blank notebook."}</div>
       <p className="mt-2 text-[15px] text-[var(--ink-2)]">
         {searching ? "Try another word. Search looks through every transcript." : "Start the Notetaker when class begins. Everything stays on this device until you sign in."}
       </p>
-      {!searching && <StartButton className="mt-6" />}
+      {!searching && <StartButton className="mt-6" big />}
     </motion.div>
   );
 }

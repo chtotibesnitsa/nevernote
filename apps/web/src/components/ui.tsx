@@ -56,20 +56,27 @@ export function Wave({ level, bars = 9, color = "var(--color-dot-green)", active
 type Variant = "primary" | "glass" | "ghost" | "danger";
 export function Button({ variant = "glass", className = "", children, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; children: ReactNode }) {
   const v: Record<Variant, string> = {
-    primary: "bg-[var(--fg)] text-[var(--bg)] shadow-[0_8px_24px_-10px_rgb(28_25_21/0.6)] hover:opacity-90",
-    glass: "glass text-[var(--fg)] hover:brightness-[1.03]",
+    primary: "press bg-[linear-gradient(180deg,#3a3a3c,#1d1d1f)] text-white dark:bg-[linear-gradient(180deg,#ffffff,#e5e5ea)] dark:text-[#1d1d1f]",
+    glass: "press-light bg-[var(--card)] text-[var(--fg)] hover:bg-[var(--bubble)]",
     ghost: "text-[var(--ink-2)] hover:bg-[var(--bubble)]",
-    danger: "bg-[var(--color-dot-red)] text-white",
+    danger: "press bg-[var(--color-dot-red)] text-white",
   };
   return (
-    <motion.button
-      whileTap={{ scale: 0.96 }}
-      transition={spring}
-      className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-[background,opacity,filter] disabled:opacity-50 ${v[variant]} ${className}`}
-      {...(rest as object)}
+    <button
+      className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-[background,opacity,transform,box-shadow] disabled:opacity-50 ${v[variant]} ${className}`}
+      {...rest}
     >
       {children}
-    </motion.button>
+    </button>
+  );
+}
+
+/** A small lock badge for features the current plan doesn't include yet. */
+export function LockBadge({ step }: { step: "signup" | "pro" }) {
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-[1px] text-[10px] font-bold uppercase tracking-wide ${step === "pro" ? "bg-[var(--fg)] text-[var(--bg)]" : "bg-[var(--bubble)] text-[var(--ink-2)] shadow-[inset_0_0_0_1px_var(--line)]"}`}>
+      {step === "pro" ? "Pro" : "Free account"}
+    </span>
   );
 }
 
@@ -77,7 +84,7 @@ export function Chip({ children, dashed, onClick }: { children: ReactNode; dashe
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] text-[var(--ink-2)] transition hover:bg-[var(--bubble)] ${dashed ? "border-dashed" : ""} border-[var(--line)]`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium text-[var(--ink-2)] transition hover:bg-[var(--bubble)] ${dashed ? "border-dashed" : ""} border-[var(--line)]`}
     >
       {children}
     </button>
@@ -114,7 +121,7 @@ export function Hmu({ compact }: { compact?: boolean }) {
 }
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-[var(--radius-glass)] border border-[var(--line)] bg-[var(--card)] ${className}`}>{children}</div>;
+  return <div className={`panel ${className}`}>{children}</div>;
 }
 
 export function fmtClock(sec: number): string {

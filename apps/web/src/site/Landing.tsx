@@ -350,7 +350,7 @@ function Chat() {
               <span className="grid h-11 w-11 place-items-center rounded-full bg-[linear-gradient(180deg,#a1a1a6,#6e6e73)] text-[17px] font-semibold text-white">N</span>
               <span className="text-[11.5px] font-medium">Nevernote <span className="text-[#8e8e93]">›</span></span>
             </div>
-            <div className="flex min-h-0 flex-1 flex-col justify-end gap-2 overflow-hidden px-3.5 pb-3">
+            <div className="flex min-h-0 flex-1 flex-col justify-start gap-2 overflow-hidden px-3.5 pb-3 pt-3">
               <div className="text-center text-[11px] text-[#8e8e93]"><b className="font-semibold">Today</b> 10:52 AM</div>
               {CHAT.map((m, i) => (
                 <motion.div key={i} initial={{ opacity: 0, y: 14, scale: 0.96 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: true }} transition={{ ...spring, delay: 0.2 + i * 0.4 }} className={`flex ${m.me ? "justify-end" : "justify-start"}`}>
@@ -1108,7 +1108,7 @@ function ProCard() {
       style={{ rotateX: rx, rotateY: ry, transformPerspective: 1400 }}
       className="relative rounded-[34px] p-[1.5px] [background:linear-gradient(150deg,#e8e8ec,#7c7c82_28%,#3a3a3e_52%,#c9c9ce_78%,#5c5c61)] shadow-[0_50px_100px_-40px_rgb(0_0_0/0.55),0_20px_40px_-30px_rgb(0_0_0/0.4)]"
     >
-      <div className="relative h-full overflow-hidden rounded-[33px] bg-[linear-gradient(180deg,#252527,#151517)] p-7 text-white md:p-9">
+      <div className="relative h-full overflow-hidden rounded-[33px] bg-[linear-gradient(180deg,#252527,#151517)] p-6 text-white md:p-8">
         <motion.div aria-hidden style={{ background: light }} className="pointer-events-none absolute inset-0" />
         <div className="absolute inset-0 rounded-[33px] shadow-[inset_0_1px_0_rgb(255_255_255/0.14)]" />
 
@@ -1154,7 +1154,7 @@ function ProCard() {
           </div>
           <p className="mt-2 text-[14px] text-white/60">Less than one coffee a month, for every class, all year.</p>
 
-          <div className="mt-6 grid grid-cols-2 gap-2.5">
+          <div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
             {PRO.map((f, k) => (
               <motion.div
                 key={f.t}
@@ -1162,10 +1162,10 @@ function ProCard() {
                 animate={on ? { opacity: 1, y: 0 } : {}}
                 transition={{ ...soft, delay: 0.1 + k * 0.08 }}
                 whileHover={{ y: -3 }}
-                className={`flex flex-col rounded-[20px] bg-white/[0.06] p-2.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.1)] ring-1 ring-white/[0.08] ${f.wide ? "col-span-2 sm:flex-row sm:items-center sm:gap-4" : ""}`}
+                className={`flex flex-col rounded-[20px] bg-white/[0.06] p-2.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.1)] ring-1 ring-white/[0.08] ${f.wide ? "col-span-2 sm:flex-row sm:items-center sm:gap-3" : ""}`}
               >
-                <div className={`min-h-[86px] rounded-[14px] bg-[#fbfbfd] p-2.5 shadow-[0_8px_18px_-10px_rgb(0_0_0/0.7)] ${f.wide ? "sm:order-2 sm:min-h-0 sm:flex-1" : ""}`}>{f.demo({ on })}</div>
-                <div className={f.wide ? "mt-2.5 px-1 sm:mt-0 sm:w-[44%]" : "mt-2.5 px-1 pb-0.5"}>
+                <div className={`min-h-[76px] rounded-[14px] bg-[#fbfbfd] p-2.5 shadow-[0_8px_18px_-10px_rgb(0_0_0/0.7)] ${f.wide ? "sm:order-2 sm:min-h-0 sm:flex-1" : ""}`}>{f.demo({ on })}</div>
+                <div className={f.wide ? "mt-2.5 px-1 sm:mt-0 sm:w-[40%]" : "mt-2.5 px-1 pb-0.5"}>
                   <div className="text-[14.5px] font-semibold tracking-tight text-white">{f.t}</div>
                   <div className="text-[12.5px] leading-snug text-white/55">{f.b}</div>
                 </div>
@@ -1173,9 +1173,9 @@ function ProCard() {
             ))}
           </div>
 
-          <div className="mt-7">
+          <div className="mt-6">
             <div className="text-[12.5px] font-semibold text-white">Also unlocks</div>
-            <ul className="mt-3 grid gap-x-5 gap-y-2.5 text-[13.5px] text-white/75 sm:grid-cols-2">
+            <ul className="mt-3 grid gap-x-5 gap-y-2 text-[13px] text-white/75 sm:grid-cols-2">
               {UNLOCKS.map((u, k) => (
                 <motion.li key={u} initial={{ opacity: 0, x: -6 }} animate={on ? { opacity: 1, x: 0 } : {}} transition={{ ...soft, delay: 0.5 + k * 0.06 }} className="flex items-start gap-2.5">
                   <span className="mt-[2px] grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-white text-[#1d1d1f] shadow-[0_2px_0_#8e8e93]">
@@ -1191,7 +1191,7 @@ function ProCard() {
 
           <Link
             to="/app/settings"
-            className="group relative mt-8 flex w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-white py-4 text-[16.5px] font-bold text-[#1d1d1f] shadow-[0_5px_0_#9a9aa0,0_24px_40px_-16px_rgb(0_0_0/0.8)] transition hover:-translate-y-0.5 active:translate-y-[4px] active:shadow-[0_1px_0_#9a9aa0]"
+            className="group relative mt-7 flex w-full items-center justify-center gap-2 overflow-hidden rounded-full bg-white py-4 text-[16.5px] font-bold text-[#1d1d1f] shadow-[0_5px_0_#9a9aa0,0_24px_40px_-16px_rgb(0_0_0/0.8)] transition hover:-translate-y-0.5 active:translate-y-[4px] active:shadow-[0_1px_0_#9a9aa0]"
           >
             {/* a slow sheen of light across the button */}
             <motion.span aria-hidden initial={{ x: "-120%" }} animate={{ x: "320%" }} transition={{ duration: 1.8, repeat: Infinity, repeatDelay: 3.4, ease: "easeInOut" }} className="absolute inset-y-0 left-0 w-1/3 skew-x-[-20deg] bg-gradient-to-r from-transparent via-black/[0.06] to-transparent" />
@@ -1206,14 +1206,14 @@ function ProCard() {
 
 function Pricing() {
   return (
-    <div className="mx-auto mt-16 grid max-w-[1080px] grid-cols-[minmax(0,1fr)] items-stretch gap-5 md:grid-cols-[minmax(0,0.82fr)_minmax(0,1.18fr)]">
-      <motion.div {...fade} className="card relative flex flex-col overflow-hidden !rounded-[34px] p-8 md:p-9">
+    <div className="mx-auto mt-16 grid max-w-[1120px] grid-cols-[minmax(0,1fr)] items-stretch gap-5 md:grid-cols-[minmax(0,0.78fr)_minmax(0,1.22fr)]">
+      <motion.div {...fade} className="card relative flex flex-col overflow-hidden !rounded-[34px] p-7 md:p-8">
         <h3 className="display text-[2.3rem] font-[780] leading-none tracking-[-0.045em] text-[#1d1d1f] md:text-[2.7rem]">Free <span className="soft">forever</span></h3>
         <div className="mt-5 flex items-end gap-3">
           <span className="display text-[4.6rem] leading-none tracking-[-0.045em] md:text-[5.2rem]">$0</span>
           <span className="pb-2 text-[14px] leading-tight text-[#6e6e73]">no limits<br />no card</span>
         </div>
-        <ul className="mt-8 space-y-3.5 text-[15.5px] text-[#1d1d1f]">
+        <ul className="mt-6 space-y-3 text-[15px] text-[#1d1d1f]">
           {FREE.map((f, i) => (
             <motion.li key={f} initial={{ opacity: 0, x: -8 }} whileInView={{ opacity: 1, x: 0 }} viewport={{ once: true }} transition={{ ...soft, delay: 0.1 + i * 0.06 }} className="flex items-center gap-3">
               <span className="grid h-[22px] w-[22px] shrink-0 place-items-center rounded-full bg-gradient-to-b from-[#3a3a3c] to-[#1d1d1f] text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.25),0_2px_4px_-1px_rgb(0_0_0/0.3)]">
@@ -1224,7 +1224,7 @@ function Pricing() {
           ))}
         </ul>
         {/* What a free class looks like when it's done. */}
-        <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ ...soft, delay: 0.5 }} className="relative mt-9">
+        <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ ...soft, delay: 0.5 }} className="relative mt-7">
           <div className="absolute inset-x-5 -bottom-2 h-full rounded-[20px] bg-white/50 ring-1 ring-black/5" />
           <div className="relative rounded-[20px] bg-white p-4 shadow-[0_14px_30px_-20px_rgb(0_0_0/0.35)] ring-1 ring-black/5">
             <div className="flex items-center justify-between text-[11.5px] text-[#86868b]">
@@ -1239,7 +1239,7 @@ function Pricing() {
             </div>
           </div>
         </motion.div>
-        <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ ...soft, delay: 0.6 }} className="mt-8 rounded-[20px] bg-[#f5f5f7] p-5">
+        <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ ...soft, delay: 0.6 }} className="mt-5 rounded-[20px] bg-[#f5f5f7] p-4">
           <div className="text-[14.5px] font-semibold text-[#1d1d1f]">Why free stays free</div>
           <p className="mt-1.5 text-[13.5px] leading-[1.55] text-[#6e6e73]">Transcription runs on your own phone or laptop, so a class costs us nothing to hear. AI notes cost a fraction of a cent each. There's nothing to run out of.</p>
           <div className="mt-4 grid grid-cols-3 gap-3 border-t border-black/[0.06] pt-4">
@@ -1251,7 +1251,18 @@ function Pricing() {
             ))}
           </div>
         </motion.div>
-        <div className="mt-auto pt-9"><Cta big>Start free</Cta></div>
+        <motion.div initial={{ opacity: 0, y: 12 }} whileInView={{ opacity: 1, y: 0 }} viewport={{ once: true }} transition={{ ...soft, delay: 0.7 }} className="mt-3 grid grid-cols-2 gap-2 text-[12.5px] leading-snug">
+          {[
+            ["As a guest", "Record and transcribe right away, no sign-up. Notes stay in this browser."],
+            ["With a free account", "Sign in with Google to unlock AI notes, study guides, sync and calendar files."],
+          ].map(([h, b]) => (
+            <div key={h} className="rounded-[16px] p-3.5 shadow-[inset_0_0_0_1px_rgb(0_0_0/0.07)]">
+              <div className="font-semibold text-[#1d1d1f]">{h}</div>
+              <div className="mt-1 text-[#6e6e73]">{b}</div>
+            </div>
+          ))}
+        </motion.div>
+        <div className="mt-auto pt-6"><Cta big>Start free</Cta></div>
         <p className="mt-4 text-[12.5px] leading-relaxed text-[#6e6e73]">Recording and transcription have no limits at all. AI notes: 3 instant a day, the rest arrive overnight or right away after a 5-second sponsor card.</p>
       </motion.div>
       <ProCard />

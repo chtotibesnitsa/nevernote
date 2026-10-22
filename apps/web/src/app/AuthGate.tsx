@@ -58,18 +58,17 @@ export function AuthGate() {
 
   return (
     <div className="site relative grid min-h-screen place-items-center overflow-hidden px-5">
-      <div className="liquid pointer-events-none absolute left-1/2 top-1/3 h-[520px] w-[620px] -translate-x-1/2 rounded-full bg-[radial-gradient(ellipse_at_center,rgb(232_151_62/0.28),transparent_62%)] blur-3xl" />
-      <motion.div initial={{ opacity: 0, y: 24, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={soft} className="glass relative w-full max-w-[420px] rounded-[32px] p-2">
-        <div className="rounded-[26px] bg-[var(--card)] px-7 pb-7 pt-8 text-center">
+      <motion.div initial={{ opacity: 0, y: 24, scale: 0.97 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={soft} className="relative w-full max-w-[440px] rounded-[32px] bg-white shadow-[0_0_0_1px_rgb(0_0_0/0.05),0_40px_80px_-40px_rgb(0_0_0/0.35)]">
+        <div className="px-7 pb-7 pt-9 text-center">
           <Link to="/" className="inline-block">
             <Logo size={22} />
           </Link>
-          <h1 className="title-serif mt-6 text-[2.4rem] leading-none">Save class for later.</h1>
+          <h1 className="title-serif mt-7 text-[2.6rem] leading-none">Save class for later.</h1>
           <p className="mt-3 text-[15px] text-[var(--ink-2)]">One account for your phone, laptop and the web. Free forever.</p>
           <button
             onClick={google}
             disabled={!!busy}
-            className="mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-[var(--fg)] py-3.5 font-medium text-[var(--bg)] shadow-[0_14px_34px_-14px_rgb(28_25_21/0.6)] transition hover:-translate-y-0.5 disabled:opacity-60"
+            className="press mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(180deg,#3a3a3c,#1d1d1f)] py-4 text-[16px] font-bold text-white disabled:opacity-60"
           >
             <span className="grid h-6 w-6 place-items-center rounded-full bg-white">
               <GoogleMark />
@@ -77,8 +76,8 @@ export function AuthGate() {
             {busy === "google" ? "Opening Google…" : "Continue with Google"}
           </button>
           {!isDesktop && (
-            <button onClick={guest} disabled={!!busy} className="mt-3 w-full rounded-full border border-[var(--line)] py-3.5 font-medium transition hover:bg-[var(--bubble)] disabled:opacity-60">
-              {busy === "guest" ? "Starting…" : "Try it as a guest"}
+            <button onClick={guest} disabled={!!busy} className="press-light mt-3 w-full rounded-full bg-white py-4 text-[16px] font-semibold transition hover:bg-[var(--bubble)] disabled:opacity-60">
+              {busy === "guest" ? "Starting…" : "Try it now as a guest"}
             </button>
           )}
           {!isDesktop && <p className="mt-3 text-xs text-[var(--mute)]">Guest notes live only in this browser until you sign up.</p>}
@@ -92,15 +91,16 @@ export function AuthGate() {
   );
 }
 
-/** Red bar on top of the app while a guest's notes exist only in this browser. */
+/** A slim bar on top of the app while a guest's notes exist only in this browser. */
 export function GuestBar() {
   const { session } = useApp();
   if (!session?.user.is_anonymous) return null;
   return (
-    <div className="sticky top-0 z-50 flex flex-wrap items-center justify-center gap-x-3 gap-y-1 bg-[var(--color-dot-red)] px-4 py-2 text-center text-sm text-white">
-      <span>Guest mode: all your history is lost if this browser resets.</span>
-      <button onClick={() => void upgradeGuest()} className="rounded-full bg-white px-3 py-0.5 text-sm font-semibold text-[var(--color-dot-red)] transition hover:opacity-90">
-        Sign up with Google to keep it, free forever
+    <div className="sticky top-0 z-50 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 bg-[#1d1d1f] px-4 py-2 text-center text-[13px] text-white/80">
+      <span>You're trying Nevernote as a guest. Sign up to keep your notes and unlock AI notes, sync and insights.</span>
+      <button onClick={() => void upgradeGuest()} className="inline-flex items-center gap-2 rounded-full bg-white py-1 pl-1 pr-3 text-[12.5px] font-bold text-[#1d1d1f] shadow-[0_2px_0_#9a9aa0] transition active:translate-y-[2px] active:shadow-none">
+        <span className="grid h-5 w-5 place-items-center rounded-full bg-white"><GoogleMark /></span>
+        Sign up free
       </button>
     </div>
   );

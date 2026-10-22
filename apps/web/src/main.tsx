@@ -2,12 +2,14 @@ import "./styles/index.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, HashRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Ask } from "./app/Ask.tsx";
 import { Home } from "./app/Home.tsx";
 import { Insights } from "./app/Insights.tsx";
 import { NoteView } from "./app/NoteView.tsx";
 import { Notes } from "./app/Notes.tsx";
 import { Settings } from "./app/Settings.tsx";
 import { Shell } from "./app/Shell.tsx";
+import { Study } from "./app/Study.tsx";
 import { AppProvider } from "./app/state.tsx";
 import { isDesktop } from "./lib/bridge.ts";
 import { Admin } from "./site/Admin.tsx";
@@ -28,6 +30,8 @@ function App() {
           <Route index element={<Home />} />
           <Route path="notes" element={<Notes />} />
           <Route path="note/:id" element={<NoteView />} />
+          <Route path="ask" element={<Ask />} />
+          <Route path="study" element={<Study />} />
           <Route path="insights" element={<Insights />} />
           <Route path="settings" element={<Settings />} />
         </Routes>

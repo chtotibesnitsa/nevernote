@@ -11,6 +11,7 @@ Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: cors });
   const user = await userFrom(req);
   if (!user) return json({ error: "sign in to summarise" }, 401);
+  if (user.guest) return json({ error: "signup", message: "Sign up free with Google to get AI notes." }, 403);
   const { noteId, sponsored, regenerate } = await req.json().catch(() => ({}));
   if (typeof noteId !== "string") return json({ error: "noteId required" }, 400);
 
