@@ -54,3 +54,21 @@ describe("names from speech", () => {
     expect(nameSpeakers([{ speaker: "S1", text: "Okay, so I'm Going to start." }, { speaker: "S2", text: "Thanks, Everyone." }])).toEqual({});
   });
 });
+
+describe("voice changes", () => {
+  it("relabels the first phrase of a new voice once it's confirmed", () => {
+    const t = new SpeakerTracker();
+    t.assign(voiceprint(voice(110, 1.0)), "a");
+    expect(t.assign(voiceprint(voice(230, 1.6)), "b")).toBe("S1");
+    expect(t.relabel).toBeNull();
+    expect(t.assign(voiceprint(voice(228, 1.6)), "c")).toBe("S2");
+    expect(t.relabel).toBe("b");
+  });
+  it("peeks at who is talking without learning", () => {
+    const t = new SpeakerTracker();
+    expect(t.peek(voiceprint(voice(110, 1.0)))).toBeNull();
+    t.assign(voiceprint(voice(110, 1.0)));
+    expect(t.peek(voiceprint(voice(112, 1.0)))).toBe("S1");
+    expect(t.peek(voiceprint(voice(230, 1.6)))).toBe("new");
+  });
+});

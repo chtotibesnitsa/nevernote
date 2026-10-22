@@ -132,14 +132,36 @@ export function voiceprint(samples: Float32Array): Voiceprint | null {
 export class SpeakerTracker {
   private centers: { v: Float32Array; n: number }[] = [];
   private last = "S1";
-  private candidate: { v: Float32Array; age: number } | null = null;
+  private candidate: { v: Float32Array; age: number; tag?: string } | null = null;
+  /** Set when a new voice was just confirmed: the tag of its first phrase, which went out under the old label. */
+  relabel: string | null = null;
   constructor(
     private maxSpeakers = 6,
     private threshold = 0.75,
     private agree = 0.45,
   ) {}
 
-  assign(p: Voiceprint | null): string {
+  /**
+   * Which known voice this sounds like, without learning from it: the label,
+   * or "new" when it's far from every voice so far. Null when it can't tell.
+   * Used mid-phrase to notice someone else has started talking.
+   */
+  peek(p: Voiceprint | null): string | null {
+    if (!p || p.voiced < 0.4 || !this.centers.length) return null;
+    let best = 0;
+    let bd = Infinity;
+    this.centers.forEach((c, i) => {
+      let d = 0;
+      for (let k = 0; k < c.v.length; k++) d += (c.v[k] - p.vec[k]) ** 2;
+      d = Math.sqrt(d);
+      if (d < bd) [bd, best] = [d, i];
+    });
+    return bd > this.threshold ? "new" : `S${best + 1}`;
+  }
+
+  /** `tag` names the phrase (a segment id), so its label can be fixed if it turns out to be the first of a new voice. */
+  assign(p: Voiceprint | null, tag?: string): string {
+    this.relabel = null;
     if (!p || p.voiced < 0.25) return this.last;
     const dist = (v: Float32Array) => {
       let d = 0;
@@ -162,10 +184,11 @@ export class SpeakerTracker {
         const v = Float32Array.from(this.candidate.v);
         for (let k = 0; k < v.length; k++) v[k] = (v[k] + p.vec[k]) / 2;
         this.centers.push({ v, n: 2 });
+        this.relabel = this.candidate.tag ?? null;
         this.candidate = null;
         return (this.last = `S${this.centers.length}`);
       }
-      this.candidate = { v: Float32Array.from(p.vec), age: 0 };
+      this.candidate = { v: Float32Array.from(p.vec), age: 0, tag };
       return this.last;
     }
     if (bd > this.threshold) return this.last; // a one-off odd phrase: don't drag a voice towards it

@@ -86,7 +86,7 @@ export function MicOverlay() {
 
 /** Grey highlight over the transcript while the on-device model loads, or why it couldn't. */
 export function EnginePanel({ empty }: { empty: boolean }) {
-  const { rec, asr, retryAsr } = useApp();
+  const { rec, asr, retryAsr, liveEngine } = useApp();
   if (isDesktop) return null;
   const loading = asr.state === "loading" || asr.state === "idle";
   const pct = Math.round((asr.p ?? 0) * 100);
@@ -110,7 +110,7 @@ export function EnginePanel({ empty }: { empty: boolean }) {
       <div className="relative flex items-center gap-3 text-sm">
         <Mic size={18} className="text-[var(--ink-2)]" />
         <div className="flex-1">
-          <div className="font-medium">{loading ? `Getting the on-device transcriber ready${pct ? ` · ${pct}%` : ""}` : "Listening. Words land a moment after each pause."}</div>
+          <div className="font-medium">{loading ? `Getting the on-device transcriber ready${pct ? ` · ${pct}%` : ""}` : liveEngine === "whisper" ? "Listening. Words land a moment after each pause." : "Listening. Words appear as you speak."}</div>
           <div className="text-[var(--mute)]">{loading ? "A one-time download. Keep talking: everything you say now is transcribed once it's ready." : "Everything stays on this device."}</div>
         </div>
       </div>

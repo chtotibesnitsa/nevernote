@@ -374,7 +374,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (n.id !== noteId) return n;
           const segments = [...n.segments.filter((s) => s.id !== seg.id), seg].sort((a, b) => a.start - b.start);
           const found = extract([seg], new Date(n.createdAt));
-          const fresh = found.filter((f) => !n.extractions.some((e) => e.id === f.id));
+          // A line that came back with more words replaces what was found in it before.
+          const kept = n.extractions.filter((e) => e.segmentId !== seg.id || found.some((f) => f.id === e.id));
+          const fresh = found.filter((f) => !kept.some((e) => e.id === f.id));
           for (const f of fresh) notifyFor(f, n);
           // Names said out loud ("I'm Maya", "thanks, Jordan") replace S1, S2; a name the student typed wins.
           const said = nameSpeakers(segments);
@@ -382,7 +384,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const prior = n.speakers.find((x) => x.id === sp.id)?.name;
             return { ...sp, name: prior && prior !== sp.id ? prior : (said[sp.id] ?? sp.id) };
           });
-          const next = { ...n, segments, speakers, extractions: [...n.extractions, ...fresh], updatedAt: new Date().toISOString() };
+          const next = { ...n, segments, speakers, extractions: [...kept, ...fresh], updatedAt: new Date().toISOString() };
           persist(next);
           return next;
         }),
@@ -462,6 +464,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [preview, setPreview] = useState<{ note: string; text: string } | null>(null);
   const onSegmentRef = useRef(onSegment);
   onSegmentRef.current = onSegment;
+  /** Lines the engine folded into a longer one. */
+  const dropSegsRef = useRef((noteId: string, segIds: string[]) => {
+    setNotes((all) =>
+      all.map((n) => {
+        if (n.id !== noteId) return n;
+        const next = { ...n, updatedAt: new Date().toISOString(), segments: n.segments.filter((s) => !segIds.includes(s.id)), extractions: n.extractions.filter((e) => !e.segmentId || !segIds.includes(e.segmentId)) };
+        void local.put(next);
+        return next;
+      }),
+    );
+  });
+  /** A new voice was confirmed on its second line: its first line goes over to it too. */
+  const relabelRef = useRef((noteId: string, segId: string, speaker: string) => {
+    const seg = notesRef.current.find((n) => n.id === noteId)?.segments.find((s) => s.id === segId);
+    if (seg && seg.speaker !== speaker) onSegmentRef.current(noteId, { ...seg, speaker });
+  });
   const ensureAsr = useCallback(() => {
     if (isDesktop) return null;
     if (!browserAsr.current) {
@@ -477,9 +495,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
         if (m.type === "text" && m.text && m.note) {
           let tr = trackers.current.get(m.note);
           if (!tr) trackers.current.set(m.note, (tr = new SpeakerTracker()));
-          const speaker = tr.assign(m.vp ? { vec: Float32Array.from(m.vp.vec), voiced: m.vp.voiced } : null);
+          const speaker = tr.assign(m.vp ? { vec: Float32Array.from(m.vp.vec), voiced: m.vp.voiced } : null, m.id);
           const off = m.offset ?? 0;
           onSegmentRef.current(m.note, { id: m.id, start: m.start + off, end: m.end + off, text: m.text, speaker });
+          if (tr.relabel) relabelRef.current(m.note, tr.relabel, speaker);
         }
       };
       browserAsr.current = w;
@@ -540,41 +559,86 @@ export function AppProvider({ children }: { children: ReactNode }) {
       let heard = 0; // samples since this capture opened
       let skipped = 0; // seconds heard before a switch to Whisper
       const now = () => offset + heard / 16000;
-      capture.current = await startCapture(
-        (s) => {
-          for (let i = 0; i < s.length; i++) ring[(heard + i) % RING] = s[i];
-          heard += s.length;
-          chunker.current?.push(s);
-        },
-        settings.roomMode,
-        onLost,
-      );
-      if (!liveSpeechSupported()) return whisper();
+      const recent = (sec: number) => {
+        const n = Math.max(0, Math.min(heard, RING, Math.round(sec * 16000)));
+        const a = new Float32Array(n);
+        for (let i = 0; i < n; i++) a[i] = ring[(heard - n + i) % RING];
+        return a;
+      };
       let phraseStart: number | null = null;
-      let lastEnd = now();
+      let lastEnd = offset;
+      let cutAt: number | null = null; // set when a new voice ended the phrase early
+      // Who's talking right now, checked every second while a phrase is open.
+      let voiceOfPhrase: string | null = null;
+      let other = 0;
+      let sinceCheck = 0;
       const tracker = () => {
         let tr = trackers.current.get(noteId);
         if (!tr) trackers.current.set(noteId, (tr = new SpeakerTracker()));
         return tr;
       };
+      const watchVoice = (n: number) => {
+        sinceCheck += n;
+        if (phraseStart === null || !live.current || sinceCheck < 16000) return;
+        sinceCheck = 0;
+        const v = tracker().peek(voiceprint(recent(1.6)));
+        if (!v) return;
+        if (!voiceOfPhrase) {
+          voiceOfPhrase = v;
+          return;
+        }
+        other = v !== voiceOfPhrase ? other + 1 : 0;
+        // Two seconds of a different voice: close this line so each person gets their own.
+        if (other >= 2 && now() - phraseStart > 2.5) {
+          cutAt = now() - 1.6;
+          other = 0;
+          live.current.cut();
+        }
+      };
+      capture.current = await startCapture(
+        (s) => {
+          for (let i = 0; i < s.length; i++) ring[(heard + i) % RING] = s[i];
+          heard += s.length;
+          chunker.current?.push(s);
+          watchVoice(s.length);
+        },
+        settings.roomMode,
+        onLost,
+      );
+      if (!liveSpeechSupported()) return whisper();
+      const ids = new Map<string, { id: string; start: number; speaker: string }>();
       try {
         live.current = await startLiveSpeech({
+          track: capture.current.track,
           onInterim: (text) => {
             // The engine is about a second behind the audio.
             if (text && phraseStart === null) phraseStart = Math.max(lastEnd, now() - 1.2);
             setPreview(text ? { note: noteId, text } : null);
           },
-          onFinal: (text) => {
-            const end = now();
+          onFinal: (text, key, drop) => {
+            const clean = text.trim()[0].toUpperCase() + text.trim().slice(1);
+            const gone = drop.map((k) => ids.get(k)?.id).filter(Boolean) as string[];
+            if (gone.length) dropSegsRef.current(noteId, gone);
+            const known = ids.get(key);
+            if (known) {
+              // The engine sent this phrase again with more words: replace the line in place.
+              onSegmentRef.current(noteId, { id: known.id, start: known.start, end: now(), text: clean, speaker: known.speaker });
+              return;
+            }
+            const end = cutAt ?? now();
             const start = Math.max(lastEnd, Math.min(phraseStart ?? end - 2, end - 0.5));
-            phraseStart = null;
+            phraseStart = cutAt !== null ? cutAt : null;
+            cutAt = null;
+            voiceOfPhrase = null;
+            other = 0;
             lastEnd = end;
-            const n = Math.min(heard, RING, Math.round((end - start) * 16000));
-            const audio = new Float32Array(n);
-            for (let i = 0; i < n; i++) audio[i] = ring[(heard - n + i) % RING];
-            const vp = voiceprint(audio);
-            const speaker = tracker().assign(vp);
-            onSegmentRef.current(noteId, { id: `${noteId.slice(-6)}-${++segN.current}`, start, end, text: text[0].toUpperCase() + text.slice(1), speaker });
+            const audio = recent(now() - start).subarray(0, Math.max(0, Math.round((end - start) * 16000)));
+            const id = `${noteId.slice(-6)}-${++segN.current}`;
+            const tr = tracker();
+            const speaker = tr.assign(voiceprint(audio), id);
+            ids.set(key, { id, start, speaker });
+            onSegmentRef.current(noteId, { id, start, end, text: clean, speaker });
+            if (tr.relabel) relabelRef.current(noteId, tr.relabel, speaker);
           },
           onFail: () => {
             live.current = null;

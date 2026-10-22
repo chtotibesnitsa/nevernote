@@ -297,6 +297,32 @@ function FolderChip({ note }: { note: Note }) {
 
 // ---------------- Transcript ----------------
 
+/**
+ * The line being spoken right now. It looks like a finished line, so when the
+ * engine settles it nothing jumps: words that have held still are full ink,
+ * and only the last few, which the engine may still change, are lighter.
+ */
+function Draft({ text }: { text: string }) {
+  const prev = useRef<string[]>([]);
+  const words = (text.trim()[0]?.toUpperCase() + text.trim().slice(1)).split(/\s+/).filter(Boolean);
+  let same = 0;
+  while (same < words.length && same < prev.current.length && words[same] === prev.current[same]) same++;
+  const settled = Math.max(same, words.length - 3);
+  useEffect(() => {
+    prev.current = words;
+  });
+  return (
+    <div className="flex items-start gap-3 rounded-xl px-1 py-1 md:gap-4">
+      <span className="mt-[5px] hidden w-12 shrink-0 text-right font-mono text-[11.5px] text-[var(--mute)] md:block">now</span>
+      <div className="min-w-0 flex-1 border-l-2 border-[var(--line)] pl-3 text-[17px] leading-relaxed">
+        <span>{words.slice(0, settled).join(" ")}</span>
+        {settled < words.length && <span className="text-[var(--mute)]">{(settled ? " " : "") + words.slice(settled).join(" ")}</span>}
+        <span className="ml-0.5 inline-block h-[1.05em] w-[2px] translate-y-[3px] animate-pulse bg-[var(--mute)]" />
+      </div>
+    </div>
+  );
+}
+
 function Transcript({ note, live }: { note: Note; live: boolean }) {
   const { update, rec, preview, liveEngine } = useApp();
   const [banner, setBanner] = useState(true);
@@ -386,7 +412,7 @@ function Transcript({ note, live }: { note: Note; live: boolean }) {
               prevSpeaker = s.speaker;
               const flag = flagged.get(s.id);
               return (
-                <motion.div key={s.id} layout="position" initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={soft} className="group">
+                <motion.div key={s.id} layout="position" initial={live ? false : { opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={soft} className="group">
                   {showName && sp && (
                     <button onClick={() => rename(s.speaker!)} className="mb-1 mt-4 flex items-center gap-2 text-[13px] font-semibold md:ml-[64px]" title="Rename speaker">
                       <span className="grid h-5 w-5 place-items-center rounded-full text-[10px] text-white" style={{ background: sp.color }}>{sp.name[0]}</span>
@@ -404,15 +430,7 @@ function Transcript({ note, live }: { note: Note; live: boolean }) {
               );
             })}
           </AnimatePresence>
-          {draft && (
-            <div className="flex items-start gap-3 px-1 py-1 md:gap-4">
-              <span className="mt-[5px] hidden w-12 shrink-0 text-right font-mono text-[11.5px] text-[var(--mute)] md:block">now</span>
-              <div className="min-w-0 flex-1 border-l-2 border-dashed border-[var(--line)] pl-3 text-[17px] leading-relaxed text-[var(--mute)]">
-                {draft}
-                <span className="ml-0.5 inline-block h-[1.05em] w-[2px] translate-y-[3px] animate-pulse bg-[var(--mute)]" />
-              </div>
-            </div>
-          )}
+          {draft && <Draft text={draft} />}
         </div>
       )}
       <p className="mt-10 text-center text-[13px] text-[var(--mute)]">Always get consent when recording others.</p>

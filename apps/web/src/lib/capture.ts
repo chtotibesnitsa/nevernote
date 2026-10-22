@@ -1,6 +1,9 @@
 // Microphone -> 16 kHz mono Float32 chunks (~100 ms each), plus a live level
 // for the waveform. Room mode turns off the browser's voice processing, which
-// is tuned for one person on a call and squashes everyone else in the room.
+// is tuned for one person on a call and squashes everyone else in the room,
+// and puts in our own: a rumble filter and a slow, strong leveller, so a
+// whisper or a voice at the back of the room reaches the transcriber about as
+// loud as someone next to the laptop.
 
 const WORKLET = `
 class Down extends AudioWorkletProcessor {
@@ -24,6 +27,8 @@ export interface Capture {
   stop(): void;
   setPaused(p: boolean): void;
   level(): number;
+  /** The levelled mic as a track, for engines that can listen to one. */
+  track: MediaStreamTrack;
 }
 
 /** `onLost` fires when the mic goes away on its own: unplugged, taken by another app, or the audio engine stuck. */
@@ -39,8 +44,19 @@ export async function startCapture(onChunk: (s: Float32Array) => void, room = tr
   const node = new AudioWorkletNode(ctx, "nn-down");
   const analyser = ctx.createAnalyser();
   analyser.fftSize = 512;
-  src.connect(node);
-  src.connect(analyser);
+  let out: AudioNode = src;
+  if (room) {
+    const hp = new BiquadFilterNode(ctx, { type: "highpass", frequency: 85, Q: 0.7 });
+    const level = new DynamicsCompressorNode(ctx, { threshold: -46, knee: 18, ratio: 6, attack: 0.01, release: 0.4 });
+    const makeup = new GainNode(ctx, { gain: 7 });
+    const limit = new DynamicsCompressorNode(ctx, { threshold: -4, knee: 0, ratio: 20, attack: 0.002, release: 0.1 });
+    src.connect(hp).connect(level).connect(makeup).connect(limit);
+    out = limit;
+  }
+  const dest = ctx.createMediaStreamDestination();
+  out.connect(node);
+  out.connect(analyser);
+  out.connect(dest);
   let paused = false;
   let closed = false;
   const lost = (why: string) => {
@@ -65,6 +81,7 @@ export async function startCapture(onChunk: (s: Float32Array) => void, room = tr
   node.port.onmessage = (e) => !paused && onChunk(e.data as Float32Array);
   const data = new Float32Array(analyser.fftSize);
   return {
+    track: dest.stream.getAudioTracks()[0],
     stop() {
       closed = true;
       clearTimeout(muteTimer);
@@ -72,6 +89,7 @@ export async function startCapture(onChunk: (s: Float32Array) => void, room = tr
       ctx.onstatechange = null;
       node.port.onmessage = null;
       stream.getTracks().forEach((t) => t.stop());
+      dest.stream.getTracks().forEach((t) => t.stop());
       void ctx.close();
     },
     setPaused(p) {
@@ -82,7 +100,7 @@ export async function startCapture(onChunk: (s: Float32Array) => void, room = tr
       analyser.getFloatTimeDomainData(data);
       let s = 0;
       for (const v of data) s += v * v;
-      return Math.min(1, Math.sqrt(s / data.length) * 8);
+      return Math.min(1, Math.sqrt(s / data.length) * (room ? 3 : 8));
     },
   };
 }

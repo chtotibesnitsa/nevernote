@@ -10,14 +10,19 @@ const Ctor = (): (new () => SR) | undefined => (globalThis as any).SpeechRecogni
 
 export const liveSpeechSupported = () => !!Ctor();
 
-/** Asks the browser for its on-device model, installing it if it offers one. */
+/**
+ * Uses the browser's on-device model when it already has one. If it can fetch
+ * one, that download starts in the background for next time: class never waits
+ * on it, and a stalled download can't hold up the first words.
+ */
 async function onDevice(lang: string): Promise<boolean> {
   const C = Ctor() as any;
   if (!C?.available) return false;
+  const opts = { langs: [lang], processLocally: true };
   try {
-    const state = await C.available({ langs: [lang], processLocally: true });
+    const state = await Promise.race([C.available(opts), new Promise((r) => setTimeout(() => r("slow"), 2000))]);
     if (state === "available") return true;
-    if (state === "downloadable" || state === "downloading") return !!(await C.install({ langs: [lang], processLocally: true }));
+    if (state === "downloadable") void Promise.resolve(C.install?.(opts)).catch(() => {});
   } catch {
     // older API shape: no on-device mode
   }
@@ -28,7 +33,21 @@ export interface LiveSpeech {
   /** True when the audio never leaves the device. */
   local: boolean;
   setPaused(p: boolean): void;
+  /** Ends the phrase in progress now (a new voice took over), and keeps listening. */
+  cut(): void;
   stop(): void;
+}
+
+const words = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N}' ]/gu, "").split(/\s+/).filter(Boolean);
+
+/** Drops the start of `next` when it repeats the end of `prev` (some engines resend a few words after a restart). */
+export function dropOverlap(prev: string, next: string): string {
+  const a = words(prev);
+  const b = words(next);
+  for (let n = Math.min(a.length, b.length, 12); n >= 3; n--) {
+    if (a.slice(-n).join(" ") === b.slice(0, n).join(" ")) return next.trim().split(/\s+/).slice(n).join(" ");
+  }
+  return next;
 }
 
 /**
@@ -38,7 +57,15 @@ export interface LiveSpeech {
  * `onFail` fires when it can't run at all (blocked, offline without on-device
  * support), so the caller can switch to Whisper.
  */
-export async function startLiveSpeech(opts: { lang?: string; onInterim(text: string): void; onFinal(text: string): void; onFail(why: string): void }): Promise<LiveSpeech> {
+export async function startLiveSpeech(opts: {
+  lang?: string;
+  /** The mic after our gain stage. Newer Chrome listens to it instead of opening its own, so quiet and far voices come through. */
+  track?: MediaStreamTrack;
+  onInterim(text: string): void;
+  /** `key` is stable per phrase: a phrase the engine sends again with more words comes back with the same key, to replace it. `drop` lists earlier phrases now folded into this one. */
+  onFinal(text: string, key: string, drop: string[]): void;
+  onFail(why: string): void;
+}): Promise<LiveSpeech> {
   const C = Ctor();
   if (!C) throw new Error("no speech engine");
   const lang = opts.lang ?? (navigator.language?.startsWith("en") ? navigator.language : "en-US");
@@ -48,6 +75,43 @@ export async function startLiveSpeech(opts: { lang?: string; onInterim(text: str
   let rec: SR | null = null;
   let fails = 0;
   let lastStart = 0;
+  let session = 0;
+  let useTrack = !!opts.track;
+  // Finished phrases this engine session, oldest first.
+  let done: { key: string; text: string }[] = [];
+  let last: { key: string; text: string } | null = null;
+  const norm = (t: string) => words(t).join(" ");
+
+  const final = (text: string, key: string) => {
+    const b = norm(text);
+    if (!b) return;
+    // Some engines (Chrome on Android, some on-device models) send everything
+    // so far as one growing final: fold the lines it repeats into one.
+    for (let j = 0; j < done.length; j++) {
+      const joined = norm(done.slice(j).map((d) => d.text).join(" "));
+      if (b === joined && done[j].key !== key && b.split(" ").length >= 3) return;
+      const grew = b.length > joined.length && b.startsWith(joined + " ");
+      if (grew || (b === joined && j < done.length - 1)) {
+        const drop = done.slice(j + 1).map((d) => d.key);
+        const keep = done[j].key;
+        done = [...done.slice(0, j), { key: keep, text }];
+        last = done.at(-1)!;
+        opts.onFinal(text, keep, drop);
+        return;
+      }
+    }
+    const same = done.findIndex((d) => d.key === key);
+    if (same >= 0) done[same] = { key, text };
+    else {
+      // After a restart the engine can resend a few words from the end of the last line.
+      if (last && words(text).length >= 3 && norm(last.text).endsWith(b)) return;
+      if (last) text = dropOverlap(last.text, text);
+      if (!text.trim()) return;
+      done.push({ key, text });
+    }
+    last = { key, text };
+    opts.onFinal(text, key, []);
+  };
 
   const make = () => {
     const r: SR = new C();
@@ -56,21 +120,33 @@ export async function startLiveSpeech(opts: { lang?: string; onInterim(text: str
     r.lang = lang;
     r.maxAlternatives = 1;
     if (local) r.processLocally = true;
+    const id = ++session;
+    done = [];
+    const sent = new Map<number, string>();
     r.onresult = (e: any) => {
       fails = 0;
       let interim = "";
-      for (let i = e.resultIndex; i < e.results.length; i++) {
+      // Walk every result, not just the changed ones: the line in progress is
+      // all the unfinished results together, so it never shrinks or jumps.
+      for (let i = 0; i < e.results.length; i++) {
         const res = e.results[i];
         const text = String(res[0]?.transcript ?? "").trim();
         if (!text) continue;
-        if (res.isFinal) opts.onFinal(text);
-        else interim += (interim ? " " : "") + text;
+        if (res.isFinal) {
+          if (sent.get(i) === text) continue;
+          sent.set(i, text);
+          final(text, `${id}-${i}`);
+        } else interim += (interim ? " " : "") + text;
       }
-      opts.onInterim(interim);
+      opts.onInterim(last && interim ? dropOverlap(last.text, interim) : interim);
     };
     r.onerror = (e: any) => {
       const err = String(e.error ?? "");
       if (err === "no-speech" || err === "aborted") return;
+      if (err === "audio-capture" && useTrack) {
+        useTrack = false; // the engine can't read our track: onend reopens it on the default mic
+        return;
+      }
       if (err === "not-allowed" || err === "service-not-allowed" || err === "language-not-supported") {
         running = false;
         opts.onFail(err);
@@ -95,9 +171,18 @@ export async function startLiveSpeech(opts: { lang?: string; onInterim(text: str
     lastStart = performance.now();
     rec = make();
     try {
-      rec.start();
-    } catch {
-      // already started
+      if (useTrack && opts.track?.readyState === "live") rec.start(opts.track);
+      else rec.start();
+    } catch (e) {
+      // Older engines take no track: listen to the default mic instead.
+      if (useTrack && e instanceof TypeError) {
+        useTrack = false;
+        try {
+          rec.start();
+        } catch {
+          // already started
+        }
+      }
     }
   };
   begin();
@@ -107,6 +192,10 @@ export async function startLiveSpeech(opts: { lang?: string; onInterim(text: str
       paused = p;
       if (p) rec?.stop();
       else if (running) begin();
+    },
+    cut() {
+      // stop() finalizes what was heard so far; onend starts the next phrase.
+      if (running && !paused) rec?.stop();
     },
     stop() {
       running = false;
