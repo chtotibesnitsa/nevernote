@@ -12,7 +12,7 @@ export interface ChatMessage {
 
 const SYSTEM = `You turn class recordings into study notes for a student.
 The transcript was made by speech recognition, so fix obvious mis-hearings using context (e.g. "sync" -> "sink" in an ecology class).
-Speakers are labelled S1, S2...; the one who talks most is usually the teacher.
+Speakers are labelled with their name when it was said aloud, otherwise S1, S2...; the one who talks most is usually the teacher. Use names in the notes when you have them; never invent names for S1, S2.
 Return ONLY a JSON object with these keys:
 - "title": short note title, like "Carbon Cycle & Feedback Loops"
 - "notes": markdown. 3-7 "### " sections in the order taught, each with 2-6 concise bullet points. Keep numbers, names, formulas, examples. No intro or outro.
@@ -24,8 +24,9 @@ Resolve relative dates ("next Tuesday") against the recording date given. Never 
 /** ~6k words per chunk keeps a 75-minute lecture to two calls on small models. */
 const CHUNK_WORDS = 6000;
 
-export function transcriptText(segments: Segment[]): string {
-  return segments.map((s) => `${s.speaker ?? "S?"}: ${s.text}`).join("\n");
+export function transcriptText(segments: Segment[], speakers: { id: string; name: string }[] = []): string {
+  const name = (id?: string) => speakers.find((x) => x.id === id)?.name ?? id ?? "S?";
+  return segments.map((s) => `${name(s.speaker)}: ${s.text}`).join("\n");
 }
 
 export function chunkSegments(segments: Segment[], maxWords = CHUNK_WORDS): Segment[][] {
@@ -46,7 +47,7 @@ export function chunkSegments(segments: Segment[], maxWords = CHUNK_WORDS): Segm
   return out;
 }
 
-export function summaryMessages(segments: Segment[], recordedAt: Date, opts: { course?: string; thoughts?: string; part?: [number, number]; style?: string } = {}): ChatMessage[] {
+export function summaryMessages(segments: Segment[], recordedAt: Date, opts: { course?: string; thoughts?: string; part?: [number, number]; style?: string; speakers?: { id: string; name: string }[] } = {}): ChatMessage[] {
   const day = recordedAt.toLocaleDateString("en-US", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const head = [
     `Recording date: ${day}.`,
@@ -56,7 +57,7 @@ export function summaryMessages(segments: Segment[], recordedAt: Date, opts: { c
   ].filter(Boolean);
   return [
     { role: "system", content: opts.style ? `${SYSTEM}\n${opts.style}` : SYSTEM },
-    { role: "user", content: `${head.join("\n")}\n\nTranscript:\n${transcriptText(segments)}` },
+    { role: "user", content: `${head.join("\n")}\n\nTranscript:\n${transcriptText(segments, opts.speakers)}` },
   ];
 }
 

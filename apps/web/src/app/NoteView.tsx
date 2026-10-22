@@ -8,6 +8,7 @@ import { useNavigate, useParams } from "react-router-dom";
 import { Button, Chip, fmtClock, soft, spring, StageDots, StatusDot } from "../components/ui.tsx";
 import { ask, cloudEnabled } from "../lib/cloud.ts";
 import { download, icsFor } from "../lib/ics.ts";
+import { CutBanner, EnginePanel } from "./RecordingUI.tsx";
 import { useApp } from "./state.tsx";
 
 type Tab = "thoughts" | "transcript" | "summary";
@@ -88,7 +89,10 @@ export function NoteView() {
         </span>
       </div>
 
-      <div className="relative mt-8 flex gap-7 border-b border-[var(--line)]">
+      <div className="mt-6">
+        <CutBanner noteId={note.id} live={live} />
+      </div>
+      <div className="relative flex gap-7 border-b border-[var(--line)]">
         {(
           [
             ["thoughts", "My thoughts"],
@@ -180,7 +184,7 @@ function FolderChip({ note }: { note: Note }) {
 // ---------------- Transcript ----------------
 
 function Transcript({ note, live }: { note: Note; live: boolean }) {
-  const { update } = useApp();
+  const { update, rec } = useApp();
   const [banner, setBanner] = useState(true);
   const [find, setFind] = useState("");
   const end = useRef<HTMLDivElement>(null);
@@ -213,7 +217,7 @@ function Transcript({ note, live }: { note: Note; live: boolean }) {
     <div>
       <div className="sticky top-14 z-10 overflow-hidden rounded-2xl bg-[var(--bubble)]">
         <div className="flex items-center gap-3 px-4 py-3 text-[15px]">
-          <span className="font-mono tabular-nums text-[var(--ink-2)]">⏱ {fmtClock(note.durationSec || (note.segments.at(-1)?.end ?? 0))}</span>
+          <span className="font-mono tabular-nums text-[var(--ink-2)]">⏱ {fmtClock(live ? rec.elapsed : note.durationSec || (note.segments.at(-1)?.end ?? 0))}</span>
           <span className="flex-1" />
           <Search size={16} className="text-[var(--mute)]" />
           <input value={find} onChange={(e) => setFind(e.target.value)} placeholder="Find" className="w-24 bg-transparent text-sm outline-none placeholder:text-[var(--mute)] focus:w-40" style={{ transition: "width .3s var(--ease-liquid)" }} />
@@ -221,7 +225,7 @@ function Transcript({ note, live }: { note: Note; live: boolean }) {
         <AnimatePresence>
           {banner && (live || note.stage === "labelling") && (
             <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="flex items-center justify-between border-t border-[var(--line)] px-4 py-2.5 text-sm text-[var(--ink-2)]">
-              <span>Everything stays on this device. After class, Nevernote labels each speaker.</span>
+              <span>Everything stays on this device. Nevernote tells voices apart as you go and picks up names people say.</span>
               <button onClick={() => setBanner(false)} aria-label="Dismiss">
                 <X size={14} />
               </button>
@@ -230,6 +234,7 @@ function Transcript({ note, live }: { note: Note; live: boolean }) {
         </AnimatePresence>
       </div>
 
+      {live && <div className="mt-4"><EnginePanel empty={note.segments.length === 0} /></div>}
       {note.segments.length === 0 ? (
         <div className="mt-16 text-center text-[var(--mute)]">
           {live ? (
@@ -511,7 +516,7 @@ function BottomBar({ note, live, onPause, onResume, onStop }: { note: Note; live
 
   // Portalled: the page transition's transform would otherwise trap a fixed bar inside the scrolling page.
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center bg-gradient-to-t from-[var(--card)] via-[var(--card)]/80 to-transparent px-4 pb-24 pt-10 md:pb-6 md:pl-[260px] md:pr-4">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-24 md:left-[248px] md:pb-6 md:pr-6">
       <div className="pointer-events-auto w-full max-w-[860px]">
         <AnimatePresence>
           {answer && (

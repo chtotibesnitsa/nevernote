@@ -8,4 +8,5 @@ export * from "./plans.ts";
 export * from "./summarize.ts";
 export * from "./sync.ts";
 export * from "./transcript.ts";
+export * from "./voice.ts";
 export * from "./styles.ts";

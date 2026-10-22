@@ -25,7 +25,7 @@ export async function summariseNote(noteId: string, userId: string, plan: "free"
   let tin = 0, tout = 0, cost = 0;
   const parts: Summary[] = [];
   for (let i = 0; i < chunks.length; i++) {
-    const r = await chat(summaryMessages(chunks[i], recorded, { course: row.folder ?? undefined, thoughts: row.thoughts, part: chunks.length > 1 ? [i + 1, chunks.length] : undefined, style }), model);
+    const r = await chat(summaryMessages(chunks[i], recorded, { course: row.folder ?? undefined, thoughts: row.thoughts, part: chunks.length > 1 ? [i + 1, chunks.length] : undefined, style, speakers: (row.speakers ?? []) as { id: string; name: string }[] }), model);
     tin += r.tokensIn; tout += r.tokensOut; cost += r.cost;
     parts.push(parseSummary(r.text, model, segments));
   }

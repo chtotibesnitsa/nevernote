@@ -26,9 +26,10 @@ export interface Capture {
   level(): number;
 }
 
-export async function startCapture(onChunk: (s: Float32Array) => void, room = true): Promise<Capture> {
+/** `onLost` fires when the mic goes away on its own: unplugged, taken by another app, or the audio engine stuck. */
+export async function startCapture(onChunk: (s: Float32Array) => void, room = true, onLost?: (why: string) => void): Promise<Capture> {
   const stream = await navigator.mediaDevices.getUserMedia({
-    audio: { channelCount: 1, echoCancellation: !room, noiseSuppression: !room, autoGainControl: !room },
+    audio: { deviceId: (() => { try { const d = localStorage.getItem("nn:mic"); return d ? { exact: d } : undefined; } catch { return undefined; } })(), channelCount: 1, echoCancellation: !room, noiseSuppression: !room, autoGainControl: !room },
   });
   const ctx = new AudioContext();
   const url = URL.createObjectURL(new Blob([WORKLET], { type: "application/javascript" }));
@@ -41,10 +42,34 @@ export async function startCapture(onChunk: (s: Float32Array) => void, room = tr
   src.connect(node);
   src.connect(analyser);
   let paused = false;
+  let closed = false;
+  const lost = (why: string) => {
+    if (closed) return;
+    closed = true;
+    onLost?.(why);
+  };
+  const track = stream.getAudioTracks()[0];
+  track.onended = () => lost("The microphone disconnected.");
+  let muteTimer = 0;
+  track.onmute = () => {
+    muteTimer = window.setTimeout(() => lost("The microphone went silent (another app may have taken it)."), 5000);
+  };
+  track.onunmute = () => clearTimeout(muteTimer);
+  let stuck = 0;
+  ctx.onstatechange = () => {
+    clearTimeout(stuck);
+    if (ctx.state === "running" || closed) return;
+    void ctx.resume().catch(() => {});
+    stuck = window.setTimeout(() => ctx.state !== "running" && lost("The browser paused audio capture."), 4000);
+  };
   node.port.onmessage = (e) => !paused && onChunk(e.data as Float32Array);
   const data = new Float32Array(analyser.fftSize);
   return {
     stop() {
+      closed = true;
+      clearTimeout(muteTimer);
+      clearTimeout(stuck);
+      ctx.onstatechange = null;
       node.port.onmessage = null;
       stream.getTracks().forEach((t) => t.stop());
       void ctx.close();

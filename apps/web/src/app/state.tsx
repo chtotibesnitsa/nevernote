@@ -6,7 +6,9 @@ import {
   mergeExtractions,
   shouldUpsell,
   recordUpsell,
+  nameSpeakers,
   speakersOf,
+  SpeakerTracker,
   Syncer,
   tombstone,
   type Extraction,
@@ -24,6 +26,8 @@ import { startCapture, type Capture } from "../lib/capture.ts";
 import { cloudEnabled, fetchPlan, remoteFor, requestSummary, supabase, track } from "../lib/cloud.ts";
 import { deviceKind, newId } from "../lib/ids.ts";
 import { local } from "../lib/local.ts";
+import { getActive, logCut, setActive } from "../lib/cutoffs.ts";
+import { startFlash, stopFlash } from "../lib/tabflash.ts";
 import { Chunker } from "../lib/vad.ts";
 
 export interface Settings {
@@ -64,10 +68,12 @@ interface Ctx {
   load(id: string): Promise<Note | undefined>;
   update(id: string, patch: Partial<Note>): void;
   remove(id: string): Promise<void>;
-  rec: { state: RecState; noteId?: string; elapsed: number; level: () => number; engineProgress?: number; error?: string };
+  rec: { state: RecState; noteId?: string; elapsed: number; level: () => number; engineProgress?: number; error?: string; stopReason?: string; engine?: "loading" | "ready" | "error"; engineError?: string };
   start(opts?: { title?: string; folder?: string }): Promise<string | undefined>;
   pause(): void;
-  resume(): void;
+  resume(): Promise<void>;
+  /** Web only: pick a class back up after the tab was closed. */
+  resumeNote(id: string): Promise<void>;
   stop(): Promise<void>;
   summarize(id: string, sponsored?: boolean): Promise<void>;
   session: Session | null;
@@ -131,6 +137,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const browserAsr = useRef<Worker | null>(null);
   const chunker = useRef<Chunker | null>(null);
   const notified = useRef(new Set<string>());
+  const trackers = useRef(new Map<string, SpeakerTracker>());
 
   // ---------- notes ----------
   const reload = useCallback(async () => {
@@ -320,7 +327,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
           const found = extract([seg], new Date(n.createdAt));
           const fresh = found.filter((f) => !n.extractions.some((e) => e.id === f.id));
           for (const f of fresh) notifyFor(f, n);
-          const next = { ...n, segments, extractions: [...n.extractions, ...fresh], updatedAt: new Date().toISOString() };
+          // Names said out loud ("I'm Maya", "thanks, Jordan") replace S1, S2; a name the student typed wins.
+          const said = nameSpeakers(segments);
+          const speakers = speakersOf(segments).map((sp) => {
+            const prior = n.speakers.find((x) => x.id === sp.id)?.name;
+            return { ...sp, name: prior && prior !== sp.id ? prior : (said[sp.id] ?? sp.id) };
+          });
+          const next = { ...n, segments, speakers, extractions: [...n.extractions, ...fresh], updatedAt: new Date().toISOString() };
           persist(next);
           return next;
         }),
@@ -376,6 +389,70 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [settings.model, toast]);
 
   // ---------- recording ----------
+  const recStateRef = useRef<RecState>("idle");
+  const noteIdRef = useRef<string | undefined>(undefined);
+  const elapsedRef = useRef(0);
+  const segN = useRef(0);
+  recStateRef.current = rec.state;
+  noteIdRef.current = rec.noteId;
+  elapsedRef.current = rec.elapsed;
+
+  const startTimer = useCallback(() => {
+    clearInterval(timer.current);
+    let last = Date.now();
+    timer.current = window.setInterval(() => {
+      const now = Date.now();
+      const dt = (now - last) / 1000;
+      last = now;
+      setRec((r) => (r.state === "recording" ? { ...r, elapsed: r.elapsed + dt } : r));
+    }, 250);
+  }, []);
+
+  /** The mic is lost for good: keep everything so far, pause, and let the student resume. */
+  const cutOff = useCallback(
+    (noteId: string, detail: string) => {
+      capture.current?.stop();
+      capture.current = null;
+      chunker.current?.flush();
+      logCut(noteId, "mic", elapsedRef.current, detail);
+      setRec((r) => ({ ...r, state: "paused", stopReason: detail }));
+      update(noteId, { stage: "paused", durationSec: elapsedRef.current });
+      toast({ title: "Recording stopped", body: `${detail} Everything so far is saved. Tap Resume.` });
+    },
+    [update, toast],
+  );
+
+  /** Opens the mic and wires it to the transcriber. `offset` keeps timestamps going after a resume. */
+  const openCapture = useCallback(
+    async (noteId: string, offset: number) => {
+      const onLost = (why: string) => cutOff(noteId, why);
+      const d = desktop;
+      if (d) {
+        capture.current = await startCapture((s) => d.recorder.audio(s), settings.roomMode, onLost);
+        return;
+      }
+      browserAsr.current ??= new Worker(new URL("../lib/browser-asr.worker.ts", import.meta.url), { type: "module" });
+      const w = browserAsr.current;
+      w.onmessage = (e) => {
+        const m = e.data;
+        if (m.type === "progress") setRec((r) => ({ ...r, engine: "loading", engineProgress: m.p < 1 ? m.p : undefined }));
+        if (m.type === "ready") setRec((r) => ({ ...r, engine: "ready", engineProgress: undefined, engineError: undefined }));
+        if (m.type === "error") setRec((r) => (r.engine === "ready" && !String(m.message).includes("Failed to fetch") ? r : { ...r, engine: "error", engineProgress: undefined, engineError: String(m.message).slice(0, 200) }));
+        if (m.type === "text" && m.text) {
+          let tr = trackers.current.get(noteId);
+          if (!tr) trackers.current.set(noteId, (tr = new SpeakerTracker()));
+          const speaker = tr.assign(m.vp ? { vec: Float32Array.from(m.vp.vec), voiced: m.vp.voiced } : null);
+          onSegment(noteId, { id: m.id, start: m.start + offset, end: m.end + offset, text: m.text, speaker });
+        }
+      };
+      setRec((r) => (r.engine === "ready" ? r : { ...r, engine: "loading" }));
+      w.postMessage({ type: "load" });
+      chunker.current = new Chunker((samples, s, e) => w.postMessage({ type: "chunk", id: `${noteId.slice(-6)}-${++segN.current}`, samples, start: s, end: e }, [samples.buffer]));
+      capture.current = await startCapture((s) => chunker.current!.push(s), settings.roomMode, onLost);
+    },
+    [settings.roomMode, onSegment, cutOff],
+  );
+
   const start = useCallback(
     async (opts: { title?: string; folder?: string } = {}) => {
       if (rec.state !== "idle") return rec.noteId;
@@ -402,65 +479,71 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setNotes((all) => [note, ...all]);
       persist(note);
       try {
-        const d = desktop;
-        if (d) {
-          await d.recorder.start(note.id, settings.model, note.vocabulary ?? []);
-          capture.current = await startCapture((s) => d.recorder.audio(s), settings.roomMode);
-        } else {
-          browserAsr.current ??= new Worker(new URL("../lib/browser-asr.worker.ts", import.meta.url), { type: "module" });
-          const w = browserAsr.current;
-          let n = 0;
-          w.onmessage = (e) => {
-            const m = e.data;
-            if (m.type === "progress") setRec((r) => ({ ...r, engineProgress: m.p < 1 ? m.p : undefined }));
-            if (m.type === "text" && m.text) onSegment(note.id, { id: m.id, start: m.start, end: m.end, text: m.text });
-          };
-          w.postMessage({ type: "load" });
-          chunker.current = new Chunker((samples, s, e) => w.postMessage({ type: "chunk", id: `${note.id.slice(-6)}-${++n}`, samples, start: s, end: e }, [samples.buffer]));
-          capture.current = await startCapture((s) => chunker.current!.push(s), settings.roomMode);
-          if ("Notification" in window && Notification.permission === "default") void Notification.requestPermission();
-        }
+        if (desktop) await desktop.recorder.start(note.id, settings.model, note.vocabulary ?? []);
+        await openCapture(note.id, 0);
+        if (!desktop && "Notification" in window && Notification.permission === "default") void Notification.requestPermission();
       } catch (e) {
         setRec({ state: "idle", elapsed: 0, error: String(e) });
         update(note.id, { stage: "failed" });
         toast({ title: "Microphone unavailable", body: "Allow microphone access and try again." });
         return;
       }
-      const t0 = Date.now();
-      let pausedMs = 0;
-      let pausedAt = 0;
-      timer.current = window.setInterval(() => {
-        setRec((r) => {
-          if (r.state === "paused") {
-            pausedAt ||= Date.now();
-            return r;
-          }
-          if (pausedAt) {
-            pausedMs += Date.now() - pausedAt;
-            pausedAt = 0;
-          }
-          return { ...r, elapsed: (Date.now() - t0 - pausedMs) / 1000 };
-        });
-      }, 250);
+      startTimer();
+      logCut(note.id, "started", 0);
       setRec({ state: "recording", noteId: note.id, elapsed: 0 });
       track("recording_started", {}, note.device);
       return note.id;
     },
-    [rec.state, rec.noteId, modelsReady, downloadModels, persist, settings.model, settings.roomMode, onSegment, update, toast],
+    [rec.state, rec.noteId, modelsReady, downloadModels, persist, settings.model, openCapture, startTimer, update, toast],
   );
 
   const pause = useCallback(() => {
     capture.current?.setPaused(true);
     chunker.current?.flush();
-    setRec((r) => ({ ...r, state: "paused" }));
-    if (rec.noteId) update(rec.noteId, { stage: "paused" });
+    setRec((r) => ({ ...r, state: "paused", stopReason: undefined }));
+    if (rec.noteId) {
+      logCut(rec.noteId, "paused", elapsedRef.current);
+      update(rec.noteId, { stage: "paused" });
+    }
   }, [rec.noteId, update]);
 
-  const resume = useCallback(() => {
-    capture.current?.setPaused(false);
-    setRec((r) => ({ ...r, state: "recording" }));
-    if (rec.noteId) update(rec.noteId, { stage: "recording" });
-  }, [rec.noteId, update]);
+  const resume = useCallback(async () => {
+    const id = noteIdRef.current;
+    if (!id) return;
+    if (capture.current) capture.current.setPaused(false);
+    else {
+      try {
+        await openCapture(id, elapsedRef.current);
+      } catch {
+        toast({ title: "Microphone unavailable", body: "Allow microphone access and try again." });
+        return;
+      }
+    }
+    logCut(id, "resumed", elapsedRef.current);
+    setRec((r) => ({ ...r, state: "recording", stopReason: undefined }));
+    update(id, { stage: "recording" });
+  }, [openCapture, update, toast]);
+
+  /** Picks a class back up after the tab was closed or reloaded (web only). */
+  const resumeNote = useCallback(
+    async (id: string) => {
+      const n = notesRef.current.find((x) => x.id === id);
+      if (!n || recStateRef.current !== "idle" || desktop) return;
+      setRec({ state: "starting", noteId: id, elapsed: n.durationSec });
+      try {
+        await openCapture(id, n.durationSec);
+      } catch {
+        setRec({ state: "idle", elapsed: 0 });
+        toast({ title: "Microphone unavailable", body: "Allow microphone access and try again." });
+        return;
+      }
+      startTimer();
+      logCut(id, "resumed", n.durationSec);
+      setRec({ state: "recording", noteId: id, elapsed: n.durationSec });
+      update(id, { stage: "recording" });
+    },
+    [openCapture, startTimer, update, toast],
+  );
 
   const stop = useCallback(async () => {
     const id = rec.noteId;
@@ -469,6 +552,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     capture.current?.stop();
     capture.current = null;
     const elapsed = rec.elapsed;
+    logCut(id, "manual", elapsed);
     setRec((r) => ({ ...r, state: "finishing" }));
     update(id, { stage: "transcribing", durationSec: elapsed });
     if (desktop) {
@@ -485,10 +569,77 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await new Promise((r) => setTimeout(r, 1500));
       update(id, { stage: "queued" });
     }
+    setActive(null);
     setRec({ state: "idle", elapsed: 0 });
     track("recording_finished", { minutes: Math.round(elapsed / 60) }, deviceKind());
     void summarize(id);
   }, [rec.noteId, rec.elapsed, update, summarize]);
+
+  // Tab safety: shout in the tab bar, warn before closing, keep the screen awake, and log Wi-Fi changes.
+  const active = rec.state === "recording" || rec.state === "paused" || rec.state === "starting";
+  useEffect(() => {
+    if (isDesktop || !active) return;
+    const mmss = () => {
+      const t = Math.floor(elapsedRef.current);
+      return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+    };
+    const label = () => (recStateRef.current === "recording" ? `Recording ${mmss()}. Don't close this tab` : `STOPPED ${mmss()}. Tap Resume`);
+    startFlash(label, recStateRef.current === "recording" ? "#ef4444" : "#f59e0b");
+    const guard = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", guard);
+    const beat = () => noteIdRef.current && setActive({ noteId: noteIdRef.current, elapsed: elapsedRef.current });
+    beat();
+    const hb = window.setInterval(beat, 2000);
+    window.addEventListener("pagehide", beat);
+    let lock: WakeLockSentinel | undefined;
+    const grab = () => {
+      if (document.visibilityState === "visible") navigator.wakeLock?.request("screen").then((l) => (lock = l)).catch(() => {});
+    };
+    grab();
+    document.addEventListener("visibilitychange", grab);
+    return () => {
+      stopFlash();
+      window.removeEventListener("beforeunload", guard);
+      window.removeEventListener("pagehide", beat);
+      document.removeEventListener("visibilitychange", grab);
+      clearInterval(hb);
+      void lock?.release().catch(() => {});
+    };
+  }, [active]);
+  // The flash colour follows paused/stopped vs recording.
+  useEffect(() => {
+    if (isDesktop || !active) return;
+    startFlash(() => {
+      const t = Math.floor(elapsedRef.current);
+      const c = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+      return recStateRef.current === "recording" ? `Recording ${c}. Don't close this tab` : `STOPPED ${c}. Tap Resume`;
+    }, rec.state === "recording" ? "#ef4444" : "#f59e0b");
+  }, [rec.state, active]);
+
+  const wasOnline = useRef(online);
+  useEffect(() => {
+    if (wasOnline.current === online) return;
+    wasOnline.current = online;
+    if (noteIdRef.current && recStateRef.current !== "idle") logCut(noteIdRef.current, online ? "online" : "offline", elapsedRef.current);
+  }, [online]);
+
+  // A class left "recording" by a closed or reloaded tab: save it as stopped and offer Resume.
+  useEffect(() => {
+    if (!loaded || isDesktop || recStateRef.current !== "idle") return;
+    const hb = getActive();
+    for (const n of notesRef.current) {
+      if (n.stage !== "recording") continue;
+      const sec = hb?.noteId === n.id ? Math.max(hb.elapsed, n.durationSec) : n.durationSec;
+      logCut(n.id, "tab", sec);
+      update(n.id, { stage: "paused", durationSec: sec });
+    }
+    setActive(null);
+    // once, after the first load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   const value: Ctx = {
     notes,
@@ -501,6 +652,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     start,
     pause,
     resume,
+    resumeNote,
     stop,
     summarize,
     session,

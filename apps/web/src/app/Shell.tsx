@@ -7,6 +7,7 @@ import { fmtClock, Hmu, Logo, spring, StatusDot, Wave } from "../components/ui.t
 import { isDesktop } from "../lib/bridge.ts";
 import { cloudEnabled } from "../lib/cloud.ts";
 import { AuthGate, GuestBar } from "./AuthGate.tsx";
+import { MicOverlay } from "./RecordingUI.tsx";
 import { useApp } from "./state.tsx";
 
 const NAV = [
@@ -46,7 +47,7 @@ function LiveCard() {
           <div className="truncate text-[15px] font-medium">{note.title}</div>
           <div className="mt-1.5 flex items-center gap-2 text-[var(--color-dot-green)]">
             <Wave level={level} active={rec.state === "recording"} color={rec.state === "paused" ? "var(--color-dot-orange)" : undefined} />
-            <span className="font-mono text-sm tabular-nums">{rec.state === "paused" ? "Paused" : fmtClock(rec.elapsed)}</span>
+            <span className="font-mono text-sm tabular-nums">{rec.state === "paused" ? (rec.stopReason ? "STOPPED" : "Paused") : fmtClock(rec.elapsed)}</span>
           </div>
         </motion.button>
       )}
@@ -75,9 +76,10 @@ export function Shell({ children }: { children: ReactNode }) {
   return (
     <>
     <GuestBar />
+    <MicOverlay />
     <div className={`flex min-h-screen ${isDesktop ? "" : "paper-grain"}`}>
       {/* Sidebar */}
-      <aside className="sticky top-0 hidden h-screen w-[248px] shrink-0 flex-col px-3 pb-4 pt-12 md:flex" style={{ WebkitAppRegion: "drag" } as never}>
+      <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 flex-col overflow-y-auto px-3 pb-16 pt-12 md:flex" style={{ WebkitAppRegion: "drag" } as never}>
         <div className="flex items-center gap-2 px-3 pb-6" style={{ WebkitAppRegion: "no-drag" } as never}>
           <Logo />
           {plan === "pro" && <span className="rounded-md bg-[var(--color-clay)]/15 px-1.5 py-0.5 text-[11px] font-semibold text-[var(--color-leather)] dark:text-[var(--color-clay)]">Pro</span>}
@@ -98,7 +100,7 @@ export function Shell({ children }: { children: ReactNode }) {
         <div className="mt-auto flex flex-col gap-3" style={{ WebkitAppRegion: "no-drag" } as never}>
           <LiveCard />
           {plan !== "pro" && (
-            <button onClick={() => openPro("sidebar")} className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-[15px] text-[var(--ink-2)] hover:text-[var(--fg)]">
+            <button onClick={() => openPro("sidebar")} className="flex items-center gap-3 rounded-xl bg-[var(--color-clay)]/15 px-3 py-2.5 text-[15px] font-bold text-[var(--fg)] transition hover:bg-[var(--color-clay)]/25">
               <Sparkles size={18} /> Get Pro
             </button>
           )}
@@ -107,7 +109,7 @@ export function Shell({ children }: { children: ReactNode }) {
 
       {/* Main */}
       <div className="flex min-w-0 flex-1 flex-col md:py-3 md:pr-3">
-        <main className="relative flex min-h-[calc(100vh-1.5rem)] flex-1 flex-col bg-[var(--card)] md:rounded-[26px] md:border md:border-[var(--line)] md:shadow-[0_1px_0_rgb(255_255_255/0.6)_inset,0_30px_80px_-40px_rgb(60_40_20/0.25)]">
+        <main className="relative flex min-h-[calc(100dvh-1.5rem)] flex-1 flex-col bg-[var(--card)] md:rounded-[26px] md:border md:border-[var(--line)] md:shadow-[0_1px_0_rgb(255_255_255/0.6)_inset,0_30px_80px_-40px_rgb(60_40_20/0.25)]">
           <header className="sticky top-0 z-30 flex items-center justify-between gap-3 px-5 pb-2 pt-3 md:px-8" style={{ WebkitAppRegion: "drag" } as never}>
             <span className="md:hidden">
               <Logo size={20} />
