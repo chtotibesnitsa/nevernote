@@ -37,7 +37,8 @@ export function NoteView() {
   const md = note.summary ? `# ${note.title}\n\n${note.summary.notes}` : note.segments.map((s) => `${s.speaker ?? ""} ${s.text}`).join("\n");
 
   return (
-    <div className="mx-auto flex w-full max-w-[920px] flex-1 flex-col px-5 md:px-12">
+    <div className="flex w-full flex-1 gap-8 px-5 md:px-8 xl:px-10">
+    <div className="flex min-w-0 flex-1 flex-col">
       <div className="flex items-center justify-between py-1">
         <button onClick={() => nav("/app/notes")} className="grid h-9 w-9 place-items-center rounded-full hover:bg-[var(--bubble)]" aria-label="Back">
           <ArrowLeft size={18} />
@@ -128,6 +129,105 @@ export function NoteView() {
 
       <BottomBar note={note} live={live} onPause={pause} onResume={resume} onStop={stop} />
     </div>
+    <Inspector note={note} live={live} />
+    </div>
+  );
+}
+
+/** Right-hand panel on wide screens: the session at a glance, who's talking, what's due. */
+function Inspector({ note, live }: { note: Note; live: boolean }) {
+  const { rec, update } = useApp();
+  const secs = live ? rec.elapsed : note.durationSec || (note.segments.at(-1)?.end ?? 0);
+  const words = note.segments.reduce((a, s) => a + s.text.split(" ").length, 0);
+  const speakers = useMemo(() => {
+    const count = new Map<string, number>();
+    for (const s of note.segments) if (s.speaker) count.set(s.speaker, (count.get(s.speaker) ?? 0) + s.text.split(" ").length);
+    const total = [...count.values()].reduce((a, b) => a + b, 0) || 1;
+    return [...count].sort((a, b) => b[1] - a[1]).map(([id, w], i) => ({ id, share: w / total, color: SPEAKER_TINTS[i % SPEAKER_TINTS.length], name: note.speakers.find((x) => x.id === id)?.name ?? id }));
+  }, [note.segments, note.speakers]);
+  const due = note.extractions.filter((e) => e.kind !== "important");
+  const important = note.extractions.filter((e) => e.kind === "important");
+  const rename = (id: string, cur: string) => {
+    const name = prompt(`Who is ${cur}?`, cur);
+    if (!name) return;
+    const exists = note.speakers.some((s) => s.id === id);
+    update(note.id, { speakers: exists ? note.speakers.map((s) => (s.id === id ? { ...s, name } : s)) : [...note.speakers, { id, name, share: 0 }] });
+  };
+  const box = "rounded-[20px] border border-[var(--line)] bg-[var(--card)] p-4";
+  return (
+    <aside className="sticky top-16 hidden h-fit max-h-[calc(100dvh-5rem)] w-[320px] shrink-0 space-y-3 overflow-y-auto pb-6 pt-12 lg:block">
+      <div className={box}>
+        <div className="flex items-center justify-between">
+          <span className="eyebrow">{live ? (rec.state === "paused" ? "Paused" : "Recording") : "Class"}</span>
+          {live ? <StatusDot dot={rec.state === "paused" ? "orange" : "red"} live={rec.state === "recording"} /> : <StageDots stage={note.stage} />}
+        </div>
+        <div className="mt-2 font-mono text-[2.2rem] leading-none tabular-nums tracking-tight">{fmtClock(secs)}</div>
+        <div className="mt-3 grid grid-cols-3 gap-2 border-t border-[var(--line)] pt-3 text-center">
+          {[[words.toLocaleString(), "words"], [String(speakers.length || "–"), "voices"], [secs > 60 ? String(Math.round(words / (secs / 60))) : "–", "per min"]].map(([n, l]) => (
+            <div key={l}>
+              <div className="text-[17px] font-semibold tabular-nums">{n}</div>
+              <div className="text-[11.5px] text-[var(--mute)]">{l}</div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {speakers.length > 0 && (
+        <div className={box}>
+          <div className="eyebrow mb-2.5">Speakers</div>
+          <div className="space-y-2.5">
+            {speakers.map((sp) => (
+              <button key={sp.id} onClick={() => rename(sp.id, sp.name)} className="group block w-full text-left" title="Rename">
+                <div className="flex items-center gap-2 text-[14px]">
+                  <span className="grid h-6 w-6 place-items-center rounded-full text-[11px] font-semibold text-white" style={{ background: sp.color }}>{sp.name[0]}</span>
+                  <span className="flex-1 truncate font-medium group-hover:underline">{sp.name}</span>
+                  <span className="text-[12px] tabular-nums text-[var(--mute)]">{Math.round(sp.share * 100)}%</span>
+                </div>
+                <div className="ml-8 mt-1.5 h-1 overflow-hidden rounded-full bg-[var(--bubble)]">
+                  <motion.div className="h-full rounded-full" style={{ background: sp.color }} initial={{ width: 0 }} animate={{ width: `${sp.share * 100}%` }} transition={soft} />
+                </div>
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      <div className={box}>
+        <div className="eyebrow mb-2.5">Due dates & tests</div>
+        {due.length === 0 ? (
+          <p className="text-[13.5px] text-[var(--mute)]">Nothing due yet. Anything with a date gets pinned here the moment it's said.</p>
+        ) : (
+          <div className="space-y-2">
+            {due.map((e) => (
+              <div key={e.id} className="flex items-center gap-3">
+                <div className="w-10 shrink-0 rounded-lg bg-[var(--bubble)] py-1 text-center">
+                  {e.when ? (
+                    <>
+                      <div className="text-[9.5px] font-semibold uppercase text-[var(--color-dot-red)]">{new Date(e.when).toLocaleDateString(undefined, { month: "short" })}</div>
+                      <div className="text-[15px] font-semibold leading-none">{new Date(e.when).getDate()}</div>
+                    </>
+                  ) : (
+                    <div className="text-[10px] text-[var(--mute)]">—</div>
+                  )}
+                </div>
+                <div className="min-w-0 flex-1 text-[13.5px] font-medium leading-snug">{e.title}</div>
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+
+      {important.length > 0 && (
+        <div className={box}>
+          <div className="eyebrow mb-2.5">They said this matters</div>
+          <ul className="space-y-2 text-[13.5px] text-[var(--ink-2)]">
+            {important.slice(0, 4).map((e) => (
+              <li key={e.id} className="border-l-2 border-[var(--line)] pl-2.5">“{e.phrase}”</li>
+            ))}
+          </ul>
+        </div>
+      )}
+    </aside>
   );
 }
 
@@ -246,7 +346,7 @@ function Transcript({ note, live }: { note: Note; live: boolean }) {
           )}
         </div>
       ) : (
-        <div className="mt-4 flex flex-col gap-1.5">
+        <div className="mt-4 flex flex-col gap-0.5">
           <AnimatePresence initial={false}>
             {shown.map((s: Segment) => {
               const sp = s.speaker ? speakers.get(s.speaker) : undefined;
@@ -256,16 +356,17 @@ function Transcript({ note, live }: { note: Note; live: boolean }) {
               return (
                 <motion.div key={s.id} layout="position" initial={{ opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={soft} className="group">
                   {showName && sp && (
-                    <button onClick={() => rename(s.speaker!)} className="mb-1 ml-1 mt-3 text-[13px] font-semibold" style={{ color: sp.color }} title="Rename speaker">
+                    <button onClick={() => rename(s.speaker!)} className="mb-1 mt-4 flex items-center gap-2 text-[13px] font-semibold md:ml-[64px]" title="Rename speaker">
+                      <span className="grid h-5 w-5 place-items-center rounded-full text-[10px] text-white" style={{ background: sp.color }}>{sp.name[0]}</span>
                       {sp.name}
                     </button>
                   )}
-                  <div className="flex items-start gap-2">
-                    <div className="max-w-[88%] rounded-2xl bg-[var(--bubble)] px-4 py-2.5 text-[17px] leading-relaxed" style={sp ? { boxShadow: `inset 3px 0 0 ${sp.color}33` } : undefined}>
+                  <div className="flex items-start gap-3 rounded-xl px-1 py-1 transition-colors hover:bg-[var(--bubble)]/60 md:gap-4">
+                    <span className="mt-[5px] hidden w-12 shrink-0 text-right font-mono text-[11.5px] tabular-nums text-[var(--mute)] md:block">{fmtClock(s.start)}</span>
+                    <div className="min-w-0 flex-1 border-l-2 pl-3 text-[17px] leading-relaxed" style={{ borderColor: sp ? `${sp.color}55` : "var(--line)" }}>
                       {highlight(s.text, find)}
                       {flag && <FlagTag e={flag} />}
                     </div>
-                    <span className="mt-3 font-mono text-[11px] text-[var(--mute)] opacity-0 transition group-hover:opacity-100">{fmtClock(s.start)}</span>
                   </div>
                 </motion.div>
               );
@@ -296,7 +397,8 @@ function FlagTag({ e }: { e: Extraction }) {
   const label = { deadline: "Due", exam: "Test", event: "Event", reminder: "Reminder", important: "★ Important" }[e.kind];
   const when = e.when ? new Date(e.when).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" }) : "";
   return (
-    <span className="ml-2 inline-flex translate-y-[-1px] items-center gap-1 rounded-full bg-[var(--color-clay)]/15 px-2 py-0.5 align-middle text-[11px] font-semibold text-[var(--color-leather)] dark:text-[var(--color-clay)]">
+    <span className="ml-2 inline-flex translate-y-[-1px] items-center gap-1.5 rounded-full bg-[var(--fg)] px-2 py-0.5 align-middle text-[11px] font-medium text-[var(--bg)]">
+      <span className="h-1.5 w-1.5 rounded-full bg-[var(--color-dot-red)]" />
       {label}
       {when && ` · ${when}`}
     </span>
@@ -516,7 +618,7 @@ function BottomBar({ note, live, onPause, onResume, onStop }: { note: Note; live
 
   // Portalled: the page transition's transform would otherwise trap a fixed bar inside the scrolling page.
   return createPortal(
-    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-24 md:left-[248px] md:pb-6 md:pr-6">
+    <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-24 md:left-[248px] md:pb-6 md:pr-6 lg:pr-[376px]">
       <div className="pointer-events-auto w-full max-w-[860px]">
         <AnimatePresence>
           {answer && (

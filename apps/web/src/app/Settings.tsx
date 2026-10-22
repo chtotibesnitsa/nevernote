@@ -15,7 +15,7 @@ const MODELS: { id: AsrModelId; label: string; blurb: string }[] = [
 export function Settings() {
   const { settings, setSettings, session, plan, openPro, modelsReady, downloadModels, rec } = useApp();
   return (
-    <div className="mx-auto w-full max-w-[760px] px-5 pb-28 pt-4 md:px-10">
+    <div className="mx-auto w-full max-w-[1040px] px-5 pb-28 pt-4 md:px-10">
       <h1 className="text-[2rem] font-semibold tracking-tight">Settings</h1>
 
       <Section title="Account">

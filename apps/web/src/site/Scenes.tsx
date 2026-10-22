@@ -38,7 +38,7 @@ export function AppIcon({ icon: Icon, from, to, size = 48 }: { icon: ComponentTy
 
 function Stage({ children, tint = "from-[#fff6ec] to-[#f6ece0]", innerRef }: { children: ReactNode; tint?: string; innerRef: React.Ref<HTMLDivElement> }) {
   return (
-    <div ref={innerRef} className={`relative h-[220px] overflow-hidden rounded-[22px] bg-gradient-to-b ${tint}`}>
+    <div ref={innerRef} data-tint={tint} className="relative h-[220px] overflow-hidden rounded-[22px] bg-[linear-gradient(180deg,#f7f7f9,#ededf0)] shadow-[inset_0_1px_0_white]">
       {children}
     </div>
   );
@@ -153,16 +153,16 @@ export function NotesScene() {
   return (
     <Stage innerRef={ref} tint="from-[#f3faf4] to-[#e6f3e8]">
       <div className="absolute left-4 top-4 w-[62%] rounded-[16px] bg-white p-3.5 shadow-[0_12px_30px_-14px_rgb(0_0_0/0.3)]">
-        <div className="font-serif text-[17px]">Carbon cycle</div>
+        <div className="text-[16px] font-semibold tracking-tight">Carbon cycle</div>
         {bullets.map((b, k) => (
           <motion.div key={b} initial={false} animate={{ opacity: i > k ? 1 : 0.15, x: i > k ? 0 : -6 }} transition={spring} className="mt-1.5 flex gap-1.5 text-[11.5px] leading-snug text-[#4a433b]">
-            <span className="text-[#3f9a6b]">●</span> {b}
+            <span className="text-[#aeaeb2]">●</span> {b}
           </motion.div>
         ))}
       </div>
       <div className="absolute bottom-5 right-4 h-[110px] w-[44%] [perspective:600px]">
         <motion.div animate={{ rotateY: i % 2 ? 180 : 0 }} transition={{ type: "spring", stiffness: 120, damping: 16 }} className="relative h-full w-full [transform-style:preserve-3d]">
-          <div className="absolute inset-0 grid place-items-center rounded-[16px] bg-gradient-to-b from-[#3f9a6b] to-[#2f7a53] p-3 text-center text-[12.5px] font-medium text-white shadow-lg [backface-visibility:hidden]">Where is carbon stored longest?</div>
+          <div className="absolute inset-0 grid place-items-center rounded-[16px] bg-gradient-to-b from-[#3a3a3c] to-[#1d1d1f] p-3 text-center text-[12.5px] font-medium text-white shadow-lg [backface-visibility:hidden]">Where is carbon stored longest?</div>
           <div className="absolute inset-0 grid place-items-center rounded-[16px] bg-white p-3 text-center text-[12.5px] font-medium shadow-lg [backface-visibility:hidden] [transform:rotateY(180deg)]">In rock, like limestone.</div>
         </motion.div>
       </div>
@@ -189,7 +189,7 @@ export function CalendarScene() {
                 {k === 1 && <div className="rounded-[5px] bg-[#7aa6c2]/30 px-1 py-0.5 text-left text-[8.5px]">Calc quiz</div>}
                 <AnimatePresence>
                   {k === 4 && i > 0 && (
-                    <motion.div key="lab" initial={{ y: -70, opacity: 0, scale: 0.8 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ type: "spring", stiffness: 260, damping: 14 }} className="rounded-[5px] bg-[#c8794a] px-1 py-0.5 text-left text-[8.5px] font-semibold text-white">
+                    <motion.div key="lab" initial={{ y: -70, opacity: 0, scale: 0.8 }} animate={{ y: 0, opacity: 1, scale: 1 }} exit={{ opacity: 0 }} transition={{ type: "spring", stiffness: 260, damping: 14 }} className="rounded-[5px] bg-[#ff3b30] px-1 py-0.5 text-left text-[8.5px] font-semibold text-white">
                       Lab report 11:59
                     </motion.div>
                   )}

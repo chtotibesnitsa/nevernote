@@ -43,7 +43,7 @@ export function Insights() {
   const maxFolder = Math.max(1, ...s.byFolder.map((f) => f.minutes));
 
   return (
-    <div className="mx-auto w-full max-w-[1080px] px-5 pb-28 pt-4 md:px-10">
+    <div className="w-full px-5 pb-28 pt-4 md:px-8 xl:px-10">
       <h1 className="text-[2rem] font-semibold tracking-tight">Insights</h1>
       <div className="mt-6 grid gap-4 md:grid-cols-3">
         <Card className="p-6">
