@@ -284,7 +284,7 @@ function FolderChip({ note }: { note: Note }) {
 // ---------------- Transcript ----------------
 
 function Transcript({ note, live }: { note: Note; live: boolean }) {
-  const { update, rec, preview } = useApp();
+  const { update, rec, preview, liveEngine } = useApp();
   const [banner, setBanner] = useState(true);
   const [find, setFind] = useState("");
   const box = useRef<HTMLDivElement>(null);
@@ -337,7 +337,11 @@ function Transcript({ note, live }: { note: Note; live: boolean }) {
         <AnimatePresence>
           {banner && (live || note.stage === "labelling") && (
             <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="flex items-center justify-between border-t border-[var(--line)] px-4 py-2.5 text-sm text-[var(--ink-2)]">
-              <span>Everything stays on this device. Nevernote tells voices apart as you go and picks up names people say.</span>
+              <span>
+                {liveEngine === "cloud"
+                  ? "Live words come from your browser's speech service. Nevernote tells voices apart on this device and picks up names people say."
+                  : "Everything stays on this device. Nevernote tells voices apart as you go and picks up names people say."}
+              </span>
               <button onClick={() => setBanner(false)} aria-label="Dismiss">
                 <X size={14} />
               </button>

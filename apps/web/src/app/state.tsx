@@ -9,6 +9,7 @@ import {
   nameSpeakers,
   speakersOf,
   SpeakerTracker,
+  voiceprint,
   Syncer,
   tombstone,
   type Extraction,
@@ -29,6 +30,7 @@ import { local } from "../lib/local.ts";
 import { getActive, logCut, setActive } from "../lib/cutoffs.ts";
 import { startFlash, stopFlash } from "../lib/tabflash.ts";
 import { Chunker } from "../lib/vad.ts";
+import { liveSpeechSupported, startLiveSpeech, type LiveSpeech } from "../lib/live-speech.ts";
 
 export interface Settings {
   model: AsrModelId;
@@ -80,6 +82,8 @@ interface Ctx {
   retryAsr(): void;
   /** Web only: the sentence the teacher is saying right now, before it's final. */
   preview: { note: string; text: string } | null;
+  /** Web only: which engine is writing the live transcript. "local" and "whisper" keep audio on the device. */
+  liveEngine: "local" | "cloud" | "whisper" | null;
   start(opts?: { title?: string; folder?: string }): Promise<string | undefined>;
   pause(): void;
   resume(): Promise<void>;
@@ -147,6 +151,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const timer = useRef<number>(0);
   const browserAsr = useRef<Worker | null>(null);
   const chunker = useRef<Chunker | null>(null);
+  const live = useRef<LiveSpeech | null>(null);
+  const [liveEngine, setLiveEngine] = useState<Ctx["liveEngine"]>(null);
   const notified = useRef(new Set<string>());
   const trackers = useRef(new Map<string, SpeakerTracker>());
 
@@ -420,7 +426,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
 
   // ---------- in-browser transcriber ----------
-  const [asr, setAsr] = useState<AsrState>({ state: isDesktop ? "ready" : "idle" });
+  const [asr, setAsr] = useState<AsrState>({ state: isDesktop || liveSpeechSupported() ? "ready" : "idle" });
   const [preview, setPreview] = useState<{ note: string; text: string } | null>(null);
   const onSegmentRef = useRef(onSegment);
   onSegmentRef.current = onSegment;
@@ -456,7 +462,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [ensureAsr]);
   // Download the transcriber as soon as the app opens, not when class starts.
   useEffect(() => {
-    if (isDesktop || (cloudEnabled && !session)) return;
+    if (isDesktop || liveSpeechSupported() || (cloudEnabled && !session)) return;
     ensureAsr();
     void navigator.storage?.persist?.().catch(() => {});
   }, [session, ensureAsr]);
@@ -466,6 +472,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     (noteId: string, detail: string) => {
       capture.current?.stop();
       capture.current = null;
+      live.current?.stop();
+      live.current = null;
       chunker.current?.flush();
       logCut(noteId, "mic", elapsedRef.current, detail);
       setRec((r) => ({ ...r, state: "paused", stopReason: detail }));
@@ -484,13 +492,69 @@ export function AppProvider({ children }: { children: ReactNode }) {
         capture.current = await startCapture((s) => d.recorder.audio(s), settings.roomMode, onLost);
         return;
       }
-      const w = ensureAsr()!;
-      chunker.current = new Chunker(
-        (samples, s, e) => w.postMessage({ type: "chunk", id: `${noteId.slice(-6)}-${++segN.current}`, note: noteId, offset, samples, start: s, end: e }, [samples.buffer]),
-        16000,
-        (samples, s) => w.postMessage({ type: "partial", note: noteId, start: s + offset, samples }, [samples.buffer]),
+      chunker.current = null;
+      const whisper = () => {
+        const w = ensureAsr()!;
+        chunker.current = new Chunker(
+          (samples, s, e) => w.postMessage({ type: "chunk", id: `${noteId.slice(-6)}-${++segN.current}`, note: noteId, offset: offset + skipped, samples, start: s, end: e }, [samples.buffer]),
+          16000,
+          (samples, s) => w.postMessage({ type: "partial", note: noteId, start: s + offset + skipped, samples }, [samples.buffer]),
+        );
+        setLiveEngine("whisper");
+      };
+      // The last 20 s of audio, so each finished phrase can be matched to a voice.
+      const RING = 16000 * 20;
+      const ring = new Float32Array(RING);
+      let heard = 0; // samples since this capture opened
+      let skipped = 0; // seconds heard before a switch to Whisper
+      const now = () => offset + heard / 16000;
+      capture.current = await startCapture(
+        (s) => {
+          for (let i = 0; i < s.length; i++) ring[(heard + i) % RING] = s[i];
+          heard += s.length;
+          chunker.current?.push(s);
+        },
+        settings.roomMode,
+        onLost,
       );
-      capture.current = await startCapture((s) => chunker.current!.push(s), settings.roomMode, onLost);
+      if (!liveSpeechSupported()) return whisper();
+      let phraseStart: number | null = null;
+      let lastEnd = now();
+      const tracker = () => {
+        let tr = trackers.current.get(noteId);
+        if (!tr) trackers.current.set(noteId, (tr = new SpeakerTracker()));
+        return tr;
+      };
+      try {
+        live.current = await startLiveSpeech({
+          onInterim: (text) => {
+            // The engine is about a second behind the audio.
+            if (text && phraseStart === null) phraseStart = Math.max(lastEnd, now() - 1.2);
+            setPreview(text ? { note: noteId, text } : null);
+          },
+          onFinal: (text) => {
+            const end = now();
+            const start = Math.max(lastEnd, Math.min(phraseStart ?? end - 2, end - 0.5));
+            phraseStart = null;
+            lastEnd = end;
+            const n = Math.min(heard, RING, Math.round((end - start) * 16000));
+            const audio = new Float32Array(n);
+            for (let i = 0; i < n; i++) audio[i] = ring[(heard - n + i) % RING];
+            const vp = voiceprint(audio);
+            const speaker = tracker().assign(vp);
+            onSegmentRef.current(noteId, { id: `${noteId.slice(-6)}-${++segN.current}`, start, end, text: text[0].toUpperCase() + text.slice(1), speaker });
+          },
+          onFail: () => {
+            live.current = null;
+            setPreview(null);
+            skipped = heard / 16000;
+            whisper();
+          },
+        });
+        setLiveEngine(live.current.local ? "local" : "cloud");
+      } catch {
+        whisper();
+      }
     },
     [settings.roomMode, cutOff, ensureAsr],
   );
@@ -541,6 +605,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const pause = useCallback(() => {
     capture.current?.setPaused(true);
+    live.current?.setPaused(true);
     chunker.current?.flush();
     setRec((r) => ({ ...r, state: "paused", stopReason: undefined }));
     if (rec.noteId) {
@@ -552,8 +617,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const resume = useCallback(async () => {
     const id = noteIdRef.current;
     if (!id) return;
-    if (capture.current) capture.current.setPaused(false);
-    else {
+    if (capture.current) {
+      capture.current.setPaused(false);
+      live.current?.setPaused(false);
+    } else {
       try {
         await openCapture(id, elapsedRef.current);
       } catch {
@@ -593,6 +660,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearInterval(timer.current);
     capture.current?.stop();
     capture.current = null;
+    live.current?.stop();
+    live.current = null;
+    setPreview(null);
     const elapsed = rec.elapsed;
     logCut(id, "manual", elapsed);
     setRec((r) => ({ ...r, state: "finishing" }));
@@ -699,6 +769,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     asr,
     retryAsr,
     preview,
+    liveEngine,
     summarize,
     session,
     authReady,
