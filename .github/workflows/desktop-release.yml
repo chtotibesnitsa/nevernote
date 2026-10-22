@@ -12,24 +12,34 @@ permissions:
   contents: write
 
 jobs:
-  # When started by hand, tag this commit v<desktop version> so the release has a tag.
-  # A re-run before the release is published moves the tag to the new commit.
-  tag:
+  # Prepare one draft release for the builds to upload into (parallel builds each
+  # creating their own release made duplicates). When started by hand, also tag
+  # this commit v<desktop version>. A release that already has its Mac and Windows
+  # installers is never touched.
+  prepare:
     runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.p.outputs.tag }}
     steps:
       - uses: actions/checkout@v4
-      - if: github.event_name == 'workflow_dispatch'
+      - id: p
         run: |
           v="v$(node -p "require('./apps/desktop/package.json').version")"
-          if gh release view "$v" --json isDraft -q .isDraft 2>/dev/null | grep -q false; then
-            echo "$v is already published; leaving its tag alone"
-          else
+          echo "tag=$v" >> "$GITHUB_OUTPUT"
+          done=0
+          for id in $(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" -q ".[] | select(.tag_name == \"$v\") | .id"); do
+            names=$(gh api "repos/$GITHUB_REPOSITORY/releases/$id" -q '[.assets[].name] | join(" ")')
+            if [[ $names == *.dmg* && $names == *.exe* ]]; then done=1; else gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; fi
+          done
+          if [ $done = 1 ]; then echo "$v is complete; nothing to do"; exit 1; fi
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             git tag -f "$v" && git push -f origin "refs/tags/$v"
           fi
+          gh release create "$v" --draft --verify-tag --title "Nevernote ${v#v}" --notes "Free, on-device class transcriber for Mac and Windows. Download the .dmg for Mac (arm64 = Apple Silicon) or the Setup .exe for Windows."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build:
-    needs: tag
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
@@ -56,7 +66,7 @@ jobs:
         # certificate path; drop them so unsigned builds work.
         run: |
           for v in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
-            [ -z "${!v}" ] && unset "$v"
+            if [ -z "${!v}" ]; then unset "$v"; fi
           done
           npx electron-builder ${{ matrix.args }} --publish always
         env:
@@ -68,3 +78,12 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.MAC_CERT_P12_BASE64 != '' }}
+
+  # Publish only once every installer is attached.
+  publish:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh release edit "${{ needs.prepare.outputs.tag }}" -R "$GITHUB_REPOSITORY" --draft=false --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
