@@ -19,7 +19,7 @@ jobs:
         include:
           - os: macos-14 # Apple Silicon
             args: --mac --arm64
-          - os: macos-13 # Intel
+          - os: macos-15-intel # Intel
             args: --mac --x64
           - os: windows-latest
             args: --win --x64

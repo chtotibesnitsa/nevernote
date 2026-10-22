@@ -1,7 +1,7 @@
 {
   "name": "@nevernote/desktop",
   "productName": "Nevernote",
-  "version": "0.1.0",
+  "version": "1.0.0",
   "description": "Every word, every speaker, offline. Free and open source class notes.",
   "author": "Aleks <aleksander@lucenko.com>",
   "license": "MIT",
@@ -75,7 +75,8 @@
       {
         "provider": "github",
         "owner": "chtotibesnitsa",
-        "repo": "nevernote"
+        "repo": "nevernote",
+        "releaseType": "release"
       }
     ]
   }
