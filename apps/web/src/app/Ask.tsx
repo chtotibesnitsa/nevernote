@@ -4,6 +4,8 @@ import { ArrowUp } from "lucide-react";
 import { marked } from "marked";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
+import { Link } from "react-router-dom";
+import type { Note } from "@nevernote/core";
 import { Button, LockBadge, spring } from "../components/ui.tsx";
 import { ask } from "../lib/cloud.ts";
 import { useApp } from "./state.tsx";
@@ -12,6 +14,25 @@ interface Turn {
   q: string;
   a?: string;
   scope: string;
+}
+
+const norm = (s: string) => s.toLowerCase().replace(/[^\p{L}\p{N} ]/gu, "").replace(/\s+/g, " ").trim();
+
+/** The lines an answer quoted, found in the transcripts, so each answer can jump to where it was said. */
+function momentsIn(answer: string, notes: Note[]) {
+  const quotes = [...answer.matchAll(/[“"]([^”"]{12,240})[”"]/g)].map((m) => norm(m[1])).filter((q) => q.split(" ").length >= 3);
+  const out: { note: Note; seg: string; at: number; text: string }[] = [];
+  for (const q of quotes.slice(0, 4)) {
+    const probe = q.split(" ").slice(0, 6).join(" ");
+    for (const n of notes) {
+      const s = n.segments.find((x) => norm(x.text).includes(probe));
+      if (s && !out.some((o) => o.seg === s.id)) {
+        out.push({ note: n, seg: s.id, at: s.start, text: q });
+        break;
+      }
+    }
+  }
+  return out;
 }
 
 const SUGGEST = ["What's on the next test?", "What's due this week?", "What did I miss on Tuesday?", "Explain the hardest idea from this week simply"];
@@ -105,7 +126,16 @@ export function Ask() {
               <div className="ml-auto w-fit max-w-[85%] rounded-[18px] rounded-br-[6px] bg-[var(--fg)] px-4 py-2 text-[15px] text-[var(--bg)]">{t.q}</div>
               <div className="text-right text-[11px] text-[var(--mute)]">{t.scope}</div>
               {t.a ? (
-                <div className="prose-nn w-fit max-w-[92%] rounded-[18px] rounded-bl-[6px] bg-[var(--bubble)] px-4 py-3 !text-[15px] !leading-relaxed" dangerouslySetInnerHTML={{ __html: marked.parse(t.a, { async: false }) as string }} />
+                <>
+                  <div className="prose-nn w-fit max-w-[92%] rounded-[18px] rounded-bl-[6px] bg-[var(--bubble)] px-4 py-3 !text-[15px] !leading-relaxed" dangerouslySetInnerHTML={{ __html: marked.parse(t.a, { async: false }) as string }} />
+                  <div className="flex flex-wrap gap-1.5">
+                    {momentsIn(t.a, notes).map((m) => (
+                      <Link key={m.seg} to={`/app/note/${m.note.id}?seg=${m.seg}`} className="press-light inline-flex items-center gap-1.5 rounded-full bg-[var(--card)] px-3 py-1.5 text-[12.5px] font-semibold">
+                        ▶ {m.note.folder ?? m.note.title} · {Math.floor(m.at / 60)}:{String(Math.floor(m.at % 60)).padStart(2, "0")}
+                      </Link>
+                    ))}
+                  </div>
+                </>
               ) : (
                 <div className="flex w-14 gap-1 rounded-[18px] rounded-bl-[6px] bg-[var(--bubble)] px-3.5 py-3">
                   {[0, 1, 2].map((k) => (

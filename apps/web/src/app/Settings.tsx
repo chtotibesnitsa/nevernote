@@ -96,16 +96,6 @@ export function Settings() {
         <Toggle k="proTips" label="Occasional Pro tips" hint="At most one every few days, never while you're recording." />
       </Section>
 
-      <Section title="Appearance">
-        <div className="flex gap-2">
-          {(["system", "light", "dark"] as const).map((t) => (
-            <Button key={t} variant={settings.theme === t ? "primary" : "glass"} onClick={() => setSettings({ theme: t })}>
-              {t[0].toUpperCase() + t.slice(1)}
-            </Button>
-          ))}
-        </div>
-      </Section>
-
       <p className="mt-10 text-center text-sm text-[var(--mute)]">
         Nevernote is free and open source ·{" "}
         <a className="underline" href={GITHUB_REPO} target="_blank" rel="noreferrer">

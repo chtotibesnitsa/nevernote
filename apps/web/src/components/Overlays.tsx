@@ -50,7 +50,12 @@ export function Toasts() {
   );
 }
 
-const CHECKOUT = import.meta.env.VITE_PRO_CHECKOUT_URL as string | undefined;
+/**
+ * RevenueCat Web Purchase Link (Stripe underneath). The student's account id is
+ * appended, so RevenueCat's webhook can flip that exact profile to Pro, the same
+ * way App Store purchases do.
+ */
+const CHECKOUT = ((import.meta.env.VITE_RC_PURCHASE_LINK ?? import.meta.env.VITE_PRO_CHECKOUT_URL) as string | undefined)?.replace(/\/$/, "");
 
 /** Why the sheet opened, said back to the student in one line. */
 const WHY: Record<string, string> = {
@@ -88,13 +93,34 @@ function Sheet({ open, onClose, dark, children }: { open: boolean; onClose: () =
 }
 
 export function ProSheet() {
-  const { proOpen, closePro, plan } = useApp();
+  const { proOpen, closePro, plan, session, tier, openSignup, refreshPlan, toast } = useApp();
   const [yearly, setYearly] = useState(true);
   const buy = (period: "monthly" | "yearly") => {
     track("checkout_clicked", { period, from: proOpen });
-    const url = CHECKOUT ? `${CHECKOUT}?period=${period}` : "https://nevernote.app/pro";
+    // Pro belongs to an account, so a guest signs up first (their classes come along).
+    if (tier === "guest" || !session) {
+      closePro();
+      openSignup("pro");
+      return;
+    }
+    if (!CHECKOUT) {
+      toast({ title: "Checkout isn't switched on yet", body: "Pro goes on sale very soon. Everything free keeps working in the meantime." });
+      return;
+    }
+    const url = `${CHECKOUT}/${encodeURIComponent(session.user.id)}?email=${encodeURIComponent(session.user.email ?? "")}`;
     if (desktop) void desktop.openExternal(url);
     else window.open(url, "_blank");
+    // Watch for the purchase landing (the webhook flips the profile within seconds).
+    let tries = 0;
+    const poll = setInterval(async () => {
+      if (++tries > 120 || (await refreshPlan())) {
+        clearInterval(poll);
+        if (tries <= 120) {
+          closePro();
+          toast({ title: "Welcome to Nevernote Pro", body: "Instant notes, Ask, exam packs, exports and calendar sync are all on." });
+        }
+      }
+    }, 5000);
   };
   const perMonth = yearly ? (PRICING.yearly.price / 12).toFixed(2) : PRICING.monthly.price.toFixed(2);
   const save = Math.round((1 - PRICING.yearly.price / (PRICING.monthly.price * 12)) * 100);
@@ -146,6 +172,7 @@ export function ProSheet() {
 }
 
 const SIGNUP_WHY: Record<string, string> = {
+  pro: "Pro lives on your account, so it works on every device. Sign up free first; what you recorded comes with you.",
   summary: "Your transcript is saved. Sign up free and Nevernote writes the notes, study guide and key terms.",
   studyGuide: "Study guides come with a free account.",
   insights: "See your streak, hours and every due date you've caught.",
@@ -164,7 +191,7 @@ export function SignupSheet() {
       <p className="mt-2 text-[14.5px] text-[var(--ink-2)]">{(signupOpen && SIGNUP_WHY[signupOpen]) || "You're using Nevernote as a guest. A free account unlocks the rest, and keeps what you've recorded."}</p>
       <ul className="mt-5 grid gap-2 sm:grid-cols-2">
         {[
-          ["AI notes and study guides", "3 instant a day, the rest overnight"],
+          ["AI notes and study guides", "Instant for 10 classes a day"],
           ["Sync on every device", "Phone, laptop and the web"],
           ["Insights and streaks", "Hours, words, every due date"],
           ["Calendar files", "Any due date into Google or Apple Calendar"],

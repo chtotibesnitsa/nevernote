@@ -241,7 +241,7 @@ function SummaryTab({ note }: { note: Note }) {
                   : !online
                     ? "You're offline. This class is saved, and its notes get written the moment you're back online."
                     : note.stage === "queued"
-                      ? "Queued. Free notes past 3 a day are written overnight."
+                      ? "Queued for tonight: today's 10 instant classes are used. Get them now below."
                       : "Ready when you are."}
             </T>
           )}

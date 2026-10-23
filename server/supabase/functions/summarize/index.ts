@@ -1,7 +1,7 @@
 // POST { noteId, sponsored?: boolean, regenerate?: boolean }  (regenerate: write the notes again, e.g. after changing note style)
 // A note that already has notes and got more transcript (a resumed class) gets a
 // dated update section for just the new part; see _shared/run.ts.
-// Free: 3 instant summaries a day. After that the note is written overnight,
+// Free: instant notes for 10 classes a day (every pause of a class counts once). After that the note is written overnight,
 // or instantly if the student just watched a short sponsor card.
 import { LIMITS, summaryRoute } from "../../../../packages/core/src/plans.ts";
 import { admin, cors, json, userFrom } from "../_shared/db.ts";
@@ -43,6 +43,8 @@ Deno.serve(async (req) => {
     if ((s ?? 0) >= LIMITS.sponsoredPerDay) route = "overnight";
   }
 
+  // Written now, so an overnight job still waiting for this note has nothing left to do.
+  if (route !== "overnight") await db.from("summary_jobs").update({ status: "done", error: "superseded" }).eq("note_id", noteId).eq("status", "queued");
   const { data: job } = await db.from("summary_jobs").insert({ user_id: user.id, note_id: noteId, route, status: route === "overnight" ? "queued" : "running" }).select("id").single();
   if (route === "overnight") {
     await db.from("notes").update({ stage: "queued" }).eq("id", noteId).eq("user_id", user.id);

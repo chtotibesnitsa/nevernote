@@ -946,7 +946,7 @@ const FAQ: [string, string][] = [
   ["How accurate is it?", "We test it on real classroom recordings, from a quiet room to a loud one with an echo. The open-source Parakeet engine misses about 4 words in 100 in a quiet room and about 13 in a noisy classroom. The full results are on GitHub."],
   ["Can I try it without an account?", "Yes, on the website. Guest mode keeps notes in your browser only. Sign up with Google any time to keep them and use them on your phone and laptop."],
   ["Is it okay to record class?", "Ask first. Many schools and states require consent from your teacher or everyone in the room. Nevernote reminds you before every recording."],
-  ["Can I cancel Pro anytime?", "Yes, in your App Store subscriptions. You keep everything you recorded and go back to the free plan."],
+  ["Can I cancel Pro anytime?", "Yes, from the link in your receipt email, or in App Store subscriptions on iPhone. You keep everything you recorded and go back to the free plan."],
 ];
 
 // ---------- Pricing ----------
@@ -1243,7 +1243,7 @@ function Pricing() {
           <div className="text-[14.5px] font-semibold text-[#1d1d1f]">Why free stays free</div>
           <p className="mt-1.5 text-[13.5px] leading-[1.55] text-[#6e6e73]">Transcription runs on your own phone or laptop, so a class costs us nothing to hear. AI notes cost a fraction of a cent each. There's nothing to run out of.</p>
           <div className="mt-4 grid grid-cols-3 gap-3 border-t border-black/[0.06] pt-4">
-            {[["∞", "classes"], ["0", "minute caps"], ["3", "instant notes a day"]].map(([n, l]) => (
+            {[["∞", "classes"], ["0", "minute caps"], ["10", "classes of instant notes a day"]].map(([n, l]) => (
               <div key={l}>
                 <div className="display text-[1.6rem] leading-none text-[#1d1d1f]">{n}</div>
                 <div className="mt-1 text-[11.5px] leading-tight text-[#6e6e73]">{l}</div>
@@ -1263,7 +1263,7 @@ function Pricing() {
           ))}
         </motion.div>
         <div className="mt-auto pt-6"><Cta big>Start free</Cta></div>
-        <p className="mt-4 text-[12.5px] leading-relaxed text-[#6e6e73]">Recording and transcription have no limits at all. AI notes: 3 instant a day, the rest arrive overnight or right away after a 5-second sponsor card.</p>
+        <p className="mt-4 text-[12.5px] leading-relaxed text-[#6e6e73]">Recording and transcription have no limits at all. AI notes: instant for 10 classes a day, and the rest arrive overnight or right away after a 5-second sponsor card.</p>
       </motion.div>
       <ProCard />
     </div>

@@ -108,10 +108,10 @@ function Cards({ notes, name }: { notes: Note[]; name: string }) {
       <div>
         <div className="[perspective:1200px]">
           <motion.button onClick={() => setFlip((f) => !f)} animate={{ rotateY: flip ? 180 : 0 }} transition={soft} style={{ transformStyle: "preserve-3d" }} className="relative block h-[300px] w-full text-left">
-            <span className="absolute inset-0 flex flex-col justify-between rounded-[26px] bg-[linear-gradient(180deg,#2c2c2e,#1d1d1f)] p-7 text-white shadow-[0_24px_48px_-24px_rgb(0_0_0/0.6)] [backface-visibility:hidden]">
-              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-white/50">Question · {c.from}</span>
+            <span className="absolute inset-0 flex flex-col justify-between rounded-[26px] bg-[linear-gradient(180deg,#ffffff,#f5f5f7)] p-7 text-[#1d1d1f] shadow-[0_0_0_1px_#e5e5ea,0_24px_48px_-28px_rgb(0_0_0/0.25)] [backface-visibility:hidden]">
+              <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[#6e6e73]">Question · {c.from}</span>
               <span className="title-serif text-[1.7rem] leading-snug md:text-[2rem]">{c.front}</span>
-              <span className="text-[12.5px] text-white/45">Tap to flip</span>
+              <span className="text-[12.5px] text-[#a1a1a6]">Tap to flip</span>
             </span>
             <span className="panel absolute inset-0 flex flex-col justify-between !rounded-[26px] p-7 [backface-visibility:hidden] [transform:rotateY(180deg)]">
               <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-[var(--mute)]">Answer</span>

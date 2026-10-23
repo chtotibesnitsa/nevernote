@@ -4,7 +4,7 @@ import { marked } from "marked";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import { useNavigate, useParams } from "react-router-dom";
+import { useNavigate, useParams, useSearchParams } from "react-router-dom";
 import { Button, Chip, fmtClock, soft, spring, StageDots, StatusDot } from "../components/ui.tsx";
 import { ask, cloudEnabled } from "../lib/cloud.ts";
 import { download, icsFor } from "../lib/ics.ts";
@@ -23,6 +23,9 @@ export function NoteView() {
   const { get, load, update, remove, rec, pause, resume, stop, need, tier, toast } = useApp();
   const nav = useNavigate();
   const note = get(id);
+  const [params] = useSearchParams();
+  // Opened from an Ask answer: go straight to the moment it was said.
+  const jump = params.get("seg");
   const [tab, setTab] = useState<Tab>("transcript");
   const [menu, setMenu] = useState(false);
 
@@ -32,7 +35,7 @@ export function NoteView() {
   // Show the notes as soon as they're written: on opening a summarised note, when
   // class ends, and again when a resumed class adds an update.
   useEffect(() => {
-    if (note?.summary && rec.noteId !== id) setTab((t) => (t === "transcript" ? "summary" : t));
+    if (note?.summary && rec.noteId !== id && !jump) setTab((t) => (t === "transcript" ? "summary" : t));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id, !!note?.summary, note?.summary?.updates?.length]);
 
@@ -127,7 +130,7 @@ export function NoteView() {
       <div className="relative flex-1">
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.2 }} className="pb-44 pt-6">
-            {tab === "transcript" && <Transcript note={note} live={live} />}
+            {tab === "transcript" && <Transcript note={note} live={live} jump={jump} />}
             {tab === "summary" && <SummaryTab note={note} />}
             {tab === "thoughts" && (
               <textarea
@@ -323,12 +326,22 @@ function Draft({ text }: { text: string }) {
   );
 }
 
-function Transcript({ note, live }: { note: Note; live: boolean }) {
+function Transcript({ note, live, jump }: { note: Note; live: boolean; jump?: string | null }) {
   const { update, rec, preview, liveEngine } = useApp();
   const [banner, setBanner] = useState(true);
   const [find, setFind] = useState("");
   const box = useRef<HTMLDivElement>(null);
-  const stick = useRef(live); // a finished class opens at the top, a live one follows along
+  const stick = useRef(live && !jump); // a finished class opens at the top, a live one follows along
+  // Scroll to and flash the line an Ask answer pointed at.
+  useEffect(() => {
+    if (!jump) return;
+    const t = setTimeout(() => {
+      const el = document.getElementById(`seg-${jump}`);
+      el?.scrollIntoView({ behavior: "smooth", block: "center" });
+      el?.animate([{ background: "#ffe58a" }, { background: "transparent" }], { duration: 2400, easing: "ease-out" });
+    }, 350);
+    return () => clearTimeout(t);
+  }, [jump]);
   const [behind, setBehind] = useState(false);
   const draft = live && preview?.note === note.id ? preview.text : "";
   const speakers = useMemo(() => {
@@ -412,7 +425,7 @@ function Transcript({ note, live }: { note: Note; live: boolean }) {
               prevSpeaker = s.speaker;
               const flag = flagged.get(s.id);
               return (
-                <motion.div key={s.id} layout="position" initial={live ? false : { opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={soft} className="group">
+                <motion.div key={s.id} id={`seg-${s.id}`} layout="position" initial={live ? false : { opacity: 0, y: 10, scale: 0.98 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={soft} className="group">
                   {showName && sp && (
                     <button onClick={() => rename(s.speaker!)} className="mb-1 mt-4 flex items-center gap-2 text-[13px] font-semibold md:ml-[64px]" title="Rename speaker">
                       <span className="grid h-5 w-5 place-items-center rounded-full text-[10px] text-white" style={{ background: sp.color }}>{sp.name[0]}</span>
@@ -517,7 +530,7 @@ function SummaryTab({ note }: { note: Note }) {
                   : !online
                     ? "You're offline. This class is saved, and its notes get written the moment you're back on Wi-Fi."
                     : note.stage === "queued"
-                      ? "Queued. Free notes past 3 a day are written overnight."
+                      ? "Queued for tonight: today's 10 instant classes are used. Get them now below."
                       : "Ready when you are."}
             </p>
           )}

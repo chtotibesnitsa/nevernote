@@ -95,7 +95,7 @@ interface Ctx {
   /** Web only: pick a class back up after the tab was closed. */
   resumeNote(id: string): Promise<void>;
   stop(): Promise<void>;
-  summarize(id: string, sponsored?: boolean): Promise<void>;
+  summarize(id: string, sponsored?: boolean, quiet?: boolean): Promise<void>;
   session: Session | null;
   /** False until the saved sign-in has been read, so the sign-in screen doesn't flash. */
   authReady: boolean;
@@ -108,6 +108,7 @@ interface Ctx {
   toast(t: Omit<Toast, "id">): void;
   dismissToast(id: number): void;
   proOpen: string | false;
+  refreshPlan(): Promise<boolean>;
   openPro(reason?: string): void;
   closePro(): void;
   /** Guest (no account yet), free account, or Pro. */
@@ -273,13 +274,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
+  // The app is light only, like the website: white and airy whatever the system theme.
   useEffect(() => {
-    const mq = matchMedia("(prefers-color-scheme: dark)");
-    const apply = () => document.documentElement.classList.toggle("dark", settings.theme === "dark" || (settings.theme === "system" && mq.matches));
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, [settings.theme]);
+    document.documentElement.classList.remove("dark");
+  }, []);
 
   // ---------- auth, plan, online ----------
   useEffect(() => {
@@ -295,6 +293,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (session) fetchPlan().then(setPlan);
     else setPlan("free");
   }, [session]);
+  /** Checks the plan again, e.g. after checkout in another tab. True once it's Pro. */
+  const refreshPlan = useCallback(async () => {
+    if (!session) return false;
+    const p = await fetchPlan();
+    setPlan(p);
+    return p === "pro";
+  }, [session]);
+  // Coming back from the checkout tab: pick up Pro straight away.
+  useEffect(() => {
+    const on = () => document.visibilityState === "visible" && void refreshPlan();
+    document.addEventListener("visibilitychange", on);
+    return () => document.removeEventListener("visibilitychange", on);
+  }, [refreshPlan]);
   useEffect(() => {
     const on = () => setOnline(true);
     const off = () => setOnline(false);
@@ -343,7 +354,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   /** While a class is still open (paused, or recording again), its stage belongs to the recorder. */
   const liveStage = (id: string): Stage | null => (noteIdRef.current === id && recStateRef.current !== "idle" ? (recStateRef.current === "paused" ? "paused" : "recording") : null);
   const summarize = useCallback(
-    async (id: string, sponsored = false) => {
+    async (id: string, sponsored = false, quiet = false) => {
       const n = notesRef.current.find((x) => x.id === id);
       if (!n || !n.segments.length) return;
       // Guests get their transcript; AI notes are the first thing a free account adds.
@@ -361,7 +372,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         const r = await requestSummary(id, sponsored);
         if (r.route === "overnight") {
           update(id, { stage: liveStage(id) ?? "queued" });
-          nudge("batchQueued");
+          // Always say so: a button that seems to do nothing is worse than a limit.
+          if (!quiet) {
+            toast({ title: "Notes for this class arrive tonight", body: "Today's 10 instant classes are used. Get them now with a 5-second sponsor card on the Summary tab, or with Pro." });
+            if (!liveStage(id)) openPro("batchQueued");
+          }
           return;
         }
         const cur = notesRef.current.find((x) => x.id === id)!;
@@ -374,11 +389,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
         nudge("summaryReady");
       } catch (e) {
         update(id, { stage: liveStage(id) ?? "queued" });
-        toast({ title: "Couldn't write notes yet", body: "Saved; Nevernote will try again when the connection is better." });
+        if (!quiet) toast({ title: "Couldn't write notes yet", body: "Saved; Nevernote will try again when the connection is better." });
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [session, online, update, syncNow, nudge, toast, openSignup],
+    [session, online, update, syncNow, nudge, toast, openSignup, openPro],
   );
   /**
    * Worth writing notes now? The first notes come as soon as there's a couple of
@@ -395,7 +410,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   // Back online: write notes for everything that was waiting.
   useEffect(() => {
     if (!online || !session) return;
-    for (const n of notesRef.current) if (n.stage === "queued" && n.segments.length) void summarize(n.id);
+    for (const n of notesRef.current) if (n.stage === "queued" && n.segments.length) void summarize(n.id, false, true);
   }, [online, session, summarize]);
 
   // ---------- live extraction + notifications ----------
@@ -929,6 +944,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toast,
     dismissToast,
     proOpen,
+    refreshPlan,
     openPro,
     closePro: () => setProOpen(false),
     tier,

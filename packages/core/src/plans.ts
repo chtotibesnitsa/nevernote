@@ -52,7 +52,7 @@ export const PRICING = {
 } as const;
 
 /** Free AI summaries that run the moment you're online. Past this they still run, just batched overnight (or instantly after a short sponsor card). */
-export const FREE_INSTANT_SUMMARIES_PER_DAY = 3;
+export const FREE_INSTANT_SUMMARIES_PER_DAY = 10;
 
 /** Cost guards. A summary costs about $0.002 per class hour on Gemini Flash Lite, so these keep a heavy free user under a few cents a month. */
 export const LIMITS = {
@@ -125,7 +125,7 @@ export function shouldUpsell(plan: Plan, moment: UpsellMoment, state: UpsellStat
     summaryReady: ["Your notes are ready", "With Pro you can ask them questions, like \"what's on the test?\""],
     askedQuestion: ["Ask your notes with Pro", "Get answers from every class you've recorded, with the moment they said it."],
     streak: ["Nice streak", "Pro turns a week of lectures into one exam pack."],
-    batchQueued: ["Notes coming tonight", "Free notes past 3 a day are written overnight. Pro writes them instantly."],
+    batchQueued: ["Notes coming tonight", "Free notes past 10 classes a day are written overnight. Pro writes them instantly."],
   };
   const [title, body] = copy[moment];
   return { show: true, title, body };

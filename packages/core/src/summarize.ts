@@ -155,7 +155,7 @@ export function askMessages(question: string, context: { title: string; date: Da
     {
       role: "system",
       content:
-        "Answer the student's question using only their class notes below. Be brief and concrete. Quote the teacher's words when useful and name which class and date they came from. If the notes don't say, say so.",
+        "Answer the student's question using only their class notes below. Be brief and concrete. Back each point with the words actually said, copied exactly from the transcript inside double quotes (at least 4 words, so the app can jump to that moment), and name which class and date they came from. The transcript comes from live speech recognition, so read past misheard words using context, but quote them as written. If the notes don't say, say so.",
     },
     { role: "user", content: `${docs}\n\nQuestion: ${question}` },
   ];

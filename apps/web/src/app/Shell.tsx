@@ -1,4 +1,4 @@
-import { BarChart3, CircleDot, GraduationCap, Home, MessageCircleQuestion, Moon, Settings as Cog, Sun } from "lucide-react";
+import { BarChart3, CircleDot, GraduationCap, Home, MessageCircleQuestion, Settings as Cog } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, type ReactNode } from "react";
 import { NavLink, useLocation, useNavigate } from "react-router-dom";
@@ -108,9 +108,8 @@ function SyncPill() {
 }
 
 export function Shell({ children }: { children: ReactNode }) {
-  const { settings, setSettings, plan, session, authReady } = useApp();
+  const { plan, session, authReady } = useApp();
   const loc = useLocation();
-  const dark = document.documentElement.classList.contains("dark");
   const guest = useGuestStart(cloudEnabled && authReady && !session && !isDesktop);
   // Google said this account already exists, so it couldn't join the guest: sign into it (the guest's classes follow).
   const anon = !!session?.user.is_anonymous;
@@ -158,13 +157,6 @@ export function Shell({ children }: { children: ReactNode }) {
             </span>
             <SyncPill />
             <div className="flex items-center gap-2" style={{ WebkitAppRegion: "no-drag" } as never}>
-              <button
-                onClick={() => setSettings({ theme: dark ? "light" : "dark" })}
-                className="grid h-8 w-8 place-items-center rounded-full text-[var(--ink-2)] hover:bg-[var(--bubble)]"
-                aria-label="Toggle dark mode"
-              >
-                {dark ? <Sun size={16} /> : <Moon size={16} />}
-              </button>
               <Hmu compact={isDesktop} />
             </div>
           </header>
