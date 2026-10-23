@@ -1,8 +1,8 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, net, Notification, powerSaveBlocker, session, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, ipcMain, nativeTheme, net, Notification, powerSaveBlocker, session, shell, systemPreferences, utilityProcess, type UtilityProcess } from "electron";
+import { EventEmitter } from "node:events";
 import { appendFileSync, existsSync, readdirSync, writeFileSync } from "node:fs";
 import { cpus } from "node:os";
 import { join } from "node:path";
-import { Worker } from "node:worker_threads";
 import type { Note } from "../../../packages/core/src/types.ts";
 import { ASR_MODELS, ensureModels, installed, useFetch, type AsrModelId } from "./models.ts";
 import { FileStore } from "./store.ts";
@@ -11,7 +11,40 @@ const data = app.getPath("userData");
 const modelsDir = join(data, "models");
 const store = new FileStore(data);
 let win: BrowserWindow | undefined;
-let worker: Worker | undefined;
+/**
+ * The engine runs in its own process. If its native code crashes, the app stays
+ * up: whoever is waiting hears an error, and the next start gets a fresh engine.
+ */
+class EngineProcess extends EventEmitter {
+  private child: UtilityProcess;
+  private note = "";
+  private starting = false;
+  private withWords = false;
+  constructor() {
+    super();
+    this.child = utilityProcess.fork(join(__dirname, "engine-worker.cjs"), [], { serviceName: "Nevernote engine", stdio: "inherit" });
+    this.child.on("message", (m) => {
+      if (m?.type === "started") this.starting = false;
+      this.emit("message", m);
+    });
+    this.child.on("exit", (code) => {
+      // Course words are the one optional part of starting; if starting with them crashed, start without them from now on.
+      if (code !== 0 && this.starting && this.withWords) skipWords = true;
+      if (code !== 0) this.emit("message", { type: "error", noteId: this.note, message: `The transcription engine stopped (code ${code}). Try again.`, crashed: true });
+      this.emit("exit", code);
+    });
+  }
+  postMessage(m: { type: string; noteId?: string; [k: string]: unknown }, _transfer?: unknown[]) {
+    if (m.noteId) this.note = m.noteId;
+    if (m.type === "start") {
+      this.starting = true;
+      this.withWords = !!m.hotwordsFile;
+    }
+    this.child.postMessage(m.type === "start" && skipWords ? { ...m, hotwordsFile: undefined } : m);
+  }
+}
+let worker: EngineProcess | undefined;
+let skipWords = false;
 
 // The app is light only, so native glass and menus match it.
 nativeTheme.themeSource = "light";
@@ -47,16 +80,19 @@ app.on("open-url", (e, url) => {
   deliverAuth(url);
 });
 
-function getWorker(): Worker {
+function getWorker(): EngineProcess {
   if (worker) return worker;
-  worker = new Worker(join(__dirname, "engine-worker.cjs"));
+  worker = new EngineProcess();
   worker.on("message", (m) => {
     if (m.type === "segment") win?.webContents.send("rec:segment", m);
     if (m.type === "stage") win?.webContents.send("rec:stage", m);
     if (m.type === "partial") win?.webContents.send("rec:partial", m);
     if (m.type === "error") win?.webContents.send("rec:stage", { noteId: m.noteId, stage: "failed", message: m.message });
   });
-  worker.on("exit", () => (worker = undefined));
+  const self = worker;
+  worker.on("exit", () => {
+    if (worker === self) worker = undefined;
+  });
   return worker;
 }
 
@@ -135,11 +171,14 @@ async function selfTest() {
       say("OK (screen and bridge; engine needs models, run with =full to test it)");
       return app.exit(0);
     }
-    const w = getWorker();
+    let w = getWorker();
     const reply = (type: string) =>
       new Promise<any>((ok, bad) => {
         const h = (m: any) => {
-          if (m.type === "error") bad(new Error(m.message));
+          if (m.type === "error") {
+            w.off("message", h);
+            bad(new Error(m.message));
+          }
           if (m.type === type) {
             w.off("message", h);
             ok(m);
@@ -147,12 +186,22 @@ async function selfTest() {
         };
         w.on("message", h);
       });
-    const started = reply("started");
     // Course words are passed the way a real class passes them; models that can't use them must still start.
     const hotwordsFile = join(data, "hotwords.txt");
     writeFileSync(hotwordsFile, ["MITOSIS", "PHOTOSYNTHESIS", "PORTRAIT"].join("\n"));
-    w.postMessage({ type: "start", noteId: "selftest", modelsDir, asr, threads: 2, hotwordsFile });
-    await started;
+    say("starting the engine");
+    try {
+      const started = reply("started");
+      w.postMessage({ type: "start", noteId: "selftest", modelsDir, asr, threads: 2, hotwordsFile });
+      await started;
+    } catch (e) {
+      say(`engine failed with course words: ${e instanceof Error ? e.message : e}; trying again without`);
+      await new Promise((r) => setTimeout(r, 500));
+      w = getWorker();
+      const started = reply("started");
+      w.postMessage({ type: "start", noteId: "selftest", modelsDir, asr, threads: 2, hotwordsFile });
+      await started;
+    }
     say("engine loaded");
 
     const dir = join(modelsDir, ASR_MODELS[asr].installs, "test_wavs");
