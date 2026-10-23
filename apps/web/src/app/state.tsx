@@ -9,6 +9,8 @@ import {
   nameSpeakers,
   speakersOf,
   SpeakerTracker,
+  classTerms,
+  fixTerms,
   voiceprint,
   Syncer,
   tombstone,
@@ -27,7 +29,7 @@ import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { desktop, isDesktop, type AsrModelId } from "../lib/bridge.ts";
 import { startCapture, type Capture } from "../lib/capture.ts";
-import { cloudEnabled, fetchPlan, remoteFor, requestSummary, supabase, track } from "../lib/cloud.ts";
+import { claimGuest, cloudEnabled, fetchPlan, remoteFor, requestSummary, supabase, track } from "../lib/cloud.ts";
 import { deviceKind, newId } from "../lib/ids.ts";
 import { local } from "../lib/local.ts";
 import { getActive, logCut, setActive } from "../lib/cutoffs.ts";
@@ -321,18 +323,36 @@ export function AppProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(t);
   }, [syncNow]);
 
+  // Signed into an account that already existed: bring the guest's classes onto it.
+  useEffect(() => {
+    if (!session || session.user.is_anonymous) return;
+    claimGuest(session)
+      .then(async (moved) => {
+        if (moved === null) return;
+        // Everything in this browser goes up again, now under the account, and the account's own notes come down.
+        for (const n of await local.list()) await local.put({ ...n, syncedAt: undefined });
+        await local.setMeta("cursor", "");
+        await syncNow();
+        if (moved > 0) toast({ title: "Your classes are in your account", body: "What you recorded as a guest is saved to your account and syncs everywhere you sign in." });
+      })
+      .catch(() => toast({ title: "Couldn't move your guest classes yet", body: "They're safe in this browser. Nevernote will try again next time you open it." }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user.id]);
+
   // ---------- summaries ----------
+  /** While a class is still open (paused, or recording again), its stage belongs to the recorder. */
+  const liveStage = (id: string): Stage | null => (noteIdRef.current === id && recStateRef.current !== "idle" ? (recStateRef.current === "paused" ? "paused" : "recording") : null);
   const summarize = useCallback(
     async (id: string, sponsored = false) => {
       const n = notesRef.current.find((x) => x.id === id);
       if (!n || !n.segments.length) return;
       // Guests get their transcript; AI notes are the first thing a free account adds.
       if (session?.user.is_anonymous) {
-        openSignup("summary");
+        if (!liveStage(id)) openSignup("summary");
         return;
       }
       if (!session || !online) {
-        update(id, { stage: "queued" });
+        if (!liveStage(id)) update(id, { stage: "queued" });
         return;
       }
       update(id, { stage: "summarising" });
@@ -340,25 +360,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await syncNow(); // the server summarises what it has
         const r = await requestSummary(id, sponsored);
         if (r.route === "overnight") {
-          update(id, { stage: "queued" });
+          update(id, { stage: liveStage(id) ?? "queued" });
           nudge("batchQueued");
           return;
         }
         const cur = notesRef.current.find((x) => x.id === id)!;
         update(id, {
           summary: r.summary,
-          stage: "ready",
+          stage: liveStage(id) ?? "ready",
           title: /^Class \d+\/\d+$/.test(cur.title) ? r.summary.title : cur.title,
           extractions: mergeExtractions(cur.extractions.filter((e) => e.source === "keywords"), r.summary.extractions),
         });
         nudge("summaryReady");
       } catch (e) {
-        update(id, { stage: "queued" });
+        update(id, { stage: liveStage(id) ?? "queued" });
         toast({ title: "Couldn't write notes yet", body: "Saved; Nevernote will try again when the connection is better." });
       }
     },
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [session, online, update, syncNow, nudge, toast, openSignup],
   );
+  /**
+   * Worth writing notes now? The first notes come as soon as there's a couple of
+   * sentences; after that, a new section needs at least two new lines.
+   */
+  const worthUpdating = (id: string) => {
+    const n = notesRef.current.find((x) => x.id === id);
+    if (!n) return false;
+    const fresh = n.segments.slice(n.summary?.covered ?? 0);
+    const words = fresh.reduce((w, x) => w + x.text.split(/\s+/).length, 0);
+    return n.summary ? fresh.length >= 2 && words >= 25 : words >= 12;
+  };
 
   // Back online: write notes for everything that was waiting.
   useEffect(() => {
@@ -588,9 +620,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
         }
         other = v !== voiceOfPhrase ? other + 1 : 0;
-        // Two seconds of a different voice: close this line so each person gets their own.
-        if (other >= 2 && now() - phraseStart > 2.5) {
-          cutAt = now() - 1.6;
+        // Three seconds of a different voice: close this line so each person gets their own.
+        // (Each cut restarts the engine, so it's kept for clear changes of speaker.)
+        if (other >= 3 && now() - phraseStart > 3) {
+          cutAt = now() - 2.6;
           other = 0;
           live.current.cut();
         }
@@ -607,16 +640,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
       if (!liveSpeechSupported()) return whisper();
       const ids = new Map<string, { id: string; start: number; speaker: string }>();
+      // This class's vocabulary: names already heard first, then its subject's terms.
+      const cur = notesRef.current.find((x) => x.id === noteId);
+      const terms = classTerms(`${cur?.folder ?? ""} ${cur?.title ?? ""}`, 400, (cur?.speakers ?? []).map((sp) => sp.name).filter((nm) => !/^S\d+$/.test(nm)));
       try {
         live.current = await startLiveSpeech({
           track: capture.current.track,
+          phrases: terms.slice(0, 120),
+          onLocal: () => setLiveEngine("local"),
           onInterim: (text) => {
             // The engine is about a second behind the audio.
             if (text && phraseStart === null) phraseStart = Math.max(lastEnd, now() - 1.2);
             setPreview(text ? { note: noteId, text } : null);
           },
           onFinal: (text, key, drop) => {
-            const clean = text.trim()[0].toUpperCase() + text.trim().slice(1);
+            const fixed = fixTerms(text.trim(), terms);
+            const clean = fixed[0].toUpperCase() + fixed.slice(1);
             const gone = drop.map((k) => ids.get(k)?.id).filter(Boolean) as string[];
             if (gone.length) dropSegsRef.current(noteId, gone);
             const known = ids.get(key);
@@ -704,11 +743,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     live.current?.setPaused(true);
     chunker.current?.flush();
     setRec((r) => ({ ...r, state: "paused", stopReason: undefined }));
-    if (rec.noteId) {
-      logCut(rec.noteId, "paused", elapsedRef.current);
-      update(rec.noteId, { stage: "paused" });
+    recStateRef.current = "paused";
+    const id = rec.noteId;
+    if (id) {
+      logCut(id, "paused", elapsedRef.current);
+      update(id, { stage: "paused" });
+      // Notes for what's been said so far, right away. The engine sends its last
+      // words a moment after it stops, so wait for them first.
+      setTimeout(() => {
+        if (worthUpdating(id) && recStateRef.current === "paused") void summarize(id);
+      }, 1200);
     }
-  }, [rec.noteId, update]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rec.noteId, update, summarize]);
 
   const resume = useCallback(async () => {
     const id = noteIdRef.current;
@@ -780,7 +827,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setActive(null);
     setRec({ state: "idle", elapsed: 0 });
     track("recording_finished", { minutes: Math.round(elapsed / 60) }, deviceKind());
-    void summarize(id);
+    recStateRef.current = "idle";
+    const n = notesRef.current.find((x) => x.id === id);
+    // A class already summarised at its last pause only needs a new section if more was said.
+    if (!n?.summary || worthUpdating(id)) void summarize(id);
+    else update(id, { stage: "ready" });
   }, [rec.noteId, rec.elapsed, update, summarize]);
 
   // Tab safety: shout in the tab bar, warn before closing, keep the screen awake, and log Wi-Fi changes.

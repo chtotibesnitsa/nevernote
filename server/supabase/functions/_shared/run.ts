@@ -57,7 +57,9 @@ export async function summariseNote(noteId: string, userId: string, plan: "free"
   } else summary = { ...summary, covered: segments.length, updates: undefined };
   const extractions = mergeExtractions(row.extractions as Note["extractions"], summary.extractions);
   const title = /^(untitled|new note|recording)/i.test(row.title) ? summary.title : row.title;
-  await db.from("notes").update({ summary, extractions, title, stage: "ready", updated_at: new Date().toISOString() }).eq("id", noteId);
+  // A class that's only paused stays paused: these notes are for what was said so far.
+  const stage = row.stage === "paused" || row.stage === "recording" ? row.stage : "ready";
+  await db.from("notes").update({ summary, extractions, title, stage, updated_at: new Date().toISOString() }).eq("id", noteId);
   if (jobId) await db.from("summary_jobs").update({ status: "done", tokens_in: tin, tokens_out: tout, finished_at: new Date().toISOString() }).eq("id", jobId);
   await db.from("usage_events").insert({ user_id: userId, kind: "summary", meta: { model, tokens_in: tin, tokens_out: tout, cost_usd: cost, words, style: prefs.style, custom_rules: !!(prefs.rules || prefs.presets?.length), chunks: chunks.length, update } });
   return summary;

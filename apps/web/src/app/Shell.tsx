@@ -6,7 +6,7 @@ import { ProSheet, SignupSheet, Toasts } from "../components/Overlays.tsx";
 import { fmtClock, Hmu, Logo, spring, StatusDot, Wave } from "../components/ui.tsx";
 import { isDesktop } from "../lib/bridge.ts";
 import { cloudEnabled, supabase } from "../lib/cloud.ts";
-import { AuthGate, GoogleMark, GuestBar, upgradeGuest } from "./AuthGate.tsx";
+import { AuthGate, existingAccountReturn, GoogleMark, GuestBar, signInWithGoogle, upgradeGuest } from "./AuthGate.tsx";
 import { MicOverlay } from "./RecordingUI.tsx";
 import { useApp } from "./state.tsx";
 
@@ -112,6 +112,11 @@ export function Shell({ children }: { children: ReactNode }) {
   const loc = useLocation();
   const dark = document.documentElement.classList.contains("dark");
   const guest = useGuestStart(cloudEnabled && authReady && !session && !isDesktop);
+  // Google said this account already exists, so it couldn't join the guest: sign into it (the guest's classes follow).
+  const anon = !!session?.user.is_anonymous;
+  useEffect(() => {
+    if (anon && existingAccountReturn()) void signInWithGoogle();
+  }, [anon]);
   if (cloudEnabled && !authReady) return <div className="min-h-screen bg-[var(--bg)]" />;
   if (cloudEnabled && !session) return guest === "failed" || isDesktop ? <AuthGate /> : <div className="min-h-screen bg-[var(--bg)]" />;
   return (

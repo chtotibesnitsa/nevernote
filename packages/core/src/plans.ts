@@ -63,7 +63,7 @@ export const LIMITS = {
   /** Longest transcript we summarise in one note, in words (about 4 hours of class). */
   maxSummaryWords: 36_000,
   /** Times one note can be summarised again per day (after edits, or each time a class is resumed). */
-  resummariesPerNotePerDay: 6,
+  resummariesPerNotePerDay: 16,
 } as const;
 
 export type SummaryRoute = "instant" | "sponsored-or-overnight";

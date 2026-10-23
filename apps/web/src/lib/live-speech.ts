@@ -15,19 +15,26 @@ export const liveSpeechSupported = () => !!Ctor();
  * one, that download starts in the background for next time: class never waits
  * on it, and a stalled download can't hold up the first words.
  */
-async function onDevice(lang: string): Promise<boolean> {
+async function onDevice(lang: string, onInstalled: () => void): Promise<boolean> {
   const C = Ctor() as any;
   if (!C?.available) return false;
   const opts = { langs: [lang], processLocally: true };
   try {
     const state = await Promise.race([C.available(opts), new Promise((r) => setTimeout(() => r("slow"), 2000))]);
     if (state === "available") return true;
-    if (state === "downloadable") void Promise.resolve(C.install?.(opts)).catch(() => {});
+    // The model is fetched in the background; the next phrase after it lands runs on-device.
+    if (state === "downloadable" || state === "downloading")
+      void Promise.resolve(C.install?.(opts))
+        .then((ok) => ok && onInstalled())
+        .catch(() => {});
   } catch {
     // older API shape: no on-device mode
   }
   return false;
 }
+
+/** Contextual biasing (newer Chrome, on-device): class terms the engine should expect. */
+const PhraseCtor = (): (new (p: string, boost: number) => unknown) | undefined => (globalThis as any).SpeechRecognitionPhrase;
 
 export interface LiveSpeech {
   /** True when the audio never leaves the device. */
@@ -61,6 +68,10 @@ export async function startLiveSpeech(opts: {
   lang?: string;
   /** The mic after our gain stage. Newer Chrome listens to it instead of opening its own, so quiet and far voices come through. */
   track?: MediaStreamTrack;
+  /** Class vocabulary to listen for ("mitosis", "Le Chatelier's principle"). */
+  phrases?: string[];
+  /** The engine moved on-device mid-class (its model finished downloading). */
+  onLocal?(): void;
   onInterim(text: string): void;
   /** `key` is stable per phrase: a phrase the engine sends again with more words comes back with the same key, to replace it. `drop` lists earlier phrases now folded into this one. */
   onFinal(text: string, key: string, drop: string[]): void;
@@ -69,7 +80,11 @@ export async function startLiveSpeech(opts: {
   const C = Ctor();
   if (!C) throw new Error("no speech engine");
   const lang = opts.lang ?? (navigator.language?.startsWith("en") ? navigator.language : "en-US");
-  const local = await onDevice(lang);
+  let local = await onDevice(lang, () => {
+    local = true;
+    opts.onLocal?.();
+  });
+  let phrases = !!opts.phrases?.length && !!PhraseCtor();
   let running = true;
   let paused = false;
   let rec: SR | null = null;
@@ -120,6 +135,14 @@ export async function startLiveSpeech(opts: {
     r.lang = lang;
     r.maxAlternatives = 1;
     if (local) r.processLocally = true;
+    if (phrases && local) {
+      try {
+        const P = PhraseCtor()!;
+        r.phrases = opts.phrases!.map((p) => new P(p, 3));
+      } catch {
+        phrases = false;
+      }
+    }
     const id = ++session;
     done = [];
     const sent = new Map<number, string>();
@@ -143,6 +166,10 @@ export async function startLiveSpeech(opts: {
     r.onerror = (e: any) => {
       const err = String(e.error ?? "");
       if (err === "no-speech" || err === "aborted") return;
+      if (err === "phrases-not-supported") {
+        phrases = false; // onend reopens it without the hints
+        return;
+      }
       if (err === "audio-capture" && useTrack) {
         useTrack = false; // the engine can't read our track: onend reopens it on the default mic
         return;
@@ -187,7 +214,9 @@ export async function startLiveSpeech(opts: {
   };
   begin();
   return {
-    local,
+    get local() {
+      return local;
+    },
     setPaused(p) {
       paused = p;
       if (p) rec?.stop();

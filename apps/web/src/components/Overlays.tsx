@@ -187,9 +187,9 @@ export function SignupSheet() {
         <span className="grid h-6 w-6 place-items-center rounded-full bg-white">
           <GoogleMark />
         </span>
-        Sign up free with Google
+        Continue with Google
       </button>
-      <p className="mt-3 text-center text-[11.5px] text-[var(--mute)]">Everything you recorded as a guest moves into your account.</p>
+      <p className="mt-3 text-center text-[11.5px] text-[var(--mute)]">New here or already have an account, it's the same button. What you recorded as a guest, transcript and notes, moves into your account.</p>
     </Sheet>
   );
 }

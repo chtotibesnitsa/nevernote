@@ -5,17 +5,30 @@ import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Logo, soft } from "../components/ui.tsx";
 import { isDesktop } from "../lib/bridge.ts";
-import { supabase } from "../lib/cloud.ts";
+import { bootUrl, rememberGuest, supabase } from "../lib/cloud.ts";
 import { useApp } from "./state.tsx";
 
 const redirectTo = () => (isDesktop ? "nevernote://auth" : `${location.origin}${import.meta.env.BASE_URL}app`);
 
 export const signInWithGoogle = () => supabase!.auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectTo() } });
 
-/** Keeps a guest's notes: links Google to the same account instead of starting a new one. */
+/**
+ * One Google button for signing up and signing in. A new Google account is
+ * linked to the guest, so it keeps its classes. A Google account that already
+ * has Nevernote can't be linked; Google signs into it instead, and the guest's
+ * classes are claimed onto it once back (see claimGuest).
+ */
 export async function upgradeGuest() {
+  await rememberGuest();
   const { error } = await supabase!.auth.linkIdentity({ provider: "google", options: { redirectTo: redirectTo() } });
   if (error) await signInWithGoogle();
+}
+
+/** True when Google came back saying this account already exists: sign straight into it. */
+export function existingAccountReturn(): boolean {
+  const u = new URL(bootUrl || location.href);
+  const p = new URLSearchParams(u.hash.slice(1));
+  return (u.searchParams.get("error_code") ?? p.get("error_code")) === "identity_already_exists";
 }
 
 export function GoogleMark() {
@@ -35,8 +48,7 @@ export function AuthGate() {
 
   // Linking Google to a guest fails if that Google account already has notes; sign straight into it instead.
   useEffect(() => {
-    const p = new URLSearchParams(location.hash.slice(1) || location.search);
-    if (p.get("error_code") === "identity_already_exists") void signInWithGoogle();
+    if (existingAccountReturn()) void signInWithGoogle();
   }, []);
 
   const google = async () => {

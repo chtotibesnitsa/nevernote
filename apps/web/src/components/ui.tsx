@@ -18,9 +18,9 @@ export function StatusDot({ dot, live, size = 8 }: { dot: Dot; live?: boolean; s
 }
 
 /** Heard → transcribed → summarised, as three dots. */
-export function StageDots({ stage, withLabel }: { stage: Stage; withLabel?: boolean }) {
+export function StageDots({ stage, withLabel, guest }: { stage: Stage; withLabel?: boolean; guest?: boolean }) {
   const dots = pipelineDots(stage);
-  const info = stageInfo(stage);
+  const info = stageInfo(stage, guest);
   return (
     <span className="inline-flex items-center gap-2" title={info.label}>
       <span className="inline-flex items-center gap-1">

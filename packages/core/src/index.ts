@@ -11,3 +11,4 @@ export * from "./transcript.ts";
 export * from "./voice.ts";
 export * from "./styles.ts";
 export * from "./ics.ts";
+export * from "./vocab.ts";

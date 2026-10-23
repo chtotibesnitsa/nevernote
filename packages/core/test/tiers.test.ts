@@ -28,3 +28,22 @@ describe("calendar feed", () => {
     expect(ics).toContain("SUMMARY:Biology: Lab report");
   });
 });
+
+import { classTerms, fixTerms, subjectsOf } from "../src/vocab.ts";
+describe("class vocabulary", () => {
+  it("picks subjects from a class name", () => {
+    expect(subjectsOf("APES period 3")).toContain("environmental");
+    expect(subjectsOf("AP Chem")).toEqual(["chemistry"]);
+  });
+  it("puts names first and stays under the cap", () => {
+    const t = classTerms("AP Bio", 50, ["Ms. Rivera"]);
+    expect(t[0]).toBe("Ms. Rivera");
+    expect(t).toContain("mitosis");
+    expect(t.length).toBe(50);
+  });
+  it("spells terms properly without touching ordinary words", () => {
+    const terms = classTerms("AP Chem", 200);
+    expect(fixTerms("le chateliers principle says the dna and ph change", [...terms, "DNA"])).toBe("Le Chatelier's principle says the DNA and pH change");
+    expect(fixTerms("we went to the base of the hill", terms)).toBe("we went to the base of the hill");
+  });
+});

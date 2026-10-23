@@ -31,8 +31,13 @@ Deno.serve(async (req) => {
   const { count: again } = await jobs().eq("note_id", noteId).neq("status", "failed");
   if ((again ?? 0) >= LIMITS.resummariesPerNotePerDay) return json({ error: "This note was already summarised today. Try again tomorrow." }, 429);
 
-  const { count } = await jobs().eq("route", "instant");
-  let route: "instant" | "sponsored" | "overnight" = summaryRoute(user.plan, count ?? 0) === "instant" ? "instant" : sponsored ? "sponsored" : "overnight";
+  const { data: instant } = await db.from("summary_jobs").select("note_id").eq("user_id", user.id).gte("created_at", today).eq("route", "instant");
+  const count = new Set((instant ?? []).map((j) => j.note_id)).size;
+  // A class that already got notes today keeps getting its updates instantly
+  // (each pause adds a section): the daily limit counts classes, not pauses.
+  const { count: doneToday } = await jobs().eq("note_id", noteId).in("route", ["instant", "sponsored"]).eq("status", "done");
+  const instantNow = (!!s && (doneToday ?? 0) > 0) || summaryRoute(user.plan, count) === "instant";
+  let route: "instant" | "sponsored" | "overnight" = instantNow ? "instant" : sponsored ? "sponsored" : "overnight";
   if (route === "sponsored") {
     const { count: s } = await jobs().eq("route", "sponsored");
     if ((s ?? 0) >= LIMITS.sponsoredPerDay) route = "overnight";

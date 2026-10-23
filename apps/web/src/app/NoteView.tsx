@@ -100,7 +100,7 @@ export function NoteView() {
         <Chip>{relDay(new Date(note.createdAt))}</Chip>
         <FolderChip note={note} />
         <span className="ml-1">
-          <StageDots stage={note.stage} withLabel />
+          <StageDots stage={note.stage} withLabel guest={tier === "guest"} />
         </span>
       </div>
 
@@ -492,7 +492,7 @@ function SummaryTab({ note }: { note: Note }) {
   const important = note.extractions.filter((e) => e.kind === "important");
 
   if (!s) {
-    const info = stageInfo(note.stage);
+    const info = stageInfo(note.stage, tier === "guest");
     return (
       <div className="space-y-8">
         <div className="panel !rounded-3xl p-8 text-center">

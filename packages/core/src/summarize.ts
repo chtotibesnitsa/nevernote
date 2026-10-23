@@ -11,14 +11,17 @@ export interface ChatMessage {
 }
 
 const SYSTEM = `You turn class recordings into study notes for a student.
-The transcript was made by speech recognition, so fix obvious mis-hearings using context (e.g. "sync" -> "sink" in an ecology class).
+The class is usually a US high school or college class. The transcript was made live by speech recognition in a noisy room, so:
+- Words are often misheard, especially subject vocabulary, names and numbers. Work out what was really meant from the subject and context, and write the correct term in the notes (e.g. "sync" -> "sink" in ecology, "my toast is" -> "mitosis", "biopia" -> "biofuel"). Never copy an obviously misheard word into the notes.
+- There is little punctuation and some words are missing. Fill gaps only when the meaning is certain; otherwise leave the point out rather than guess.
+- Lines can run several speakers together, and labels can be wrong. Decide who said what from the content (a question, an answer, a correction) rather than trusting the label.
 Speakers are labelled with their name when it was said aloud, otherwise S1, S2...; the one who talks most is usually the teacher. Use names in the notes when you have them; never invent names for S1, S2.
 Return ONLY a JSON object with these keys:
 - "title": short note title, like "Carbon Cycle & Feedback Loops"
 - "notes": markdown. 3-7 "### " sections in the order taught, each with 2-6 concise bullet points. Keep numbers, names, formulas, examples. No intro or outro.
 - "studyGuide": 4-8 {"question","answer"} pairs a teacher would put on a test
 - "keyTerms": up to 10 {"term","definition"} pairs
-- "items": every deadline, test, event or reminder mentioned: {"kind": "deadline"|"exam"|"event"|"reminder"|"important", "title", "date": "YYYY-MM-DD" or null, "time": "HH:MM" (24h) or null, "quote": exact words from the transcript}
+- "items": every deadline, test, event or reminder mentioned: {"kind": "deadline"|"exam"|"event"|"reminder"|"important", "title", "date": "YYYY-MM-DD" or null, "time": "HH:MM" (24h) or null, "quote": exact words from the transcript}. Only real tasks, dates and things the teacher flagged; "you have to understand" or a passing opinion is not an item
 Resolve relative dates ("next Tuesday") against the recording date given. Never invent items or dates that were not said.`;
 
 /** ~6k words per chunk keeps a 75-minute lecture to two calls on small models. */
