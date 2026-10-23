@@ -178,3 +178,28 @@ describe("daily review", () => {
     expect(comingUp([no], now)).toEqual([]);
   });
 });
+
+import { isDue, mcQuestions, review } from "../src/study.ts";
+describe("study games", () => {
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const cards = ["mitosis", "meiosis", "osmosis", "diffusion", "ATP"].map((t, i) => ({ front: t, back: `definition ${i}` }));
+  it("builds multiple choice with the right answer among four", () => {
+    const qs = mcQuestions(cards, 3, rand);
+    expect(qs).toHaveLength(3);
+    for (const q of qs) {
+      expect(q.options).toHaveLength(4);
+      expect(new Set(q.options).size).toBe(4);
+      expect(q.options[q.answer]).toBe(cards.find((c) => c.front === q.prompt)!.back);
+    }
+    expect(mcQuestions(cards.slice(0, 3))).toEqual([]);
+  });
+  it("spaces reviews out and resets on a miss", () => {
+    const now = new Date("2026-10-23T12:00:00Z");
+    const a = review(undefined, true, now);
+    expect(a.box).toBe(1);
+    expect(isDue(a, now)).toBe(false);
+    expect(isDue(a, new Date("2026-10-24T12:00:01Z"))).toBe(true);
+    expect(review(review(a, true, now), false, now).box).toBe(0);
+  });
+});

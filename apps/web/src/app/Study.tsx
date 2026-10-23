@@ -1,16 +1,18 @@
-// Study: flashcards from every class's notes (free account), and exam packs
-// that fold a whole unit of lectures into one review guide (Pro).
+// Study: flashcards with spaced repetition, a quiz and a match game (free
+// account), practice tests, study plans and exam packs (Pro), and outside
+// sources for every term. All of it is built from the student's own classes.
 import { unlockStep, type Note } from "@nevernote/core";
 import { ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
 import { marked } from "marked";
 import { AnimatePresence, motion } from "motion/react";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { Button, LockBadge, soft, spring } from "../components/ui.tsx";
 import { cardsOf, examPack, exportFlashcards, saveDoc, saveMarkdown, savePdf } from "../lib/export.ts";
 import { useApp } from "./state.tsx";
+import { Deeper, Match, Practice, Quiz, useSrs } from "./StudyGames.tsx";
 
-type Tab = "cards" | "pack";
+type Tab = "cards" | "quiz" | "match" | "practice" | "pack" | "deeper";
 
 export function Study() {
   const { notes, tier } = useApp();
@@ -29,14 +31,18 @@ export function Study() {
       <p className="mt-1 text-[15px] text-[var(--mute)]">Everything here is built from the notes Nevernote wrote for your classes.</p>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
-        <div className="flex rounded-full bg-[var(--bubble)] p-1 shadow-[inset_0_0_0_1px_var(--line)]">
+        <div className="no-scrollbar -mx-1 flex max-w-full overflow-x-auto rounded-full bg-[var(--bubble)] p-1 shadow-[inset_0_0_0_1px_var(--line)]">
           {(
             [
               ["cards", "Flashcards", unlockStep(tier, "studyGuide")],
+              ["quiz", "Quiz", unlockStep(tier, "studyGuide")],
+              ["match", "Match", unlockStep(tier, "studyGuide")],
+              ["practice", "Practice tests", unlockStep(tier, "practiceTest")],
               ["pack", "Exam packs", unlockStep(tier, "examPack")],
+              ["deeper", "Go deeper", null],
             ] as const
           ).map(([k, label, step]) => (
-            <button key={k} onClick={() => setTab(k)} className={`relative flex items-center gap-2 rounded-full px-4 py-1.5 text-[13.5px] font-semibold transition-colors ${tab === k ? "text-[var(--fg)]" : "text-[var(--mute)]"}`}>
+            <button key={k} onClick={() => setTab(k)} className={`relative flex shrink-0 items-center gap-2 rounded-full px-4 py-1.5 text-[13.5px] font-semibold transition-colors ${tab === k ? "text-[var(--fg)]" : "text-[var(--mute)] hover:text-[var(--fg)]"}`}>
               {tab === k && <motion.span layoutId="study-tab" transition={spring} className="absolute inset-0 rounded-full bg-[var(--card)] shadow-[0_1px_4px_rgb(0_0_0/0.15)]" />}
               <span className="relative">{label}</span>
               {step && (
@@ -58,11 +64,32 @@ export function Study() {
 
       <AnimatePresence mode="wait">
         <motion.div key={tab} initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.2 }} className="mt-6">
-          {tab === "cards" ? <Cards notes={inScope} name={folder ?? "All classes"} /> : <Pack notes={inScope} name={folder ?? "All classes"} />}
+          {tab === "cards" ? (
+            <Cards notes={inScope} name={folder ?? "All classes"} />
+          ) : tab === "quiz" || tab === "match" ? (
+            <Free notes={inScope}>{(deck) => (tab === "quiz" ? <Quiz deck={deck} /> : <Match deck={deck} />)}</Free>
+          ) : tab === "practice" ? (
+            <Practice notes={inScope} name={folder ?? "All classes"} />
+          ) : tab === "pack" ? (
+            <Pack notes={inScope} name={folder ?? "All classes"} />
+          ) : (
+            <Deeper notes={inScope} name={folder ?? "all your classes"} />
+          )}
         </motion.div>
       </AnimatePresence>
     </div>
   );
+}
+
+const deckOf = (notes: Note[]) => notes.filter((n) => n.summary).flatMap((n) => cardsOf(n.summary!).map((c) => ({ ...c, from: n.folder ?? n.title })));
+
+/** Games are free with an account, like the flashcards they're made from. */
+function Free({ notes, children }: { notes: Note[]; children: (deck: ReturnType<typeof deckOf>) => ReactNode }) {
+  const { tier } = useApp();
+  const deck = useMemo(() => deckOf(notes), [notes]);
+  const step = unlockStep(tier, "studyGuide");
+  if (step) return <Locked step={step} reason="studyGuide" title="Quizzes and games from your classes" body="Multiple-choice quizzes and a match game built from every class you record. Free with an account." />;
+  return <>{children(deck)}</>;
 }
 
 function Locked({ title, body, step, reason }: { title: string; body: string; step: "signup" | "pro"; reason: string }) {
@@ -84,7 +111,12 @@ function Locked({ title, body, step, reason }: { title: string; body: string; st
 
 function Cards({ notes, name }: { notes: Note[]; name: string }) {
   const { tier, need } = useApp();
-  const deck = useMemo(() => notes.filter((n) => n.summary).flatMap((n) => cardsOf(n.summary!).map((c) => ({ ...c, from: n.title }))), [notes]);
+  const { mark, due, box } = useSrs();
+  const all = useMemo(() => deckOf(notes), [notes]);
+  // Due cards first, newest learning boxes first, so a session starts with what you're about to forget.
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const deck = useMemo(() => [...all].sort((a, b) => Number(due(b)) - Number(due(a)) || box(a) - box(b)), [all]);
+  const dueNow = all.filter(due).length;
   const [i, setI] = useState(0);
   const [flip, setFlip] = useState(false);
   const [known, setKnown] = useState(0);
@@ -125,14 +157,14 @@ function Cards({ notes, name }: { notes: Note[]; name: string }) {
             <ArrowLeft size={16} />
           </Button>
           <div className="flex gap-2">
-            <Button variant="glass" onClick={() => go(1)}>
+            <Button variant="glass" onClick={() => (mark(c, false), go(1))}>
               <RotateCcw size={14} /> Again
             </Button>
-            <Button variant="primary" onClick={() => (setKnown((k) => k + 1), go(1))}>
+            <Button variant="primary" onClick={() => (mark(c, true), setKnown((k) => k + 1), go(1))}>
               Got it
             </Button>
           </div>
-          <Button variant="glass" onClick={() => go(1)} aria-label="Next">
+          <Button variant="glass" onClick={() => go(1)} aria-label="Next" className="hidden sm:inline-flex">
             <ArrowRight size={16} />
           </Button>
         </div>
@@ -148,6 +180,13 @@ function Cards({ notes, name }: { notes: Note[]; name: string }) {
             <motion.div className="h-full origin-left rounded-full bg-[var(--fg)]" animate={{ scaleX: ((i % deck.length) + 1) / deck.length }} transition={spring} />
           </div>
           <div className="mt-3 text-[13px] font-medium">{known} known this session</div>
+          <div className="mt-1 text-[12.5px] text-[var(--mute)]">{dueNow ? `${dueNow} due for review today` : "All caught up. Cards come back right before you'd forget them."}</div>
+          <div className="mt-3 flex gap-1">
+            {[0, 1, 2, 3, 4, 5].map((b) => (
+              <motion.span key={b} title={`Box ${b + 1}`} className="h-6 flex-1 rounded-[6px]" animate={{ backgroundColor: box(c) >= b ? "#1d1d1f" : "#e5e5ea", scaleY: box(c) === b ? 1.15 : 1 }} transition={spring} />
+            ))}
+          </div>
+          <div className="mt-1 text-[11px] text-[var(--mute)]">How well you know this card</div>
         </div>
         <button onClick={() => need("flashcards", "flashcards") && exportFlashcards(name, deck)} className="panel flex w-full items-center justify-between !rounded-[20px] p-4 text-left text-[14px] font-semibold transition hover:-translate-y-0.5">
           Send to Anki or Quizlet

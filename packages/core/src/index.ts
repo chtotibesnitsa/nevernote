@@ -13,3 +13,4 @@ export * from "./styles.ts";
 export * from "./ics.ts";
 export * from "./vocab.ts";
 export * from "./review.ts";
+export * from "./study.ts";

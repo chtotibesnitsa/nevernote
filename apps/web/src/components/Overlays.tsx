@@ -67,6 +67,8 @@ const WHY: Record<string, string> = {
   summaryRules: "Different note rules for every class.",
   unlimited: "Unlimited instant AI notes, every update, no waiting for tomorrow.",
   batchQueued: "Notes the second class ends, every time.",
+  practiceTest: "Practice tests written from your own classes, as many as you want.",
+  studyPlan: "A day-by-day study plan up to your next test.",
 };
 
 function Sheet({ open, onClose, dark, children }: { open: boolean; onClose: () => void; dark?: boolean; children: ReactNode }) {
