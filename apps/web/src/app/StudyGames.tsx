@@ -144,6 +144,7 @@ export function Quiz({ deck }: { deck: Card[] }) {
 }
 
 function Finish({ title, line, onAgain, pct }: { title: string; line: string; onAgain: () => void; pct: number }) {
+  const { plan, openPro } = useApp();
   return (
     <motion.div initial={{ opacity: 0, scale: 0.94 }} animate={{ opacity: 1, scale: 1 }} transition={soft} className="relative overflow-hidden rounded-[28px] bg-[linear-gradient(180deg,#2c2c2e,#1d1d1f)] p-10 text-center text-white">
       {Array.from({ length: 18 }).map((_, k) => (
@@ -167,6 +168,11 @@ function Finish({ title, line, onAgain, pct }: { title: string; line: string; on
       <button onClick={onAgain} className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-[14.5px] font-bold text-[#1d1d1f] shadow-[0_4px_0_#9a9aa0] transition active:translate-y-[3px] active:shadow-[0_1px_0_#9a9aa0]">
         <RotateCcw size={15} /> Play again
       </button>
+      {plan !== "pro" && (
+        <motion.button initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...soft, delay: 0.8 }} onClick={() => openPro("practiceTest")} className="mx-auto mt-4 flex items-center gap-1.5 text-[13px] font-semibold text-white/70 transition hover:text-white">
+          <Sparkles size={14} /> Want a real practice test from this class? Try Pro
+        </motion.button>
+      )}
     </motion.div>
   );
 }

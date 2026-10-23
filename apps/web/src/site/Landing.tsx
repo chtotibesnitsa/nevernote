@@ -1,6 +1,6 @@
-import { PRICING } from "@nevernote/core";
+import { FREE_INSTANT_SUMMARIES_PER_DAY, PRICING } from "@nevernote/core";
 import { Apple, ArrowRight, Check, ChevronDown, Github, Play } from "lucide-react";
-import { AnimatePresence, motion, useInView, useMotionValue, useMotionValueEvent, useScroll, useTransform, type MotionValue } from "motion/react";
+import { AnimatePresence, motion, useInView, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useTransform, type MotionValue } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Hmu, Logo, soft, spring } from "../components/ui.tsx";
@@ -334,54 +334,136 @@ const CHAT: { me?: boolean; t?: string; audio?: string; card?: string[] }[] = [
   { card: ["Test covers the nitrogen cycle too", "Lab report due Fri 11:59 PM", "Read chapter 9 by Monday"] },
 ];
 
+/**
+ * Plays the conversation on a loop while it's on screen: the student types,
+ * Nevernote "types" back, the class card fills in line by line, then it
+ * starts over. Reduced motion shows the whole thread, still.
+ */
+function useChatLoop(on: boolean, still: boolean) {
+  const [shown, setShown] = useState(still ? CHAT.length : 0);
+  const [typing, setTyping] = useState(false);
+  const [draft, setDraft] = useState("");
+  const [cycle, setCycle] = useState(0);
+  useEffect(() => {
+    if (!on || still) return;
+    const timers: number[] = [];
+    let dead = false;
+    const wait = (ms: number) => new Promise<void>((r) => void timers.push(window.setTimeout(r, ms)));
+    void (async () => {
+      while (!dead) {
+        setShown(0);
+        await wait(800);
+        for (let i = 0; i < CHAT.length && !dead; i++) {
+          const m = CHAT[i];
+          if (m.me && m.t) {
+            for (let c = 2; c < m.t.length; c += 2) {
+              setDraft(m.t.slice(0, c));
+              await wait(34);
+            }
+            setDraft(m.t);
+            await wait(320);
+            setDraft("");
+          } else {
+            setTyping(true);
+            await wait(m.card ? 1300 : 950);
+            setTyping(false);
+          }
+          setShown(i + 1);
+          await wait(m.card ? 1800 : 700);
+        }
+        await wait(4200);
+        setCycle((c) => c + 1);
+      }
+    })();
+    return () => {
+      dead = true;
+      timers.forEach(clearTimeout);
+    };
+  }, [on, still]);
+  return { shown, typing, draft, cycle };
+}
+
 function Chat() {
   const ref = useRef<HTMLDivElement>(null);
+  const on = useInView(ref, { margin: "-120px" });
+  const still = !!useReducedMotion();
+  const { shown, typing, draft, cycle } = useChatLoop(on, still);
   const { scrollYProgress } = useScroll({ target: ref, offset: ["start end", "center center"] });
   const rotateX = useTransform(scrollYProgress, [0, 1], [24, 0]);
   const scale = useTransform(scrollYProgress, [0, 1], [0.9, 1]);
+  const last = CHAT[shown - 1];
   return (
     <div ref={ref} className="mt-14 flex justify-center [perspective:1400px]">
-      <motion.div style={{ rotateX, scale }} className="w-full max-w-[390px]">
+      <motion.div style={{ rotateX, scale }} whileHover={{ y: -6, rotateY: -3 }} transition={soft} className="w-full max-w-[390px]">
         <IPhone>
           <div className="flex h-full flex-col bg-white pt-[13%]">
             {/* iMessage header */}
             <div className="relative flex flex-col items-center gap-1 border-b border-black/[0.06] bg-[#f9f9f9]/90 pb-2.5 pt-1">
               <span className="absolute left-3 top-3 text-[26px] leading-none text-[#0a84ff]">‹</span>
-              <span className="grid h-11 w-11 place-items-center rounded-full bg-[linear-gradient(180deg,#a1a1a6,#6e6e73)] text-[17px] font-semibold text-white">N</span>
+              <motion.span animate={typing ? { scale: [1, 1.08, 1] } : { scale: 1 }} transition={{ duration: 0.9, repeat: typing ? Infinity : 0 }} className="grid h-11 w-11 place-items-center rounded-full bg-[linear-gradient(180deg,#a1a1a6,#6e6e73)] text-[17px] font-semibold text-white">N</motion.span>
               <span className="text-[11.5px] font-medium">Nevernote <span className="text-[#8e8e93]">›</span></span>
             </div>
             <div className="flex min-h-0 flex-1 flex-col justify-start gap-2 overflow-hidden px-3.5 pb-3 pt-3">
               <div className="text-center text-[11px] text-[#8e8e93]"><b className="font-semibold">Today</b> 10:52 AM</div>
-              {CHAT.map((m, i) => (
-                <motion.div key={i} initial={{ opacity: 0, y: 14, scale: 0.96 }} whileInView={{ opacity: 1, y: 0, scale: 1 }} viewport={{ once: true }} transition={{ ...spring, delay: 0.2 + i * 0.4 }} className={`flex ${m.me ? "justify-end" : "justify-start"}`}>
-                  {m.t && <div className={`max-w-[80%] rounded-[20px] px-3.5 py-2 text-[15px] leading-snug ${m.me ? "rounded-br-[6px] bg-[#0a84ff] text-white" : "rounded-bl-[6px] bg-[#e9e9eb] text-black"}`}>{m.t}</div>}
-                  {m.audio && (
-                    <div className="flex items-center gap-2.5 rounded-[20px] rounded-bl-[6px] bg-[#e9e9eb] px-3 py-2">
-                      <span className="grid h-7 w-7 place-items-center rounded-full bg-[#0a84ff] text-white"><Play size={12} fill="currentColor" /></span>
-                      <span className="flex items-center gap-[2.5px]">
-                        {[6, 12, 18, 9, 15, 20, 11, 7, 14, 17, 8, 12, 9, 6].map((h, j) => (
-                          <span key={j} className="nn-eq w-[2.5px] rounded-full bg-[#6b6b70]" style={{ height: h, animationDelay: `${j * 0.07}s` }} />
+              <AnimatePresence mode="popLayout">
+                {CHAT.slice(0, shown).map((m, i) => (
+                  <motion.div
+                    key={`${cycle}-${i}`}
+                    layout
+                    initial={m.me ? { opacity: 0, y: 40, x: 30, scale: 0.6 } : { opacity: 0, y: 12, scale: 0.8 }}
+                    animate={{ opacity: 1, y: 0, x: 0, scale: 1 }}
+                    exit={{ opacity: 0, y: -24, transition: { duration: 0.35, delay: i * 0.04 } }}
+                    transition={spring}
+                    style={{ originX: m.me ? 1 : 0, originY: 1 }}
+                    className={`flex ${m.me ? "justify-end" : "justify-start"}`}
+                  >
+                    {m.t && <div className={`max-w-[80%] rounded-[20px] px-3.5 py-2 text-[15px] leading-snug ${m.me ? "rounded-br-[6px] bg-[#0a84ff] text-white" : "rounded-bl-[6px] bg-[#e9e9eb] text-black"}`}>{m.t}</div>}
+                    {m.audio && (
+                      <div className="flex items-center gap-2.5 rounded-[20px] rounded-bl-[6px] bg-[#e9e9eb] px-3 py-2">
+                        <span className="grid h-7 w-7 place-items-center rounded-full bg-[#0a84ff] text-white"><Play size={12} fill="currentColor" /></span>
+                        <span className="flex items-center gap-[2.5px]">
+                          {[6, 12, 18, 9, 15, 20, 11, 7, 14, 17, 8, 12, 9, 6].map((h, j) => (
+                            <span key={j} className="nn-eq w-[2.5px] rounded-full bg-[#6b6b70]" style={{ height: h, animationDelay: `${j * 0.07}s` }} />
+                          ))}
+                        </span>
+                        <span className="text-[11px] text-[#6b6b70]">{m.audio}</span>
+                      </div>
+                    )}
+                    {m.card && (
+                      <div className="w-[82%] rounded-[20px] rounded-bl-[6px] bg-[#e9e9eb] p-3">
+                        <div className="text-[11px] font-semibold uppercase tracking-wide text-[#6b6b70]">From today's class</div>
+                        {m.card.map((l, j) => (
+                          <motion.div key={l} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ ...spring, delay: still ? 0 : 0.25 + j * 0.35 }} className="mt-1.5 flex items-center gap-2 text-[14px]">
+                            <motion.span initial={{ scale: 0 }} animate={{ scale: [0, 1.6, 1] }} transition={{ duration: 0.5, delay: still ? 0 : 0.3 + j * 0.35 }} className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff3b30]" /> {l}
+                          </motion.div>
                         ))}
-                      </span>
-                      <span className="text-[11px] text-[#6b6b70]">{m.audio}</span>
-                    </div>
-                  )}
-                  {m.card && (
-                    <div className="w-[82%] rounded-[20px] rounded-bl-[6px] bg-[#e9e9eb] p-3">
-                      <div className="text-[11px] font-semibold uppercase tracking-wide text-[#6b6b70]">From today's class</div>
-                      {m.card.map((l) => (
-                        <div key={l} className="mt-1.5 flex items-center gap-2 text-[14px]"><span className="h-1.5 w-1.5 shrink-0 rounded-full bg-[#ff3b30]" /> {l}</div>
+                      </div>
+                    )}
+                  </motion.div>
+                ))}
+                {typing && (
+                  <motion.div key={`typing-${cycle}-${shown}`} layout initial={{ opacity: 0, scale: 0.5 }} animate={{ opacity: 1, scale: 1 }} exit={{ opacity: 0, scale: 0.5, transition: { duration: 0.12 } }} transition={spring} style={{ originX: 0, originY: 1 }} className="flex justify-start">
+                    <div className="flex gap-1 rounded-[20px] rounded-bl-[6px] bg-[#e9e9eb] px-3.5 py-3">
+                      {[0, 1, 2].map((d) => (
+                        <motion.span key={d} className="h-2 w-2 rounded-full bg-[#8e8e93]" animate={{ y: [0, -4, 0], opacity: [0.4, 1, 0.4] }} transition={{ duration: 0.9, repeat: Infinity, delay: d * 0.15 }} />
                       ))}
                     </div>
-                  )}
-                </motion.div>
-              ))}
-              <div className="text-right text-[11px] text-[#8e8e93]">Delivered</div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+              {last?.me && !typing && <motion.div key={`d-${cycle}-${shown}`} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.3 }} className="text-right text-[11px] text-[#8e8e93]">Delivered</motion.div>}
             </div>
-            {/* compose bar */}
+            {/* compose bar: the student's question types itself in, then sends */}
             <div className="flex items-center gap-2 px-3 pb-[9%] pt-1.5">
               <span className="grid h-8 w-8 shrink-0 place-items-center rounded-full bg-[#e9e9eb] text-[20px] leading-none text-[#8e8e93]">+</span>
-              <span className="flex h-8 flex-1 items-center rounded-full border border-black/10 px-3.5 text-[14px] text-[#c7c7cc]">iMessage</span>
+              <span className={`flex min-h-8 flex-1 items-center gap-1 rounded-[18px] border border-black/10 py-1 pl-3.5 pr-1 text-[14px] ${draft ? "text-black" : "text-[#c7c7cc]"}`}>
+                <span className="min-w-0 flex-1 truncate">{draft || "iMessage"}</span>
+                <AnimatePresence>
+                  {draft && (
+                    <motion.span initial={{ scale: 0, rotate: -90 }} animate={{ scale: 1, rotate: 0 }} exit={{ scale: 0 }} transition={spring} className="grid h-6 w-6 shrink-0 place-items-center rounded-full bg-[#0a84ff] text-[13px] font-bold leading-none text-white">↑</motion.span>
+                  )}
+                </AnimatePresence>
+              </span>
             </div>
           </div>
         </IPhone>
@@ -1029,19 +1111,35 @@ function MiniExport({ on }: { on: boolean }) {
   );
 }
 
+function MiniPractice({ on }: { on: boolean }) {
+  return (
+    <div className="text-[9.5px] leading-tight text-[#1d1d1f]">
+      <div className="h-[7px] w-[70%] rounded-full bg-[#1d1d1f]/70" />
+      <div className="mt-1.5 grid grid-cols-2 gap-1">
+        {["Prophase", "Metaphase", "Anaphase", "Telophase"].map((t, i) => (
+          <motion.div key={t} animate={on && i === 1 ? { backgroundColor: "#1d1d1f", color: "#ffffff", scale: [1, 1.08, 1] } : { backgroundColor: "#f0f0f3", color: "#1d1d1f", scale: 1 }} transition={{ duration: 0.4, delay: on ? 0.9 : 0 }} className="rounded-[6px] px-1.5 py-1 font-medium">
+            {t} {i === 1 && on && <motion.span initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.1 }}>✓</motion.span>}
+          </motion.div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
 const PRO: { t: string; b: string; demo: (p: { on: boolean }) => ReactNode; wide?: boolean }[] = [
   { t: "Instant AI notes", b: "Notes, key terms and a study guide the second class ends.", demo: MiniNotes },
   { t: "Ask your notes", b: "Answers jump to the moment it was said.", demo: MiniAsk },
   { t: "Due dates, auto-added", b: "Every deadline lands in Google or Apple Calendar.", demo: MiniCalendar },
   { t: "Exam packs", b: "A whole unit of lectures in one review guide.", demo: MiniPack },
-  { t: "Export anywhere", b: "Markdown, Docs, flashcards, PDF. One tap.", demo: MiniExport, wide: true },
+  { t: "Export anywhere", b: "Markdown, Docs, flashcards, PDF. One tap.", demo: MiniExport },
+  { t: "Practice tests", b: "Fresh tests and a study plan from your own classes.", demo: MiniPractice },
 ];
 
 const UNLOCKS = [
   "No sponsor cards, no overnight wait",
   "30 questions a day across every class",
   "A reminder the night before each deadline",
-  "Practice questions in every exam pack",
+  "A day-by-day study plan up to every test",
   "Flashcards for Anki and Quizlet",
   "Keeps an open-source student project going",
 ];
@@ -1085,7 +1183,16 @@ function Connections() {
 function ProCard() {
   const [yearly, setYearly] = useState(true);
   const ref = useRef<HTMLDivElement>(null);
-  const on = useInView(ref, { once: true, margin: "-120px" });
+  const seen = useInView(ref, { margin: "-120px" });
+  // The little previews replay every few seconds while the card is on screen.
+  const [on, setOn] = useState(false);
+  useEffect(() => {
+    if (!seen) return;
+    setOn(true);
+    let k = 0;
+    const t = setInterval(() => setOn(++k % 2 === 0), 3600);
+    return () => clearInterval(t);
+  }, [seen]);
   // A soft specular light that follows the pointer, and a gentle tilt.
   const mx = useMotionValue(0.5);
   const my = useMotionValue(0.2);
@@ -1159,9 +1266,9 @@ function ProCard() {
               <motion.div
                 key={f.t}
                 initial={{ opacity: 0, y: 16 }}
-                animate={on ? { opacity: 1, y: 0 } : {}}
+                animate={seen ? { opacity: 1, y: 0 } : {}}
                 transition={{ ...soft, delay: 0.1 + k * 0.08 }}
-                whileHover={{ y: -3 }}
+                whileHover={{ y: -5, scale: 1.02, backgroundColor: "rgba(255,255,255,0.1)" }}
                 className={`flex flex-col rounded-[20px] bg-white/[0.06] p-2.5 shadow-[inset_0_1px_0_rgb(255_255_255/0.1)] ring-1 ring-white/[0.08] ${f.wide ? "col-span-2 sm:flex-row sm:items-center sm:gap-3" : ""}`}
               >
                 <div className={`min-h-[76px] rounded-[14px] bg-[#fbfbfd] p-2.5 shadow-[0_8px_18px_-10px_rgb(0_0_0/0.7)] ${f.wide ? "sm:order-2 sm:min-h-0 sm:flex-1" : ""}`}>{f.demo({ on })}</div>
@@ -1177,7 +1284,7 @@ function ProCard() {
             <div className="text-[12.5px] font-semibold text-white">Also unlocks</div>
             <ul className="mt-3 grid gap-x-5 gap-y-2 text-[13px] text-white/75 sm:grid-cols-2">
               {UNLOCKS.map((u, k) => (
-                <motion.li key={u} initial={{ opacity: 0, x: -6 }} animate={on ? { opacity: 1, x: 0 } : {}} transition={{ ...soft, delay: 0.5 + k * 0.06 }} className="flex items-start gap-2.5">
+                <motion.li key={u} initial={{ opacity: 0, x: -6 }} animate={seen ? { opacity: 1, x: 0 } : {}} transition={{ ...soft, delay: 0.5 + k * 0.06 }} className="flex items-start gap-2.5">
                   <span className="mt-[2px] grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-white text-[#1d1d1f] shadow-[0_2px_0_#8e8e93]">
                     <Check size={10} strokeWidth={3.4} />
                   </span>
@@ -1243,7 +1350,7 @@ function Pricing() {
           <div className="text-[14.5px] font-semibold text-[#1d1d1f]">Why free stays free</div>
           <p className="mt-1.5 text-[13.5px] leading-[1.55] text-[#6e6e73]">Transcription runs on your own phone or laptop, so a class costs us nothing to hear. AI notes cost a fraction of a cent each. There's nothing to run out of.</p>
           <div className="mt-4 grid grid-cols-3 gap-3 border-t border-black/[0.06] pt-4">
-            {[["∞", "classes"], ["0", "minute caps"], ["10", "classes of instant notes a day"]].map(([n, l]) => (
+            {[["∞", "classes"], ["0", "minute caps"], [String(FREE_INSTANT_SUMMARIES_PER_DAY), "instant AI notes a day"]].map(([n, l]) => (
               <div key={l}>
                 <div className="display text-[1.6rem] leading-none text-[#1d1d1f]">{n}</div>
                 <div className="mt-1 text-[11.5px] leading-tight text-[#6e6e73]">{l}</div>
