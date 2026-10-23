@@ -1,4 +1,4 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, Notification, session, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, ipcMain, nativeTheme, Notification, powerSaveBlocker, session, shell, systemPreferences } from "electron";
 import { appendFileSync, existsSync, readdirSync, writeFileSync } from "node:fs";
 import { cpus } from "node:os";
 import { join } from "node:path";
@@ -107,6 +107,11 @@ async function selfTest() {
     app.exit(1);
   };
   setTimeout(() => fail("timed out"), 16 * 60_000);
+  // CI runs the app in the background, where App Nap would freeze it.
+  holdAwake(true);
+  // A heartbeat, so a log shows whether the app froze or was just waiting.
+  const beat = setInterval(() => say(`still running after ${Math.round(process.uptime())}s`), 60_000);
+  beat.unref?.();
   try {
     createWindow();
     await new Promise<void>((ok) => win!.webContents.once("did-finish-load", () => ok()));
@@ -192,11 +197,32 @@ app.whenReady().then(async () => {
 });
 app.on("window-all-closed", () => process.platform !== "darwin" && app.quit());
 
+/**
+ * macOS App Nap freezes timers and network for an app that isn't in front, which
+ * would stall a model download or a class being transcribed in the background.
+ * Held while either runs.
+ */
+let napBlock: number | undefined;
+let napHolds = 0;
+function holdAwake(on: boolean) {
+  napHolds = Math.max(0, napHolds + (on ? 1 : -1));
+  if (napHolds && napBlock === undefined) napBlock = powerSaveBlocker.start("prevent-app-suspension");
+  if (!napHolds && napBlock !== undefined) {
+    powerSaveBlocker.stop(napBlock);
+    napBlock = undefined;
+  }
+}
+
 ipcMain.handle("models:status", () =>
   Object.fromEntries(Object.keys(ASR_MODELS).map((k) => [k, installed(modelsDir, k as AsrModelId)])),
 );
 ipcMain.handle("models:download", async (_e, asr: AsrModelId) => {
-  await ensureModels(modelsDir, asr, (p, label) => win?.webContents.send("models:progress", { asr, p, label }));
+  holdAwake(true);
+  try {
+    await ensureModels(modelsDir, asr, (p, label) => win?.webContents.send("models:progress", { asr, p, label }));
+  } finally {
+    holdAwake(false);
+  }
   return true;
 });
 
@@ -207,6 +233,7 @@ ipcMain.handle("rec:start", (_e, noteId: string, asr: AsrModelId, vocabulary: st
     // Parakeet's BPE hotwords are written in upper case, one phrase per line.
     writeFileSync(hotwordsFile, vocabulary.map((v) => v.toUpperCase()).join("\n"));
   }
+  holdAwake(true);
   getWorker().postMessage({ type: "start", noteId, modelsDir, asr, threads: Math.max(2, Math.min(6, cpus().length - 2)), hotwordsFile });
 });
 ipcMain.on("rec:audio", (_e, buf: ArrayBuffer) => worker?.postMessage({ type: "audio", samples: buf }, [buf]));
@@ -218,6 +245,7 @@ ipcMain.handle(
       const h = (m: any) => {
         if (m.noteId !== noteId || (m.type !== "finished" && m.type !== "error")) return;
         w.off("message", h);
+        holdAwake(false);
         if (m.type === "finished") store.saveAudio(noteId, m.audio);
         resolve(m.type === "finished" ? { segments: m.segments, seconds: m.seconds } : { error: m.message });
       };
