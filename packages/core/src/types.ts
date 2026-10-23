@@ -45,6 +45,8 @@ export interface Extraction {
   segmentId?: string;
   confidence: number;
   source: "keywords" | "ai";
+  /** The student's answer to "is this real?": confirmed items are certain, dismissed ones are hidden everywhere. */
+  status?: "confirmed" | "dismissed";
 }
 
 export interface Summary {
@@ -56,6 +58,22 @@ export interface Summary {
   extractions: Extraction[];
   model: string;
   createdAt: string;
+  /** How many transcript segments these notes cover; anything after came in later (a resumed class). */
+  covered?: number;
+  /** Notes for what was added later, each kept in its own dated section (unless the student chose to merge). */
+  updates?: SummaryUpdate[];
+}
+
+export interface SummaryUpdate {
+  /** When this update was written. */
+  at: string;
+  /** Transcript time it covers, in seconds from the start of the note. */
+  fromSec: number;
+  toSec: number;
+  notes: string;
+  studyGuide: { question: string; answer: string }[];
+  keyTerms: { term: string; definition: string }[];
+  model: string;
 }
 
 export interface Note {

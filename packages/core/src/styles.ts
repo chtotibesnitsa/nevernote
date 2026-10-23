@@ -26,6 +26,11 @@ export interface SummaryPrefs {
   rules?: string;
   /** Pro: different rules for particular classes. */
   presets?: ClassPreset[];
+  /**
+   * When more is recorded into a note that already has notes: "separate" adds a
+   * dated update section (the default), "merge" rewrites everything as one set.
+   */
+  updates?: "separate" | "merge";
 }
 
 export const STYLE_LIMITS = {
@@ -45,7 +50,7 @@ export function cleanPrefs(raw: unknown, plan: Plan): SummaryPrefs {
         .map((p) => ({ folder: text((p as ClassPreset)?.folder, 80), rules: text((p as ClassPreset)?.rules, lim.rulesChars) }))
         .filter((p) => p.folder && p.rules)
     : [];
-  return { style, rules: text(r.rules, lim.rulesChars), presets };
+  return { style, rules: text(r.rules, lim.rulesChars), presets, updates: r.updates === "merge" ? "merge" : "separate" };
 }
 
 /** The extra system-prompt text for a note. Preferences only change how notes read, never the JSON shape. */

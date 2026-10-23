@@ -14,7 +14,7 @@ interface Day {
 interface Cost { id: number; name: string; monthly_usd: number; starts_on: string; ends_on: string | null }
 interface Overview {
   me: string; days: Day[]; styles: Record<string, number>; custom_rules_summaries: number;
-  totals: { users: number; pro_users: number; notes: number; db_bytes: number };
+  totals: { users: number; guests?: number; pro_users: number; notes: number; db_bytes: number };
   top_spenders: { email: string; plan: string; summaries: number; asks: number; cost: number }[]; costs: Cost[];
 }
 
@@ -166,7 +166,8 @@ export function Admin() {
 
   const labels = rows.map((r) => r.day);
   const profit = sum("profit");
-  const perUserCost = data.totals.users ? sum("llm_cost") / data.totals.users : 0;
+  const people = data.totals.users + (data.totals.guests ?? 0);
+  const perUserCost = people ? sum("llm_cost") / people : 0;
   const mb = data.totals.db_bytes / 1048576;
   return shell(
     <>
@@ -188,7 +189,7 @@ export function Admin() {
         <Kpi label="Revenue" value={usd(sum("revenue"))} />
         <Kpi label="Costs" value={usd(sum("cost"))} />
         <Kpi label="AI spend" value={usd(sum("llm_cost"), 2)} />
-        <Kpi label="Users" value={num(data.totals.users)} />
+        <Kpi label="Users" value={`${num(data.totals.users)}${data.totals.guests ? ` + ${num(data.totals.guests)} guests` : ""}`} />
         <Kpi label="On Pro" value={`${num(data.totals.pro_users)}${data.totals.users ? ` (${((data.totals.pro_users / data.totals.users) * 100).toFixed(1)}%)` : ""}`} />
         <Kpi label="Notes saved" value={num(data.totals.notes)} />
         <Kpi label="Database" value={`${mb.toFixed(1)} MB of 8 GB`} />

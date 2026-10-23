@@ -8,7 +8,8 @@ import { GestureHandlerRootView } from "react-native-gesture-handler";
 import Animated, { Easing, FadeOut, useAnimatedStyle, useSharedValue, withDelay, withSpring, withTiming } from "react-native-reanimated";
 import { SafeAreaProvider } from "react-native-safe-area-context";
 import { spring, useTheme } from "../src/lib/theme";
-import { init, nav } from "../src/state/app";
+import { cloudEnabled } from "../src/lib/cloud";
+import { init, nav, useApp } from "../src/state/app";
 import { useSettings } from "../src/state/settings";
 import { Logo } from "../src/ui/kit";
 import { Toasts } from "../src/ui/Toasts";
@@ -39,6 +40,7 @@ export default function Root() {
   const [ready, setReady] = useState(false);
   const [intro, setIntro] = useState(true);
   const onboarded = useSettings((s) => s.onboarded);
+  const signedIn = useApp((s) => !!s.session);
   const rise = useSharedValue(18);
 
   useEffect(() => {
@@ -65,7 +67,9 @@ export default function Root() {
 
   useEffect(() => {
     if (ready && !onboarded) router.push("/welcome");
-  }, [ready, onboarded]);
+    // Every class belongs to an account on the phone, so the other devices see it.
+    else if (ready && cloudEnabled && !signedIn) router.push("/signin");
+  }, [ready, onboarded, signedIn]);
 
   const page = useAnimatedStyle(() => ({ flex: 1, transform: [{ translateY: rise.value }] }));
 
@@ -80,6 +84,7 @@ export default function Root() {
               <Stack.Screen name="note/[id]" options={{ headerShown: true, headerTransparent: true, headerTitle: "", headerBackButtonDisplayMode: "minimal", headerTintColor: t.fg }} />
               <Stack.Screen name="pro" options={{ presentation: "formSheet", sheetAllowedDetents: [0.88], sheetGrabberVisible: true, sheetCornerRadius: 32, contentStyle: { backgroundColor: t.bg } }} />
               <Stack.Screen name="welcome" options={{ presentation: "fullScreenModal", animation: "fade", gestureEnabled: false }} />
+              <Stack.Screen name="signin" options={{ presentation: "fullScreenModal", animation: "fade", gestureEnabled: false }} />
             </Stack>
           )}
         </Animated.View>

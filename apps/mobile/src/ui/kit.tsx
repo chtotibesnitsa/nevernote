@@ -21,6 +21,7 @@ import { serif, spring, useTheme } from "../lib/theme";
 import { level } from "../state/app";
 
 export const GITHUB_PROFILE = "https://github.com/chtotibesnitsa";
+export const X_PROFILE = "https://x.com/aleks_lucenko";
 export const GITHUB_REPO = "https://github.com/chtotibesnitsa/nevernote";
 
 const liquid = isLiquidGlassAvailable();
@@ -170,9 +171,9 @@ function Bar({ i, n, lvl, color, height }: { i: number; n: number; lvl: { value:
 export function Hmu() {
   const t = useTheme();
   return (
-    <Press onPress={() => void WebBrowser.openBrowserAsync(GITHUB_PROFILE)} accessibilityRole="link" accessibilityLabel="Made by chtotibesnitsa on GitHub">
+    <Press onPress={() => void WebBrowser.openBrowserAsync(X_PROFILE)} accessibilityRole="link" accessibilityLabel="Made by Aleks, on X">
       <Glass radius={999} interactive style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingLeft: 3, paddingRight: 10, paddingVertical: 3 }}>
-        <Image source={{ uri: `${GITHUB_PROFILE}.png?size=64` }} style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: t.line }} />
+        <Image source={require("../../assets/aleks.jpg")} style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: t.line }} />
         <Text style={{ fontSize: 12.5, color: t.ink2 }}>hmu, I made this ↗</Text>
       </Glass>
     </Press>

@@ -16,6 +16,8 @@ export interface DesktopBridge {
     stop(noteId: string): Promise<{ segments: Segment[]; seconds: number } | { error: string }>;
     onSegment(cb: (m: { noteId: string; segment: Segment }) => void): () => void;
     onStage(cb: (m: { noteId: string; stage: string; message?: string }) => void): () => void;
+    /** The words of the phrase being spoken right now, before it is final. */
+    onPartial?(cb: (m: { noteId: string; text: string }) => void): () => void;
   };
   notes: {
     list(): Promise<Note[]>;
@@ -27,6 +29,8 @@ export interface DesktopBridge {
   notify(title: string, body: string, noteId?: string): Promise<void>;
   onOpenNote(cb: (id: string) => void): () => void;
   openExternal(url: string): Promise<void>;
+  /** A nevernote:// link the app was opened with (sign-in handoff). Older builds lack it. */
+  onAuth?(cb: (url: string) => void): () => void;
 }
 
 declare global {
@@ -39,5 +43,6 @@ export const desktop: DesktopBridge | undefined = typeof window !== "undefined" 
 export const isDesktop = !!desktop;
 
 export const GITHUB_PROFILE = "https://github.com/chtotibesnitsa";
+export const X_PROFILE = "https://x.com/aleks_lucenko";
 export const GITHUB_REPO = "https://github.com/chtotibesnitsa/nevernote";
 export const RELEASES = `${GITHUB_REPO}/releases/latest`;

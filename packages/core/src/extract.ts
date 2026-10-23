@@ -27,7 +27,8 @@ export const RULES: Rule[] = [
   { kind: "deadline", re: /(?<!what's |what is |anything )\b(?:due|deadline is|deadline)\s+(?:on\s+|by\s+|this\s+|next\s+|before\s+)?(?:the\s+)?(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|tomorrow|today|tonight|jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec|\d|first|second|third|fourth|fifth|end of)/i, needsDate: true },
   { kind: "exam", re: new RegExp(`\\b(?:a |the |your |our )?((?:unit \\d+ |chapter \\d+ |pop )?${EXAM})\\b`, "i"), needsDate: true, label: (m) => cap(m[1]) },
   { kind: "event", re: /\b(field trip|office hours|review session|study session|lab session|guest speaker|assembly|conference|club meeting|tutoring|info session|career fair|deadline to (?:drop|withdraw|register))\b/i, needsDate: true, label: (m) => cap(m[1]) },
-  { kind: "reminder", re: /\b(?:don't forget|do not forget|remember to|make sure (?:you|to)|you need to|you have to|you must|bring (?:your|a)|sign up|register for)\b/i },
+  // "You have to understand" is a lecture, not a task: only a to-do verb after it counts.
+  { kind: "reminder", re: /\b(?:don't forget|do not forget|remember to (?:bring|turn|hand|finish|read|study|review|submit|complete|sign|email|print|do|get|check|watch|study)|make sure (?:you|to) (?:bring|turn|hand|finish|read|study|review|submit|complete|sign|email|print|do|get|check|watch)|(?:you need to|you have to|you must) (?:bring|turn in|hand in|finish|read|study|review|submit|complete|sign|email|print|get your|do the|do your|watch)|bring (?:your|a)\b(?! lot)|sign up for|register for)\b/i },
 ];
 
 function cap(s: string): string {
@@ -76,12 +77,16 @@ export function extract(segments: Segment[], ref: Date): Extraction[] {
     // Only borrow a date from the next sentence when it clearly continues this one.
     const context = /^(it|it's|that|that's|this|which|and|they're|both)\b/i.test(next) ? `${sen.text} ${next}` : sen.text;
     for (const rule of RULES) {
-      const m = sen.text.match(rule.re);
-      if (!m) continue;
-      const dates = findDates(rule.needsDate ? context : sen.text, ref);
+      const m0 = sen.text.match(rule.re);
+      if (!m0) continue;
+      // Live transcripts often have no full stops, so one "sentence" can be a whole
+      // minute of talk: keep just the words around what was matched.
+      const clip = window(sen.text, m0.index ?? 0);
+      const m = clip === sen.text ? m0 : (clip.match(rule.re) ?? m0);
+      const dates = findDates(rule.needsDate ? (clip === sen.text ? context : clip) : clip, ref);
       if (rule.needsDate && dates.length === 0) continue;
       const d = dates[0];
-      const title = makeTitle(rule, m, sen.text);
+      const title = makeTitle(rule, m, clip);
       const key = `${rule.kind}:${title.toLowerCase()}:${d ? toLocalISO(d.date, true) : ""}`;
       if (seen.has(key)) continue;
       seen.add(key);
@@ -91,7 +96,7 @@ export function extract(segments: Segment[], ref: Date): Extraction[] {
         title,
         when: d ? toLocalISO(d.date, !d.hasTime) : undefined,
         allDay: d ? !d.hasTime : true,
-        phrase: sen.text,
+        phrase: clip,
         segmentId: sen.segmentId,
         confidence: d ? 0.8 : 0.6,
         source: "keywords",
@@ -101,6 +106,15 @@ export function extract(segments: Segment[], ref: Date): Extraction[] {
     }
   });
   return found;
+}
+
+/** The words around position `at`: about 8 before and 22 after, for sentences over 35 words. */
+function window(text: string, at: number): string {
+  const words = text.split(/\s+/);
+  if (words.length <= 35) return text;
+  const before = text.slice(0, at).split(/\s+/).filter(Boolean).length;
+  const from = Math.max(0, before - 8);
+  return `${from > 0 ? "…" : ""}${words.slice(from, before + 22).join(" ")}${before + 22 < words.length ? "…" : ""}`;
 }
 
 function makeTitle(rule: Rule, m: RegExpMatchArray, sentence: string): string {

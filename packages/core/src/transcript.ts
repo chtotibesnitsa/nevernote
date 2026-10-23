@@ -120,8 +120,14 @@ export function labelSpeakers(segments: LiveSegment[], turns: SpeakerTurn[], tot
 
 /**
  * A small energy-based speech chunker for engines without Silero VAD (browser
- * and phone). Tracks the noise floor and cuts at pauses, never letting a
- * chunk run past 15 s.
+ * and phone). Tracks the noise floor and cuts at real pauses, so each chunk is
+ * a whole sentence or two.
+ *
+ * Tuned on far-field recordings (a teacher 10+ feet away, -42 to -50 dBFS):
+ * the old thresholds dropped most quiet speech and cut words in half, which is
+ * what made the models invent text. A short pre-roll keeps the first syllable,
+ * and `onPartial` hands over the sentence so far about once a second, so words
+ * show up while the teacher is still talking.
  */
 export class Chunker {
   private buf: Float32Array[] = [];
@@ -131,7 +137,14 @@ export class Chunker {
   private floor = 0.004;
   private silentFor = 0;
   private voiced = 0;
-  constructor(private onChunk: (samples: Float32Array, start: number, end: number) => void, private rate = 16000) {}
+  private pre: Float32Array[] = [];
+  private preLen = 0;
+  private sincePartial = 0;
+  constructor(
+    private onChunk: (samples: Float32Array, start: number, end: number) => void,
+    private rate = 16000,
+    private onPartial?: (samples: Float32Array, start: number) => void,
+  ) {}
 
   push(s: Float32Array): void {
     let e = 0;
@@ -140,12 +153,22 @@ export class Chunker {
     const dur = s.length / this.rate;
     // Noise floor adapts slowly upward, quickly downward.
     this.floor = rms < this.floor ? this.floor * 0.9 + rms * 0.1 : this.floor * 0.995 + rms * 0.005;
-    const speech = rms > this.floor * 2.2 + 0.002;
+    const speech = rms > this.floor * 1.5 + 0.0002;
     if (this.len === 0 && !speech) {
+      // Keep the last 0.4 s so the start of the first word isn't clipped.
+      this.pre.push(s);
+      this.preLen += s.length;
+      while (this.pre.length > 1 && this.preLen - this.pre[0].length >= 0.4 * this.rate) this.preLen -= this.pre.shift()!.length;
       this.t += dur;
       return;
     }
-    if (this.len === 0) this.start = this.t;
+    if (this.len === 0) {
+      this.start = this.t - this.preLen / this.rate;
+      this.buf = this.pre;
+      this.len = this.preLen;
+      this.pre = [];
+      this.preLen = 0;
+    }
     this.buf.push(s);
     this.len += s.length;
     this.t += dur;
@@ -154,23 +177,74 @@ export class Chunker {
       this.voiced += dur;
     } else this.silentFor += dur;
     const total = this.len / this.rate;
-    if ((this.silentFor > 0.5 && total > 1.2) || total > 15) this.flush();
+    if ((this.silentFor >= 1.0 && total > 3) || total > 12) return this.flush();
+    this.sincePartial += dur;
+    if (this.onPartial && this.sincePartial >= 1 && this.voiced > 0.3) {
+      this.sincePartial = 0;
+      this.onPartial(this.joined(), this.start);
+    }
   }
 
-  flush(): void {
-    if (this.len === 0) return;
+  private joined(): Float32Array {
     const out = new Float32Array(this.len);
     let o = 0;
     for (const b of this.buf) {
       out.set(b, o);
       o += b.length;
     }
-    if (this.voiced > 0.25) this.onChunk(out, this.start, this.start + out.length / this.rate);
+    return out;
+  }
+
+  flush(): void {
+    if (this.len === 0) return;
+    const out = this.joined();
+    if (this.voiced > 0.3) this.onChunk(out, this.start, this.start + out.length / this.rate);
     this.buf = [];
     this.len = 0;
     this.silentFor = 0;
     this.voiced = 0;
+    this.sincePartial = 0;
   }
+}
+
+/**
+ * Brings far-away speech up to a normal level for the model: the loudest 30%
+ * of 25 ms frames (the speech) is set to about -22 dBFS, with up to 30x gain.
+ * Measured on far-field trials this beats leaving quiet chunks alone.
+ */
+export function boostChunk(c: Float32Array, maxGain = 30): Float32Array {
+  const F = 400;
+  const n = Math.floor(c.length / F);
+  if (!n) return c;
+  const e = new Float32Array(n);
+  for (let f = 0; f < n; f++) {
+    let s = 0;
+    for (let i = f * F; i < (f + 1) * F; i++) s += c[i] * c[i];
+    e[f] = s / F;
+  }
+  e.sort();
+  let sum = 0;
+  const from = Math.floor(n * 0.7);
+  for (let f = from; f < n; f++) sum += e[f];
+  const level = Math.sqrt(sum / (n - from)) + 1e-6;
+  const gain = Math.min(0.08 / level, maxGain);
+  const out = new Float32Array(c.length);
+  for (let i = 0; i < c.length; i++) out[i] = Math.max(-1, Math.min(1, c[i] * gain));
+  return out;
+}
+
+/** What Whisper-style models print for noise, music or silence instead of words. */
+export function cleanAsrText(text: string): string {
+  const t = text
+    .replace(/\[[^\]]*\]|\([^)]*\)|\*[^*]*\*|♪+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  if (!/[a-z0-9]/i.test(t)) return "";
+  if (/^(?:thank you\.?|thanks for watching[.!]?|you|bye\.?|\.+)$/i.test(t)) return "";
+  // A phrase looped over and over is the model stuck on noise.
+  const words = t.split(" ");
+  if (words.length >= 8 && new Set(words.map((w) => w.toLowerCase())).size / words.length < 0.3) return "";
+  return t;
 }
 
 /** Who talked, sorted by share of talk time. */

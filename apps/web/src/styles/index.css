@@ -1,28 +1,29 @@
 @import "tailwindcss";
 @import "@fontsource-variable/inter";
+@import "@fontsource-variable/geist";
 @import "@fontsource-variable/newsreader";
 @import "@fontsource-variable/newsreader/wght-italic.css";
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Paper, ink and a little leather. */
+/* Graphite on white, the same look as the website. */
 @theme {
   --font-sans: "Inter Variable", ui-sans-serif, system-ui, -apple-system, sans-serif;
-  --font-serif: "Newsreader Variable", "Iowan Old Style", Georgia, serif;
+  --font-serif: "Geist Variable", var(--font-sans);
 
-  --color-paper: #f7f3ec;
-  --color-paper-2: #efe9df;
-  --color-card: #fcfaf6;
-  --color-ink: #1c1915;
-  --color-ink-2: #4a433b;
-  --color-mute: #8a8076;
-  --color-line: #e4ddd2;
-  --color-leather: #6b4f3a;
-  --color-clay: #c8794a;
+  --color-paper: #f5f5f7;
+  --color-paper-2: #ececef;
+  --color-card: #ffffff;
+  --color-ink: #1d1d1f;
+  --color-ink-2: #424245;
+  --color-mute: #86868b;
+  --color-line: #e5e5ea;
+  --color-leather: #1d1d1f;
+  --color-clay: #6e6e73;
 
-  --color-dot-red: #d9534a;
-  --color-dot-orange: #e8973e;
-  --color-dot-green: #3f9a6b;
+  --color-dot-red: #ff3b30;
+  --color-dot-orange: #a1a1a6;
+  --color-dot-green: #2f9e5b;
 
   --ease-liquid: cubic-bezier(0.22, 1, 0.36, 1);
   --radius-glass: 22px;
@@ -32,30 +33,34 @@
   color-scheme: light;
   --bg: var(--color-paper);
   --fg: var(--color-ink);
-  --glass: rgb(255 255 255 / 0.58);
-  --glass-strong: rgb(255 255 255 / 0.78);
-  --glass-edge: rgb(255 255 255 / 0.85);
-  --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 12px 40px -12px rgb(60 40 20 / 0.18), 0 2px 6px rgb(60 40 20 / 0.06);
+  --glass: rgb(255 255 255 / 0.82);
+  --glass-strong: rgb(255 255 255 / 0.9);
+  --glass-edge: rgb(0 0 0 / 0.06);
+  --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.9) inset, 0 12px 32px -16px rgb(0 0 0 / 0.22), 0 1px 2px rgb(0 0 0 / 0.05);
   --card: var(--color-card);
   --line: var(--color-line);
   --mute: var(--color-mute);
   --ink-2: var(--color-ink-2);
-  --bubble: #f0ebe3;
+  --bubble: #f2f2f5;
+  --edge: #1d1d1f;
+  --accent: #1d1d1f;
 }
 
 .dark {
   color-scheme: dark;
-  --bg: #14120f;
-  --fg: #f4efe6;
-  --glass: rgb(38 33 28 / 0.55);
-  --glass-strong: rgb(38 33 28 / 0.8);
-  --glass-edge: rgb(255 255 255 / 0.08);
-  --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.06) inset, 0 20px 50px -20px rgb(0 0 0 / 0.6);
-  --card: #1c1915;
-  --line: #2e2923;
-  --mute: #998f84;
-  --ink-2: #cfc6ba;
-  --bubble: #25211c;
+  /* Graphite, like macOS dark mode. */
+  --bg: #0e0e10;
+  --fg: #f5f5f7;
+  --glass: rgb(44 44 48 / 0.55);
+  --glass-strong: rgb(44 44 48 / 0.82);
+  --glass-edge: rgb(255 255 255 / 0.1);
+  --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.08) inset, 0 20px 50px -20px rgb(0 0 0 / 0.7);
+  --card: #1a1a1d;
+  --line: #2c2c31;
+  --mute: #8e8e93;
+  --ink-2: #c7c7cc;
+  --bubble: #26262a;
+  --edge: #55555d;
 }
 
 html,
@@ -79,7 +84,7 @@ html.desktop body {
 }
 
 ::selection {
-  background: rgb(200 121 74 / 0.25);
+  background: rgb(0 0 0 / 0.12);
 }
 
 @utility glass {
@@ -108,15 +113,13 @@ html.desktop body {
 }
 
 @utility paper-grain {
-  background-image: radial-gradient(rgb(107 79 58 / 0.05) 1px, transparent 1px);
-  background-size: 3px 3px;
+  background-image: none;
 }
 
 @utility title-serif {
-  font-family: var(--font-serif);
-  font-weight: 460;
-  letter-spacing: -0.02em;
-  font-variation-settings: "opsz" 72;
+  font-family: "Geist Variable", var(--font-sans);
+  font-weight: 700;
+  letter-spacing: -0.035em;
 }
 
 @utility eyebrow {
@@ -188,10 +191,10 @@ html.desktop body {
 }
 .prose-nn h2,
 .prose-nn h3 {
-  font-family: var(--font-serif);
-  font-size: 1.45rem;
-  font-weight: 500;
-  letter-spacing: -0.01em;
+  font-family: "Geist Variable", var(--font-sans);
+  font-size: 1.35rem;
+  font-weight: 650;
+  letter-spacing: -0.022em;
   margin: 2rem 0 0.5rem;
 }
 .prose-nn ul {
@@ -218,16 +221,22 @@ html.desktop body {
 }
 
 /* Landing page: brighter white paper with a warm amber glow that drifts. */
+/* The website is always light, even when the app is in dark mode. */
 .site {
+  color-scheme: light;
   --bg: #fdfcfa;
+  --fg: var(--color-ink);
+  --glass: rgb(255 255 255 / 0.58);
+  --glass-strong: rgb(255 255 255 / 0.78);
+  --glass-edge: rgb(255 255 255 / 0.85);
+  --glass-shadow: 0 1px 0 rgb(255 255 255 / 0.7) inset, 0 12px 40px -12px rgb(60 40 20 / 0.18), 0 2px 6px rgb(60 40 20 / 0.06);
   --card: #ffffff;
+  --line: var(--color-line);
+  --mute: var(--color-mute);
+  --ink-2: var(--color-ink-2);
   --bubble: #f6f1ea;
   background: var(--bg);
-}
-.dark .site {
-  --bg: #12100d;
-  --card: #1a1713;
-  --bubble: #24201a;
+  color: var(--fg);
 }
 @keyframes liquid {
   0%, 100% { border-radius: 48% 52% 60% 40% / 50% 45% 55% 50%; scale: 1; rotate: 0deg; }
@@ -236,3 +245,92 @@ html.desktop body {
 }
 .liquid { animation: liquid 18s var(--ease-liquid) infinite; }
 @media (prefers-reduced-motion: reduce) { .liquid { animation: none; } }
+
+/* Website: Apple-like greys, Geist titles, no heavy black outlines. */
+.site {
+  --bg: #fbfbfd;
+  --fg: #1d1d1f;
+  --ink-2: #424245;
+  --mute: #86868b;
+  --line: rgb(0 0 0 / 0.08);
+  --bubble: #f5f5f7;
+  font-feature-settings: "cv11", "ss03";
+}
+.site .title-serif,
+.site .display {
+  font-family: "Geist Variable", var(--font-sans);
+  font-weight: 680;
+  letter-spacing: -0.038em;
+  padding: 0;
+  border-radius: 0;
+}
+.site .soft {
+  color: #6e6e73;
+}
+.site .card {
+  background: #fff;
+  border-radius: 28px;
+  box-shadow: 0 0 0 1px rgb(0 0 0 / 0.04), 0 1px 2px rgb(0 0 0 / 0.04), 0 24px 48px -28px rgb(0 0 0 / 0.22);
+}
+.site .lglass {
+  background: linear-gradient(180deg, rgb(255 255 255 / 0.72), rgb(255 255 255 / 0.42));
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.9), inset 0 -1px 0 rgb(255 255 255 / 0.25), 0 0 0 1px rgb(0 0 0 / 0.05), 0 20px 40px -24px rgb(0 0 0 / 0.25);
+}
+
+@keyframes nn-eq { 0%, 100% { transform: scaleY(0.4); } 50% { transform: scaleY(1); } }
+.nn-eq { animation: nn-eq 0.9s ease-in-out infinite; }
+/* Voice bars: transform-only so they stay on the compositor. */
+@keyframes nn-bar { 0%, 100% { transform: scaleY(var(--lo, 0.3)); } 50% { transform: scaleY(1); } }
+.nn-bar { transform-origin: 50% 50%; animation: nn-bar var(--d, 1s) ease-in-out var(--dl, 0s) infinite; }
+.nn-bar-off { transform: scaleY(0.1); transition: transform 0.4s; }
+@keyframes nn-caret { 0%, 100% { opacity: 1; } 50% { opacity: 0; } }
+.nn-caret { animation: nn-caret 1s steps(1) infinite; }
+@keyframes nn-line-in { from { opacity: 0; transform: translateY(8px); filter: blur(4px); } to { opacity: 1; transform: none; filter: none; } }
+.nn-line-in { animation: nn-line-in 0.5s var(--ease-liquid) both; }
+@media (prefers-reduced-motion: reduce) { .nn-eq, .nn-bar, .nn-caret, .nn-line-in { animation: none; } }
+
+@keyframes nn-page { from { transform: translateY(8px); } to { transform: none; } }
+.nn-page { animation: nn-page 0.32s var(--ease-liquid); }
+@keyframes nn-marquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+.nn-marquee { animation: nn-marquee 60s linear infinite; }
+.nn-marquee-r { animation: nn-marquee 70s linear infinite reverse; }
+@media (prefers-reduced-motion: reduce) { .nn-marquee, .nn-marquee-r { animation: none; } }
+
+/* Spinning gradient border (Pro card). */
+@property --a {
+  syntax: "<angle>";
+  inherits: false;
+  initial-value: 0deg;
+}
+@keyframes nn-spin {
+  to {
+    --a: 360deg;
+  }
+}
+
+/* App: a 3D pressable button, the same as the website's. */
+@utility press {
+  box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 3px 0 #000, 0 12px 24px -12px rgb(0 0 0 / 0.55);
+  transition: transform 0.15s var(--ease-liquid), box-shadow 0.15s var(--ease-liquid);
+  &:active { transform: translateY(2px); box-shadow: inset 0 1px 0 rgb(255 255 255 / 0.14), 0 1px 0 #000; }
+}
+@utility press-light {
+  box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06), 0 3px 0 rgb(0 0 0 / 0.1), 0 10px 20px -14px rgb(0 0 0 / 0.4);
+  transition: transform 0.15s var(--ease-liquid), box-shadow 0.15s var(--ease-liquid);
+  &:active { transform: translateY(2px); box-shadow: inset 0 0 0 1px rgb(0 0 0 / 0.06), 0 1px 0 rgb(0 0 0 / 0.1); }
+}
+/* App cards: white, a hairline and a soft lift. */
+@utility panel {
+  background: var(--card);
+  border-radius: 22px;
+  box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgb(0 0 0 / 0.04), 0 18px 36px -28px rgb(0 0 0 / 0.25);
+}
+
+@utility no-scrollbar {
+  scrollbar-width: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+}

@@ -61,33 +61,96 @@ function untar(file: string, dir: string): Promise<void> {
   return new Promise((resolve, reject) => {
     // bsdtar ships with macOS and Windows 10+, GNU tar with Linux; all read .tar.bz2.
     const p = spawn("tar", ["-xjf", file, "-C", dir], { stdio: "ignore" });
+    // A stuck unpack fails (and the download is retried next launch) instead of hanging the app.
+    const limit = setTimeout(() => p.kill(), 10 * 60_000);
     p.on("error", reject);
-    p.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`tar exited ${code}`))));
+    p.on("close", (code) => {
+      clearTimeout(limit);
+      code === 0 ? resolve() : reject(new Error(`unpacking failed (tar ${code})`));
+    });
   });
 }
 
-/** Downloads whatever is missing. `onProgress` gets overall 0..1. */
-export async function ensureModels(dir: string, asr: AsrModelId, onProgress: (p: number, label: string) => void): Promise<void> {
+const inflight = new Map<string, { run: Promise<void>; listeners: Set<(p: number, label: string) => void> }>();
+
+/** Downloads whatever is missing. `onProgress` gets overall 0..1. Asking again while it runs joins the same download, and hears its progress too. */
+export function ensureModels(dir: string, asr: AsrModelId, onProgress: (p: number, label: string) => void): Promise<void> {
+  const key = `${dir}|${asr}`;
+  let job = inflight.get(key);
+  if (!job) {
+    const listeners = new Set<(p: number, label: string) => void>();
+    const run = download(dir, asr, (p, label) => listeners.forEach((l) => l(p, label))).finally(() => inflight.delete(key));
+    job = { run, listeners };
+    inflight.set(key, job);
+  }
+  job.listeners.add(onProgress);
+  return job.run;
+}
+
+// Main passes Electron's own network stack (Chromium's, with the system's proxy and DNS) once the app is ready.
+let fetcher: typeof fetch = fetch;
+export function useFetch(f: typeof fetch) {
+  fetcher = f;
+}
+
+async function fetchTo(url: string, tmp: string, onBytes: (n: number) => void): Promise<void> {
+  // A connection that goes quiet for a minute is dropped and retried, instead of hanging forever.
+  const ctl = new AbortController();
+  let stall: ReturnType<typeof setTimeout> | undefined;
+  const alive = () => {
+    clearTimeout(stall);
+    stall = setTimeout(() => ctl.abort(new Error("download stalled")), 60_000);
+  };
+  alive();
+  try {
+    const res = await fetcher(url, { signal: ctl.signal });
+    if (!res.ok || !res.body) throw new Error(`download failed (${res.status})`);
+    const counter = new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, c) {
+        alive();
+        onBytes(chunk.byteLength);
+        c.enqueue(chunk);
+      },
+    });
+    await pipeline(Readable.fromWeb(res.body.pipeThrough(counter) as never), createWriteStream(tmp), { signal: ctl.signal });
+  } finally {
+    clearTimeout(stall);
+  }
+}
+
+async function download(dir: string, asr: AsrModelId, onProgress: (p: number, label: string) => void): Promise<void> {
   mkdirSync(dir, { recursive: true });
   const todo = needed(asr).filter((m) => !existsSync(join(dir, m.installs)));
   const total = todo.reduce((a, m) => a + m.bytes, 0);
   let done = 0;
   for (const m of todo) {
     const tmp = join(dir, `.${m.id}.part`);
-    const res = await fetch(m.url);
-    if (!res.ok || !res.body) throw new Error(`download failed (${res.status}) for ${m.id}`);
-    let got = 0;
-    const counter = new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, ctl) {
-        got += chunk.byteLength;
-        onProgress(total ? (done + got) / total : 1, m.id);
-        ctl.enqueue(chunk);
-      },
-    });
-    await pipeline(Readable.fromWeb(res.body.pipeThrough(counter) as never), createWriteStream(tmp));
+    // A dropped connection restarts this file, not the whole set.
+    for (let attempt = 1; ; attempt++) {
+      let got = 0;
+      try {
+        await fetchTo(m.url, tmp, (n) => {
+          got += n;
+          onProgress(total ? Math.min(1, (done + got) / total) : 1, m.id);
+        });
+        break;
+      } catch (e) {
+        rmSync(tmp, { force: true });
+        if (attempt >= 3) throw e;
+        onProgress(total ? Math.min(1, done / total) : 0, `retrying ${m.id} (${e instanceof Error ? e.message : e})`);
+        await new Promise((r) => setTimeout(r, 1500 * attempt));
+      }
+    }
+    onProgress(total ? Math.min(1, (done + m.bytes) / total) : 1, `unpacking ${m.id}`);
     if (m.archive) {
-      await untar(tmp, dir);
-      rmSync(tmp);
+      // Unpack beside the final place, then rename: an interrupted unpack never looks installed.
+      const stage = join(dir, `.${m.id}.unpack`);
+      rmSync(stage, { recursive: true, force: true });
+      mkdirSync(stage);
+      await untar(tmp, stage);
+      renameSync(join(stage, m.installs), join(dir, m.installs));
+      rmSync(stage, { recursive: true, force: true });
+      rmSync(tmp, { force: true });
     } else {
       renameSync(tmp, join(dir, m.installs));
     }

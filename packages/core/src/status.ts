@@ -21,7 +21,9 @@ const INFO: Record<Stage, StageInfo> = {
   failed: { dot: "red", label: "Something went wrong · tap to retry", live: false },
 };
 
-export function stageInfo(stage: Stage): StageInfo {
+/** `guest`: no account yet, so a saved class waits on sign-up, not on Wi-Fi. */
+export function stageInfo(stage: Stage, guest = false): StageInfo {
+  if (guest && stage === "queued") return { dot: "green", label: "Saved · sign up free for AI notes", live: false };
   return INFO[stage];
 }
 

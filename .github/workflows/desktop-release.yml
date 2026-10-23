@@ -2,7 +2,7 @@ name: Desktop release
 
 # Push a tag like v1.0.0 to build the Mac and Windows apps and attach them to a
 # GitHub release. Without signing secrets the builds are unsigned (macOS will
-# ask users to right-click → Open the first time).
+# ad-hoc sign them; users approve them once in System Settings).
 on:
   push:
     tags: ["v*"]
@@ -12,14 +12,42 @@ permissions:
   contents: write
 
 jobs:
+  # Prepare one draft release for the builds to upload into (parallel builds each
+  # creating their own release made duplicates). When started by hand, also tag
+  # this commit v<desktop version>. A release that already has its Mac and Windows
+  # installers is never touched.
+  prepare:
+    runs-on: ubuntu-latest
+    outputs:
+      tag: ${{ steps.p.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: p
+        run: |
+          v="v$(node -p "require('./apps/desktop/package.json').version")"
+          echo "tag=$v" >> "$GITHUB_OUTPUT"
+          done=0
+          for id in $(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" -q ".[] | select(.tag_name == \"$v\") | .id"); do
+            # Only a published release counts: a draft is what a failed run leaves behind, so it's rebuilt.
+            draft=$(gh api "repos/$GITHUB_REPOSITORY/releases/$id" -q '.draft')
+            if [ "$draft" = false ]; then done=1; else gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; fi
+          done
+          if [ $done = 1 ]; then echo "$v is complete; nothing to do"; exit 1; fi
+          if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
+            git tag -f "$v" && git push -f origin "refs/tags/$v"
+          fi
+          gh release create "$v" --draft --verify-tag --title "Nevernote ${v#v}" --notes "Free, on-device class transcriber for Mac and Windows. Download the .dmg for Mac (arm64 = Apple Silicon) or the Setup .exe for Windows."
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build:
+    needs: prepare
     strategy:
       fail-fast: false
       matrix:
         include:
           - os: macos-14 # Apple Silicon
             args: --mac --arm64
-          - os: macos-13 # Intel
+          - os: macos-15-intel # Intel
             args: --mac --x64
           - os: windows-latest
             args: --win --x64
@@ -31,10 +59,21 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Public values, set under Settings > Secrets and variables > Actions > Variables.
       - run: npm run build -w @nevernote/desktop
+        env:
+          VITE_RC_PURCHASE_LINK: ${{ vars.VITE_RC_PURCHASE_LINK }}
+          VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
       - name: Package and publish
         working-directory: apps/desktop
-        run: npx electron-builder ${{ matrix.args }} --publish always
+        shell: bash
+        # Empty secrets arrive as empty strings, which electron-builder reads as a
+        # certificate path; drop them so unsigned builds work.
+        run: |
+          for v in CSC_LINK CSC_KEY_PASSWORD APPLE_ID APPLE_APP_SPECIFIC_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!v}" ]; then unset "$v"; fi
+          done
+          npx electron-builder ${{ matrix.args }} --publish always
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           # Optional signing and notarisation (macOS): add these repository secrets.
@@ -44,3 +83,52 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.MAC_CERT_P12_BASE64 != '' }}
+      # Catch a broken signature before students do ("Nevernote is damaged").
+      - name: Check the Mac app's signature
+        if: runner.os == 'macOS'
+        working-directory: apps/desktop
+        run: |
+          app=$(find release -maxdepth 2 -name "Nevernote.app" | head -1)
+          file "$app/Contents/MacOS/Nevernote"
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -dv "$app" 2>&1 | grep -E "Signature|Identifier"
+      # Open the real packaged app, check its screen loads, then download the speech
+      # models and transcribe a sample recording. A release is only published if this passes.
+      - name: Self-test the packaged app (Mac)
+        if: runner.os == 'macOS'
+        timeout-minutes: 22
+        working-directory: apps/desktop
+        run: |
+          app=$(find release -maxdepth 2 -name "Nevernote.app" | head -1)
+          file "$app/Contents/MacOS/Nevernote"
+          set +e
+          # A hung app still has to end the step, with whatever it logged so far.
+          NEVERNOTE_SELFTEST=full NEVERNOTE_SELFTEST_OUT="$PWD/selftest.log" "$app/Contents/MacOS/Nevernote" > app.log 2>&1 &
+          pid=$!
+          ( sleep 1080; kill -9 $pid 2>/dev/null && echo "FAIL killed after 18 minutes" >> selftest.log ) &
+          wait $pid
+          code=$?
+          tail -40 app.log
+          cat selftest.log || true
+          exit $code
+      - name: Self-test the packaged app (Windows)
+        if: runner.os == 'Windows'
+        timeout-minutes: 15
+        shell: pwsh
+        working-directory: apps/desktop
+        env:
+          NEVERNOTE_SELFTEST: full
+          NEVERNOTE_SELFTEST_OUT: ${{ github.workspace }}\apps\desktop\selftest.log
+        run: |
+          $p = Start-Process -FilePath "release\win-unpacked\Nevernote.exe" -Wait -PassThru
+          if (Test-Path selftest.log) { Get-Content selftest.log }
+          exit $p.ExitCode
+
+  # Publish only once every installer is attached.
+  publish:
+    needs: [prepare, build]
+    runs-on: ubuntu-latest
+    steps:
+      - run: gh release edit "${{ needs.prepare.outputs.tag }}" -R "$GITHUB_REPOSITORY" --draft=false --latest
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

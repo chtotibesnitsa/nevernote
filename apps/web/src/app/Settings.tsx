@@ -1,9 +1,12 @@
+import { desktopRedirect } from "../lib/handoff.ts";
+import { signInWithGoogle } from "./AuthGate.tsx";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Card, spring } from "../components/ui.tsx";
 import { isDesktop, GITHUB_REPO, type AsrModelId } from "../lib/bridge.ts";
 import { STYLE_LIMITS, SUMMARY_STYLES, type SummaryPrefs, type SummaryStyleId } from "@nevernote/core";
 import { cloudEnabled, fetchSummaryPrefs, saveSummaryPrefs, supabase } from "../lib/cloud.ts";
+import { CalendarSync } from "./CalendarSync.tsx";
 import { useApp, type Settings as S } from "./state.tsx";
 
 const MODELS: { id: AsrModelId; label: string; blurb: string }[] = [
@@ -13,18 +16,26 @@ const MODELS: { id: AsrModelId; label: string; blurb: string }[] = [
 ];
 
 export function Settings() {
-  const { settings, setSettings, session, plan, openPro, modelsReady, downloadModels, rec } = useApp();
+  const { settings, setSettings, session, plan, openPro, modelsReady, downloadModels, rec, tier, openSignup } = useApp();
   return (
-    <div className="mx-auto w-full max-w-[760px] px-5 pb-28 pt-4 md:px-10">
-      <h1 className="text-[2rem] font-semibold tracking-tight">Settings</h1>
+    <div className="mx-auto w-full max-w-[1040px] px-5 pb-28 pt-4 md:px-10">
+      <h1 className="title-serif text-[2.2rem] leading-tight">Settings</h1>
 
       <Section title="Account">
         {!cloudEnabled ? (
           <p className="text-sm text-[var(--ink-2)]">This build runs fully local. Sync and AI notes turn on when the app is connected to a Nevernote server.</p>
+        ) : tier === "guest" ? (
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="font-semibold">Guest</div>
+              <div className="text-sm text-[var(--mute)]">Notes are saved in this browser. Sign up free to keep them and unlock AI notes, sync and insights.</div>
+            </div>
+            <Button variant="primary" onClick={() => openSignup("settings")}>Sign up free</Button>
+          </div>
         ) : session ? (
           <div className="flex items-center justify-between gap-4">
             <div>
-              <div className="font-medium">{session.user.email}</div>
+              <div className="font-semibold">{session.user.email}</div>
               <div className="text-sm text-[var(--mute)]">{plan === "pro" ? "Pro" : "Free plan"} · notes sync to every device you sign in on</div>
             </div>
             <div className="flex gap-2">
@@ -43,10 +54,16 @@ export function Settings() {
         )}
       </Section>
 
-      {cloudEnabled && session && <NoteStyle />}
+      {cloudEnabled && session && tier !== "guest" && <NoteStyle />}
+
+      {cloudEnabled && (
+        <Section title="Calendar sync" hint="Pro: every due date and test Nevernote hears goes straight into Google or Apple Calendar, with a reminder the night before.">
+          <CalendarSync />
+        </Section>
+      )}
 
       <Section title="Your name">
-        <input value={settings.name} onChange={(e) => setSettings({ name: e.target.value })} placeholder="What should Nevernote call you?" className="w-full rounded-xl border border-[var(--line)] bg-transparent px-3 py-2 outline-none" />
+        <input value={settings.name} onChange={(e) => setSettings({ name: e.target.value })} placeholder="What should Nevernote call you?" className="w-full rounded-[12px] bg-[var(--bubble)] px-3.5 py-2.5 outline-none shadow-[inset_0_0_0_1px_var(--line)]" />
       </Section>
 
       {isDesktop && (
@@ -54,7 +71,7 @@ export function Settings() {
           <div className="space-y-2">
             {MODELS.map((m) => (
               <label key={m.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3.5 transition ${settings.model === m.id ? "border-[var(--fg)]" : "border-[var(--line)]"}`}>
-                <input type="radio" className="mt-1 accent-[var(--color-leather)]" checked={settings.model === m.id} onChange={() => setSettings({ model: m.id })} />
+                <input type="radio" className="mt-1 accent-[var(--fg)]" checked={settings.model === m.id} onChange={() => setSettings({ model: m.id })} />
                 <span>
                   <span className="block font-medium">{m.label}</span>
                   <span className="text-sm text-[var(--mute)]">{m.blurb}</span>
@@ -79,16 +96,6 @@ export function Settings() {
         <Toggle k="notifyExams" label="Tests and quizzes" hint="“Unit 3 test next Tuesday”" />
         <Toggle k="notifyImportant" label="“This will be on the test” moments" />
         <Toggle k="proTips" label="Occasional Pro tips" hint="At most one every few days, never while you're recording." />
-      </Section>
-
-      <Section title="Appearance">
-        <div className="flex gap-2">
-          {(["system", "light", "dark"] as const).map((t) => (
-            <Button key={t} variant={settings.theme === t ? "primary" : "glass"} onClick={() => setSettings({ theme: t })}>
-              {t[0].toUpperCase() + t.slice(1)}
-            </Button>
-          ))}
-        </div>
       </Section>
 
       <p className="mt-10 text-center text-sm text-[var(--mute)]">
@@ -127,6 +134,19 @@ function NoteStyle() {
           </button>
         ))}
       </div>
+      <div className="mt-5 text-sm font-medium">When you resume a class</div>
+      <p className="text-sm text-[var(--mute)]">What happens to the notes when more gets recorded into a note that already has them.</p>
+      <div className="mt-2 grid gap-2 sm:grid-cols-2">
+        {([
+          ["separate", "Add a dated update", "Your notes stay as they were. What's new goes in its own section with the date and time."],
+          ["merge", "Rewrite as one", "Everything is rewritten together into a single set of notes."],
+        ] as const).map(([id, label, blurb]) => (
+          <button key={id} onClick={() => save({ ...prefs, updates: id })} className={`rounded-2xl border p-3 text-left transition ${(prefs.updates ?? "separate") === id ? "border-[var(--fg)] bg-[var(--bubble)]" : "border-[var(--line)] hover:bg-[var(--bubble)]"}`}>
+            <div className="font-medium">{label}</div>
+            <div className="text-sm text-[var(--mute)]">{blurb}</div>
+          </button>
+        ))}
+      </div>
       <label className="mt-5 block text-sm font-medium" htmlFor="rules">Your own rules</label>
       <textarea
         id="rules"
@@ -144,7 +164,7 @@ function NoteStyle() {
       />
       <div className="flex justify-between text-xs text-[var(--mute)]">
         <span>{(prefs.rules ?? "").length} / {lim.rulesChars}</span>
-        {!pro && <button className="underline" onClick={() => openPro("summaryRules")}>Pro: longer rules, plus different rules for each class</button>}
+        {!pro && <button className="font-semibold text-[var(--fg)]" onClick={() => openPro("summaryRules")}>Pro: longer rules, plus rules for each class →</button>}
       </div>
       {pro && (
         <div className="mt-5">
@@ -174,7 +194,7 @@ function NoteStyle() {
 function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
     <motion.section initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="mt-8">
-      <h2 className="eyebrow">{title}</h2>
+      <h2 className="text-[17px] font-semibold tracking-tight">{title}</h2>
       {hint && <p className="mt-1 text-sm text-[var(--mute)]">{hint}</p>}
       <Card className="mt-3 p-5">{children}</Card>
     </motion.section>
@@ -187,10 +207,10 @@ function Toggle({ k, label, hint }: { k: keyof S; label: string; hint?: string }
   return (
     <button onClick={() => setSettings({ [k]: !on } as Partial<S>)} className="flex w-full items-center justify-between gap-4 py-2.5 text-left">
       <span>
-        <span className="block">{label}</span>
+        <span className="block font-medium">{label}</span>
         {hint && <span className="text-sm text-[var(--mute)]">{hint}</span>}
       </span>
-      <span className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${on ? "bg-[var(--color-dot-green)]" : "bg-[var(--line)]"}`}>
+      <span className={`relative h-7 w-12 shrink-0 rounded-full transition-colors ${on ? "bg-[var(--fg)]" : "bg-[var(--line)]"}`}>
         <motion.span layout transition={spring} className="absolute top-0.5 h-6 w-6 rounded-full bg-white shadow" style={{ left: on ? 22 : 2 }} />
       </span>
     </button>
@@ -201,15 +221,17 @@ export function SignIn() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState("");
-  const redirectTo = isDesktop ? "nevernote://auth" : `${location.origin}${import.meta.env.BASE_URL}app`;
+  const redirectTo = isDesktop ? desktopRedirect : `${location.origin}${import.meta.env.BASE_URL}app`;
   return (
     <div>
       <p className="text-sm text-[var(--ink-2)]">Sign in with the same account on your laptop and phone. Free.</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <Button variant="primary" onClick={() => supabase!.auth.signInWithOAuth({ provider: "apple", options: { redirectTo } })}>
-           Continue with Apple
-        </Button>
-        <Button variant="glass" onClick={() => supabase!.auth.signInWithOAuth({ provider: "google", options: { redirectTo } })}>
+        {!isDesktop && (
+          <Button variant="primary" onClick={() => supabase!.auth.signInWithOAuth({ provider: "apple", options: { redirectTo } })}>
+             Continue with Apple
+          </Button>
+        )}
+        <Button variant="glass" onClick={() => void signInWithGoogle()}>
           Continue with Google
         </Button>
       </div>

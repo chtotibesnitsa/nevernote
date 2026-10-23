@@ -72,7 +72,7 @@ Speaker accuracy (share of speech time given to the right speaker):
 - speaker labels;
 - due-date notifications and reminders;
 - sync between your devices;
-- AI notes and study guides: 3 instant per day, the rest overnight (or instantly after a 5-second sponsor card);
+- AI notes and study guides: 5 instant a day (each update counts), the rest overnight (or instantly after a 5-second sponsor card);
 - insights and streaks.
 
 **Pro ($3.99/month or $29.99/year):**

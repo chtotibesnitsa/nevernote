@@ -1,7 +1,7 @@
 {
   "name": "@nevernote/desktop",
   "productName": "Nevernote",
-  "version": "0.1.0",
+  "version": "1.0.3",
   "description": "Every word, every speaker, offline. Free and open source class notes.",
   "author": "Aleks <aleksander@lucenko.com>",
   "license": "MIT",
@@ -31,6 +31,7 @@
   "build": {
     "appId": "app.nevernote.desktop",
     "productName": "Nevernote",
+    "electronVersion": "38.8.6",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -46,20 +47,15 @@
     "mac": {
       "category": "public.app-category.education",
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
+        "dmg"
       ],
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
         "NSMicrophoneUsageDescription": "Nevernote listens to your class so it can write down every word. Audio never leaves your Mac."
-      }
+      },
+      "darkModeSupport": false
     },
     "win": {
       "target": [
@@ -75,8 +71,38 @@
       {
         "provider": "github",
         "owner": "chtotibesnitsa",
-        "repo": "nevernote"
+        "repo": "nevernote",
+        "releaseType": "draft"
       }
-    ]
+    ],
+    "protocols": [
+      {
+        "name": "Nevernote sign-in",
+        "schemes": [
+          "nevernote"
+        ]
+      }
+    ],
+    "dmg": {
+      "title": "Nevernote",
+      "iconSize": 112,
+      "window": {
+        "width": 560,
+        "height": 380
+      },
+      "contents": [
+        {
+          "x": 150,
+          "y": 190
+        },
+        {
+          "x": 410,
+          "y": 190,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "afterPack": "build/adhoc-sign.cjs"
   }
 }

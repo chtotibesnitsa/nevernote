@@ -2,14 +2,18 @@ import "./styles/index.css";
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
 import { BrowserRouter, HashRouter, Navigate, Route, Routes } from "react-router-dom";
+import { Ask } from "./app/Ask.tsx";
 import { Home } from "./app/Home.tsx";
 import { Insights } from "./app/Insights.tsx";
 import { NoteView } from "./app/NoteView.tsx";
 import { Notes } from "./app/Notes.tsx";
 import { Settings } from "./app/Settings.tsx";
 import { Shell } from "./app/Shell.tsx";
+import { Study } from "./app/Study.tsx";
 import { AppProvider } from "./app/state.tsx";
 import { isDesktop } from "./lib/bridge.ts";
+import { handoffCode } from "./lib/handoff.ts";
+import { DesktopHandoff } from "./site/DesktopHandoff.tsx";
 import { Admin } from "./site/Admin.tsx";
 import { Landing } from "./site/Landing.tsx";
 import { Privacy, Support } from "./site/Legal.tsx";
@@ -28,6 +32,8 @@ function App() {
           <Route index element={<Home />} />
           <Route path="notes" element={<Notes />} />
           <Route path="note/:id" element={<NoteView />} />
+          <Route path="ask" element={<Ask />} />
+          <Route path="study" element={<Study />} />
           <Route path="insights" element={<Insights />} />
           <Route path="settings" element={<Settings />} />
         </Routes>
@@ -38,6 +44,9 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
+    {handoffCode ? (
+      <DesktopHandoff code={handoffCode} />
+    ) : (
     <Router basename={isDesktop ? undefined : import.meta.env.BASE_URL.replace(/\/$/, "")}>
       <Routes>
         <Route path="/" element={isDesktop ? <Navigate to="/app" replace /> : <Landing />} />
@@ -48,5 +57,6 @@ createRoot(document.getElementById("root")!).render(
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
+    )}
   </StrictMode>,
 );

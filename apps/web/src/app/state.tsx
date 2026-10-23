@@ -6,13 +6,23 @@ import {
   mergeExtractions,
   shouldUpsell,
   recordUpsell,
+  nameSpeakers,
   speakersOf,
+  SpeakerTracker,
+  classTerms,
+  fixTerms,
+  voiceprint,
   Syncer,
   tombstone,
   type Extraction,
   type Note,
+  type Feature,
   type Plan,
   type Segment,
+  type Tier,
+  unlockStep,
+  FREE_INSTANT_SUMMARIES_PER_DAY,
+  nextReset,
   type Stage,
   type UpsellMoment,
   type UpsellState,
@@ -21,10 +31,13 @@ import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { desktop, isDesktop, type AsrModelId } from "../lib/bridge.ts";
 import { startCapture, type Capture } from "../lib/capture.ts";
-import { cloudEnabled, fetchPlan, remoteFor, requestSummary, supabase, track } from "../lib/cloud.ts";
+import { claimGuest, cloudEnabled, fetchInstantUsed, fetchPlan, remoteFor, requestSummary, supabase, track } from "../lib/cloud.ts";
 import { deviceKind, newId } from "../lib/ids.ts";
 import { local } from "../lib/local.ts";
+import { getActive, logCut, setActive } from "../lib/cutoffs.ts";
+import { startFlash, stopFlash } from "../lib/tabflash.ts";
 import { Chunker } from "../lib/vad.ts";
+import { liveSpeechSupported, startLiveSpeech, type LiveSpeech } from "../lib/live-speech.ts";
 
 export interface Settings {
   model: AsrModelId;
@@ -48,6 +61,12 @@ const DEFAULT_SETTINGS: Settings = {
   name: "",
 };
 
+export interface AsrState {
+  state: "idle" | "loading" | "ready" | "error";
+  p?: number;
+  error?: string;
+}
+
 export type RecState = "idle" | "starting" | "recording" | "paused" | "finishing";
 
 interface Toast {
@@ -64,13 +83,24 @@ interface Ctx {
   load(id: string): Promise<Note | undefined>;
   update(id: string, patch: Partial<Note>): void;
   remove(id: string): Promise<void>;
-  rec: { state: RecState; noteId?: string; elapsed: number; level: () => number; engineProgress?: number; error?: string };
+  rec: { state: RecState; noteId?: string; elapsed: number; level: () => number; engineProgress?: number; error?: string; stopReason?: string };
+  /** The in-browser transcriber (web only): downloaded once when the app opens. */
+  asr: AsrState;
+  retryAsr(): void;
+  /** Web only: the sentence the teacher is saying right now, before it's final. */
+  preview: { note: string; text: string } | null;
+  /** Web only: which engine is writing the live transcript. "local" and "whisper" keep audio on the device. */
+  liveEngine: "local" | "cloud" | "whisper" | null;
   start(opts?: { title?: string; folder?: string }): Promise<string | undefined>;
   pause(): void;
-  resume(): void;
+  resume(): Promise<void>;
+  /** Web only: pick a class back up after the tab was closed. */
+  resumeNote(id: string): Promise<void>;
   stop(): Promise<void>;
-  summarize(id: string, sponsored?: boolean): Promise<void>;
+  summarize(id: string, sponsored?: boolean, quiet?: boolean): Promise<void>;
   session: Session | null;
+  /** False until the saved sign-in has been read, so the sign-in screen doesn't flash. */
+  authReady: boolean;
   plan: Plan;
   online: boolean;
   syncState: "offline" | "syncing" | "synced" | "error" | "local";
@@ -80,8 +110,18 @@ interface Ctx {
   toast(t: Omit<Toast, "id">): void;
   dismissToast(id: number): void;
   proOpen: string | false;
+  refreshPlan(): Promise<boolean>;
+  /** Today's free AI notes (free accounts only; null for guests and Pro). */
+  quota: { used: number; limit: number; left: number; resetAt: Date } | null;
   openPro(reason?: string): void;
   closePro(): void;
+  /** Guest (no account yet), free account, or Pro. */
+  tier: Tier;
+  signupOpen: string | false;
+  openSignup(reason?: string): void;
+  closeSignup(): void;
+  /** True if this tier can use the feature; otherwise opens the sign-up or Pro sheet and returns false. */
+  need(f: Feature, reason?: string): boolean;
   nudge(moment: UpsellMoment): void;
   modelsReady: boolean | undefined;
   downloadModels(): Promise<void>;
@@ -112,12 +152,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const [notes, setNotes] = useState<Note[]>([]);
   const [loaded, setLoaded] = useState(false);
   const [session, setSession] = useState<Session | null>(null);
+  const [authReady, setAuthReady] = useState(!supabase);
   const [plan, setPlan] = useState<Plan>("free");
   const [online, setOnline] = useState(navigator.onLine);
   const [syncState, setSyncState] = useState<Ctx["syncState"]>(cloudEnabled ? "offline" : "local");
   const [settings, setSettingsState] = useState<Settings>(() => readJSON("nn:settings", DEFAULT_SETTINGS));
   const [toasts, setToasts] = useState<Toast[]>([]);
   const [proOpen, setProOpen] = useState<string | false>(false);
+  const [signupOpen, setSignupOpen] = useState<string | false>(false);
   const [rec, setRec] = useState<Omit<Ctx["rec"], "level">>({ state: "idle", elapsed: 0 });
   const [modelsReady, setModelsReady] = useState<boolean | undefined>(isDesktop ? undefined : true);
 
@@ -127,7 +169,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const timer = useRef<number>(0);
   const browserAsr = useRef<Worker | null>(null);
   const chunker = useRef<Chunker | null>(null);
+  const live = useRef<LiveSpeech | null>(null);
+  const [liveEngine, setLiveEngine] = useState<Ctx["liveEngine"]>(null);
   const notified = useRef(new Set<string>());
+  const trackers = useRef(new Map<string, SpeakerTracker>());
 
   // ---------- notes ----------
   const reload = useCallback(async () => {
@@ -139,8 +184,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const get = useCallback((id: string) => notesRef.current.find((n) => n.id === id), []);
 
+  // Changes go up a moment after they're saved, not on the next minute's tick.
+  const syncSoon = useRef<() => void>(() => {});
   const persist = useCallback((n: Note) => {
-    void local.put(n);
+    void local.put(n).then(() => syncSoon.current());
   }, []);
 
   const update = useCallback(
@@ -182,6 +229,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     track("pro_opened", { reason });
   }, []);
 
+  // Without a sync server there's no account to make, so everything that doesn't need Pro is open.
+  const tier: Tier = plan === "pro" ? "pro" : cloudEnabled && (!session || session.user.is_anonymous) ? "guest" : "free";
+  const openSignup = useCallback((reason?: string) => {
+    setSignupOpen(reason ?? "menu");
+    track("signup_opened", { reason });
+  }, []);
+  const need = useCallback(
+    (f: Feature, reason?: string) => {
+      const step = unlockStep(tier, f);
+      if (step === "signup") openSignup(reason ?? f);
+      else if (step === "pro") openPro(reason ?? f);
+      return step === null;
+    },
+    [tier, openSignup, openPro],
+  );
+
   const nudge = useCallback(
     (moment: UpsellMoment) => {
       if (!settings.proTips) return;
@@ -217,18 +280,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
       return next;
     });
   }, []);
+  // The app is light only, like the website: white and airy whatever the system theme.
   useEffect(() => {
-    const mq = matchMedia("(prefers-color-scheme: dark)");
-    const apply = () => document.documentElement.classList.toggle("dark", settings.theme === "dark" || (settings.theme === "system" && mq.matches));
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, [settings.theme]);
+    document.documentElement.classList.remove("dark");
+  }, []);
 
   // ---------- auth, plan, online ----------
   useEffect(() => {
     if (!supabase) return;
-    supabase.auth.getSession().then(({ data }) => setSession(data.session));
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setAuthReady(true);
+    });
     const { data } = supabase.auth.onAuthStateChange((_e, s) => setSession(s));
     return () => data.subscription.unsubscribe();
   }, []);
@@ -236,6 +299,52 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (session) fetchPlan().then(setPlan);
     else setPlan("free");
   }, [session]);
+  // Desktop: the browser hands the Google sign-in back over nevernote://auth?code=…
+  useEffect(
+    () =>
+      desktop?.onAuth?.(async (link) => {
+        const code = new URL(link).searchParams.get("code");
+        if (!code || !supabase) return;
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) toast({ title: "Couldn't finish signing in", body: "Click Continue with Google again. If it keeps happening, restart Nevernote." });
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+  /** Checks the plan again, e.g. after checkout in another tab. True once it's Pro. */
+  const refreshPlan = useCallback(async () => {
+    if (!session) return false;
+    const p = await fetchPlan();
+    setPlan(p);
+    return p === "pro";
+  }, [session]);
+  const [used, setUsed] = useState(0);
+  const refreshQuota = useCallback(async () => {
+    if (!session || session.user.is_anonymous) return;
+    setUsed(await fetchInstantUsed().catch(() => 0));
+  }, [session]);
+  useEffect(() => void refreshQuota(), [refreshQuota]);
+  // A new day: the allowance comes back without a reload.
+  useEffect(() => {
+    const t = setTimeout(() => void refreshQuota(), nextReset().getTime() - Date.now() + 2000);
+    return () => clearTimeout(t);
+  }, [refreshQuota, used]);
+  const quota = useMemo(() => {
+    if (!session || session.user.is_anonymous || plan === "pro") return null;
+    const limit = FREE_INSTANT_SUMMARIES_PER_DAY;
+    return { used, limit, left: Math.max(0, limit - used), resetAt: nextReset() };
+  }, [session, plan, used]);
+  // Coming back from the checkout tab: pick up Pro straight away.
+  useEffect(() => {
+    const on = () => document.visibilityState === "visible" && void refreshPlan();
+    document.addEventListener("visibilitychange", on);
+    // The desktop window stays visible behind the browser, so focus counts too.
+    addEventListener("focus", on);
+    return () => {
+      document.removeEventListener("visibilitychange", on);
+      removeEventListener("focus", on);
+    };
+  }, [refreshPlan]);
   useEffect(() => {
     const on = () => setOnline(true);
     const off = () => setOnline(false);
@@ -263,45 +372,112 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const t = setInterval(syncNow, 60_000);
     return () => clearInterval(t);
   }, [syncNow]);
+  // Live: save-then-sync within a couple of seconds, and other devices' changes (and a Pro purchase) arrive as they happen.
+  useEffect(() => {
+    let t = 0;
+    syncSoon.current = () => {
+      clearTimeout(t);
+      t = window.setTimeout(() => void syncNow(), 1500);
+    };
+    const on = () => syncSoon.current();
+    addEventListener("focus", on);
+    addEventListener("online", on);
+    const uid = session?.user.id;
+    const ch =
+      supabase && uid
+        ? supabase
+            .channel(`live-${uid}`)
+            .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `user_id=eq.${uid}` }, on)
+            .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${uid}` }, () => void refreshPlan())
+            .subscribe()
+        : undefined;
+    return () => {
+      clearTimeout(t);
+      syncSoon.current = () => {};
+      removeEventListener("focus", on);
+      removeEventListener("online", on);
+      if (ch) void supabase!.removeChannel(ch);
+    };
+  }, [syncNow, session?.user.id, refreshPlan]);
+
+  // Signed into an account that already existed: bring the guest's classes onto it.
+  useEffect(() => {
+    if (!session || session.user.is_anonymous) return;
+    claimGuest(session)
+      .then(async (moved) => {
+        if (moved === null) return;
+        // Everything in this browser goes up again, now under the account, and the account's own notes come down.
+        for (const n of await local.list()) await local.put({ ...n, syncedAt: undefined });
+        await local.setMeta("cursor", "");
+        await syncNow();
+        if (moved > 0) toast({ title: "Your classes are in your account", body: "What you recorded as a guest is saved to your account and syncs everywhere you sign in." });
+      })
+      .catch(() => toast({ title: "Couldn't move your guest classes yet", body: "They're safe in this browser. Nevernote will try again next time you open it." }));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [session?.user.id]);
 
   // ---------- summaries ----------
+  /** While a class is still open (paused, or recording again), its stage belongs to the recorder. */
+  const liveStage = (id: string): Stage | null => (noteIdRef.current === id && recStateRef.current !== "idle" ? (recStateRef.current === "paused" ? "paused" : "recording") : null);
   const summarize = useCallback(
-    async (id: string, sponsored = false) => {
+    async (id: string, sponsored = false, quiet = false) => {
       const n = notesRef.current.find((x) => x.id === id);
       if (!n || !n.segments.length) return;
+      // Guests get their transcript; AI notes are the first thing a free account adds.
+      if (session?.user.is_anonymous) {
+        if (!liveStage(id)) openSignup("summary");
+        return;
+      }
       if (!session || !online) {
-        update(id, { stage: "queued" });
+        if (!liveStage(id)) update(id, { stage: "queued" });
         return;
       }
       update(id, { stage: "summarising" });
       try {
         await syncNow(); // the server summarises what it has
         const r = await requestSummary(id, sponsored);
+        void refreshQuota();
         if (r.route === "overnight") {
-          update(id, { stage: "queued" });
-          nudge("batchQueued");
+          update(id, { stage: liveStage(id) ?? "queued" });
+          // Always say so: a button that seems to do nothing is worse than a limit.
+          if (!quiet) {
+            toast({ title: "Notes for this class arrive tonight", body: "Today's 5 instant notes are used. Get them now with a 5-second sponsor card on the Summary tab, or with Pro." });
+            if (!liveStage(id)) openPro("batchQueued");
+          }
           return;
         }
         const cur = notesRef.current.find((x) => x.id === id)!;
         update(id, {
           summary: r.summary,
-          stage: "ready",
+          stage: liveStage(id) ?? "ready",
           title: /^Class \d+\/\d+$/.test(cur.title) ? r.summary.title : cur.title,
-          extractions: mergeExtractions(cur.extractions.filter((e) => e.source === "keywords"), r.summary.extractions),
+          extractions: mergeExtractions(cur.extractions, r.summary.extractions),
         });
         nudge("summaryReady");
       } catch (e) {
-        update(id, { stage: "queued" });
-        toast({ title: "Couldn't write notes yet", body: "Saved; Nevernote will try again when the connection is better." });
+        update(id, { stage: liveStage(id) ?? "queued" });
+        if (!quiet) toast({ title: "Couldn't write notes yet", body: "Saved; Nevernote will try again when the connection is better." });
       }
     },
-    [session, online, update, syncNow, nudge, toast],
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [session, online, update, syncNow, nudge, toast, openSignup, openPro, refreshQuota],
   );
+  /**
+   * Worth writing notes now? The first notes come as soon as there's a couple of
+   * sentences; after that, a new section needs at least two new lines.
+   */
+  const worthUpdating = (id: string) => {
+    const n = notesRef.current.find((x) => x.id === id);
+    if (!n) return false;
+    const fresh = n.segments.slice(n.summary?.covered ?? 0);
+    const words = fresh.reduce((w, x) => w + x.text.split(/\s+/).length, 0);
+    return n.summary ? fresh.length >= 2 && words >= 25 : words >= 12;
+  };
 
   // Back online: write notes for everything that was waiting.
   useEffect(() => {
     if (!online || !session) return;
-    for (const n of notesRef.current) if (n.stage === "queued" && n.segments.length) void summarize(n.id);
+    for (const n of notesRef.current) if (n.stage === "queued" && n.segments.length) void summarize(n.id, false, true);
   }, [online, session, summarize]);
 
   // ---------- live extraction + notifications ----------
@@ -312,9 +488,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
           if (n.id !== noteId) return n;
           const segments = [...n.segments.filter((s) => s.id !== seg.id), seg].sort((a, b) => a.start - b.start);
           const found = extract([seg], new Date(n.createdAt));
-          const fresh = found.filter((f) => !n.extractions.some((e) => e.id === f.id));
+          // A line that came back with more words replaces what was found in it before.
+          const kept = n.extractions.filter((e) => e.segmentId !== seg.id || found.some((f) => f.id === e.id));
+          const fresh = found.filter((f) => !kept.some((e) => e.id === f.id));
           for (const f of fresh) notifyFor(f, n);
-          const next = { ...n, segments, extractions: [...n.extractions, ...fresh], updatedAt: new Date().toISOString() };
+          // Names said out loud ("I'm Maya", "thanks, Jordan") replace S1, S2; a name the student typed wins.
+          const said = nameSpeakers(segments);
+          const speakers = speakersOf(segments).map((sp) => {
+            const prior = n.speakers.find((x) => x.id === sp.id)?.name;
+            return { ...sp, name: prior && prior !== sp.id ? prior : (said[sp.id] ?? sp.id) };
+          });
+          const next = { ...n, segments, speakers, extractions: [...kept, ...fresh], updatedAt: new Date().toISOString() };
           persist(next);
           return next;
         }),
@@ -338,43 +522,298 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (e.kind !== "important") setTimeout(() => nudge("deadlineFound"), 4000);
   }
 
+  /** This class's vocabulary (its subject's terms and the names heard so far), so mishearings are fixed the same way as on the web. */
+  const termsOf = useCallback((noteId: string) => {
+    const n = notesRef.current.find((x) => x.id === noteId);
+    return classTerms(`${n?.folder ?? ""} ${n?.title ?? ""}`, 400, (n?.speakers ?? []).map((sp) => sp.name).filter((nm) => !/^S\d+$/.test(nm)));
+  }, []);
+  const tidy = useCallback(
+    (noteId: string, s: Segment): Segment => {
+      const fixed = fixTerms(s.text.trim(), termsOf(noteId));
+      return fixed ? { ...s, text: fixed[0].toUpperCase() + fixed.slice(1) } : s;
+    },
+    [termsOf],
+  );
+
   // Desktop engine events.
   useEffect(() => {
     if (!desktop) return;
-    const a = desktop.recorder.onSegment(({ noteId, segment }) => onSegment(noteId, segment));
+    const a = desktop.recorder.onSegment(({ noteId, segment }) => {
+      setPreview(null);
+      onSegment(noteId, tidy(noteId, segment));
+    });
     const b = desktop.recorder.onStage(({ noteId, stage, message }) => {
       update(noteId, { stage: stage as Stage });
       if (message) toast({ title: "Transcription problem", body: message });
     });
+    const p = desktop.recorder.onPartial?.(({ noteId, text }) => setPreview(text ? { note: noteId, text } : null));
     const c = desktop.onOpenNote((id) => (location.hash = `#/app/note/${id}`));
-    desktop.models.status().then((s) => setModelsReady(!!s[settings.model]));
+    // Get the offline engine as soon as the app opens, so the first class doesn't wait for it.
+    desktop.models.status().then((s) => {
+      setModelsReady(!!s[settings.model]);
+      if (!s[settings.model]) void downloadRef.current();
+    });
     return () => {
       a();
       b();
+      p?.();
       c();
     };
-  }, [onSegment, update, toast, settings.model]);
+  }, [onSegment, update, toast, settings.model, tidy]);
 
-  const downloadModels = useCallback(async () => {
-    if (!desktop) return;
-    const off = desktop.models.onProgress(({ p }) => setRec((r) => ({ ...r, engineProgress: p })));
-    try {
-      await desktop.models.download(settings.model);
-      setModelsReady(true);
-    } catch (e) {
-      toast({ title: "Model download failed", body: String(e) });
-    } finally {
-      off();
-      setRec((r) => ({ ...r, engineProgress: undefined }));
-    }
+  const downloading = useRef<Promise<void> | null>(null);
+  const downloadModels = useCallback(() => {
+    if (!desktop) return Promise.resolve();
+    // One download at a time, however many places ask for it.
+    downloading.current ??= (async () => {
+      const off = desktop.models.onProgress(({ p }) => setRec((r) => ({ ...r, engineProgress: p })));
+      setRec((r) => ({ ...r, engineProgress: r.engineProgress ?? 0 }));
+      try {
+        await desktop.models.download(settings.model);
+        setModelsReady(true);
+      } catch (e) {
+        toast({ title: "Couldn't download the offline engine", body: "Check your connection. Nevernote will try again when you press record." });
+      } finally {
+        off();
+        setRec((r) => ({ ...r, engineProgress: undefined }));
+        downloading.current = null;
+      }
+    })();
+    return downloading.current;
   }, [settings.model, toast]);
+  const downloadRef = useRef(downloadModels);
+  downloadRef.current = downloadModels;
 
   // ---------- recording ----------
+  const recStateRef = useRef<RecState>("idle");
+  const noteIdRef = useRef<string | undefined>(undefined);
+  const elapsedRef = useRef(0);
+  const segN = useRef(0);
+  recStateRef.current = rec.state;
+  noteIdRef.current = rec.noteId;
+  elapsedRef.current = rec.elapsed;
+
+  const startTimer = useCallback(() => {
+    clearInterval(timer.current);
+    let last = Date.now();
+    timer.current = window.setInterval(() => {
+      const now = Date.now();
+      const dt = (now - last) / 1000;
+      last = now;
+      setRec((r) => (r.state === "recording" ? { ...r, elapsed: r.elapsed + dt } : r));
+    }, 250);
+  }, []);
+
+  // ---------- in-browser transcriber ----------
+  const [asr, setAsr] = useState<AsrState>({ state: isDesktop || liveSpeechSupported() ? "ready" : "idle" });
+  const [preview, setPreview] = useState<{ note: string; text: string } | null>(null);
+  const onSegmentRef = useRef(onSegment);
+  onSegmentRef.current = onSegment;
+  /** Lines the engine folded into a longer one. */
+  const dropSegsRef = useRef((noteId: string, segIds: string[]) => {
+    setNotes((all) =>
+      all.map((n) => {
+        if (n.id !== noteId) return n;
+        const next = { ...n, updatedAt: new Date().toISOString(), segments: n.segments.filter((s) => !segIds.includes(s.id)), extractions: n.extractions.filter((e) => !e.segmentId || !segIds.includes(e.segmentId)) };
+        void local.put(next);
+        return next;
+      }),
+    );
+  });
+  /** A new voice was confirmed on its second line: its first line goes over to it too. */
+  const relabelRef = useRef((noteId: string, segId: string, speaker: string) => {
+    const seg = notesRef.current.find((n) => n.id === noteId)?.segments.find((s) => s.id === segId);
+    if (seg && seg.speaker !== speaker) onSegmentRef.current(noteId, { ...seg, speaker });
+  });
+  const ensureAsr = useCallback(() => {
+    if (isDesktop) return null;
+    if (!browserAsr.current) {
+      const w = new Worker(new URL("../lib/browser-asr.worker.ts", import.meta.url), { type: "module" });
+      w.onmessage = (e) => {
+        const m = e.data;
+        if (m.type === "progress") setAsr((a) => (a.state === "ready" ? a : { state: "loading", p: m.p }));
+        else if (m.type === "ready") setAsr({ state: "ready" });
+        else if (m.type === "retry") setAsr((a) => ({ ...a, state: "loading" }));
+        else if (m.type === "error") setAsr({ state: "error", error: String(m.message).slice(0, 200) });
+        else if (m.type === "partial") setPreview(m.text ? { note: m.note, text: m.text } : null);
+        else if (m.type === "text") setPreview(null);
+        if (m.type === "text" && m.text && m.note) {
+          let tr = trackers.current.get(m.note);
+          if (!tr) trackers.current.set(m.note, (tr = new SpeakerTracker()));
+          const speaker = tr.assign(m.vp ? { vec: Float32Array.from(m.vp.vec), voiced: m.vp.voiced } : null, m.id);
+          const off = m.offset ?? 0;
+          onSegmentRef.current(m.note, { id: m.id, start: m.start + off, end: m.end + off, text: m.text, speaker });
+          if (tr.relabel) relabelRef.current(m.note, tr.relabel, speaker);
+        }
+      };
+      browserAsr.current = w;
+      setAsr((a) => (a.state === "idle" ? { state: "loading", p: 0 } : a));
+      w.postMessage({ type: "load" });
+    }
+    return browserAsr.current;
+  }, []);
+  const retryAsr = useCallback(() => {
+    setAsr({ state: "loading", p: 0 });
+    ensureAsr()?.postMessage({ type: "load" });
+  }, [ensureAsr]);
+  // Download the transcriber as soon as the app opens, not when class starts.
+  useEffect(() => {
+    if (isDesktop || liveSpeechSupported() || (cloudEnabled && !session)) return;
+    ensureAsr();
+    void navigator.storage?.persist?.().catch(() => {});
+  }, [session, ensureAsr]);
+
+  /** The mic is lost for good: keep everything so far, pause, and let the student resume. */
+  const cutOff = useCallback(
+    (noteId: string, detail: string) => {
+      capture.current?.stop();
+      capture.current = null;
+      live.current?.stop();
+      live.current = null;
+      chunker.current?.flush();
+      logCut(noteId, "mic", elapsedRef.current, detail);
+      setRec((r) => ({ ...r, state: "paused", stopReason: detail }));
+      update(noteId, { stage: "paused", durationSec: elapsedRef.current });
+      toast({ title: "Recording stopped", body: `${detail} Everything so far is saved. Tap Resume.` });
+    },
+    [update, toast],
+  );
+
+  /** Opens the mic and wires it to the transcriber. `offset` keeps timestamps going after a resume. */
+  const openCapture = useCallback(
+    async (noteId: string, offset: number) => {
+      const onLost = (why: string) => cutOff(noteId, why);
+      const d = desktop;
+      if (d) {
+        capture.current = await startCapture((s) => d.recorder.audio(s), settings.roomMode, onLost);
+        return;
+      }
+      chunker.current = null;
+      const whisper = () => {
+        const w = ensureAsr()!;
+        chunker.current = new Chunker(
+          (samples, s, e) => w.postMessage({ type: "chunk", id: `${noteId.slice(-6)}-${++segN.current}`, note: noteId, offset: offset + skipped, samples, start: s, end: e }, [samples.buffer]),
+          16000,
+          (samples, s) => w.postMessage({ type: "partial", note: noteId, start: s + offset + skipped, samples }, [samples.buffer]),
+        );
+        setLiveEngine("whisper");
+      };
+      // The last 20 s of audio, so each finished phrase can be matched to a voice.
+      const RING = 16000 * 20;
+      const ring = new Float32Array(RING);
+      let heard = 0; // samples since this capture opened
+      let skipped = 0; // seconds heard before a switch to Whisper
+      const now = () => offset + heard / 16000;
+      const recent = (sec: number) => {
+        const n = Math.max(0, Math.min(heard, RING, Math.round(sec * 16000)));
+        const a = new Float32Array(n);
+        for (let i = 0; i < n; i++) a[i] = ring[(heard - n + i) % RING];
+        return a;
+      };
+      let phraseStart: number | null = null;
+      let lastEnd = offset;
+      let cutAt: number | null = null; // set when a new voice ended the phrase early
+      // Who's talking right now, checked every second while a phrase is open.
+      let voiceOfPhrase: string | null = null;
+      let other = 0;
+      let sinceCheck = 0;
+      const tracker = () => {
+        let tr = trackers.current.get(noteId);
+        if (!tr) trackers.current.set(noteId, (tr = new SpeakerTracker()));
+        return tr;
+      };
+      const watchVoice = (n: number) => {
+        sinceCheck += n;
+        if (phraseStart === null || !live.current || sinceCheck < 16000) return;
+        sinceCheck = 0;
+        const v = tracker().peek(voiceprint(recent(1.6)));
+        if (!v) return;
+        if (!voiceOfPhrase) {
+          voiceOfPhrase = v;
+          return;
+        }
+        other = v !== voiceOfPhrase ? other + 1 : 0;
+        // Three seconds of a different voice: close this line so each person gets their own.
+        // (Each cut restarts the engine, so it's kept for clear changes of speaker.)
+        if (other >= 3 && now() - phraseStart > 3) {
+          cutAt = now() - 2.6;
+          other = 0;
+          live.current.cut();
+        }
+      };
+      capture.current = await startCapture(
+        (s) => {
+          for (let i = 0; i < s.length; i++) ring[(heard + i) % RING] = s[i];
+          heard += s.length;
+          chunker.current?.push(s);
+          watchVoice(s.length);
+        },
+        settings.roomMode,
+        onLost,
+      );
+      if (!liveSpeechSupported()) return whisper();
+      const ids = new Map<string, { id: string; start: number; speaker: string }>();
+      // This class's vocabulary: names already heard first, then its subject's terms.
+      const cur = notesRef.current.find((x) => x.id === noteId);
+      const terms = classTerms(`${cur?.folder ?? ""} ${cur?.title ?? ""}`, 400, (cur?.speakers ?? []).map((sp) => sp.name).filter((nm) => !/^S\d+$/.test(nm)));
+      try {
+        live.current = await startLiveSpeech({
+          track: capture.current.track,
+          phrases: terms.slice(0, 120),
+          onLocal: () => setLiveEngine("local"),
+          onInterim: (text) => {
+            // The engine is about a second behind the audio.
+            if (text && phraseStart === null) phraseStart = Math.max(lastEnd, now() - 1.2);
+            setPreview(text ? { note: noteId, text } : null);
+          },
+          onFinal: (text, key, drop) => {
+            const fixed = fixTerms(text.trim(), terms);
+            const clean = fixed[0].toUpperCase() + fixed.slice(1);
+            const gone = drop.map((k) => ids.get(k)?.id).filter(Boolean) as string[];
+            if (gone.length) dropSegsRef.current(noteId, gone);
+            const known = ids.get(key);
+            if (known) {
+              // The engine sent this phrase again with more words: replace the line in place.
+              onSegmentRef.current(noteId, { id: known.id, start: known.start, end: now(), text: clean, speaker: known.speaker });
+              return;
+            }
+            const end = cutAt ?? now();
+            const start = Math.max(lastEnd, Math.min(phraseStart ?? end - 2, end - 0.5));
+            phraseStart = cutAt !== null ? cutAt : null;
+            cutAt = null;
+            voiceOfPhrase = null;
+            other = 0;
+            lastEnd = end;
+            const audio = recent(now() - start).subarray(0, Math.max(0, Math.round((end - start) * 16000)));
+            const id = `${noteId.slice(-6)}-${++segN.current}`;
+            const tr = tracker();
+            const speaker = tr.assign(voiceprint(audio), id);
+            ids.set(key, { id, start, speaker });
+            onSegmentRef.current(noteId, { id, start, end, text: clean, speaker });
+            if (tr.relabel) relabelRef.current(noteId, tr.relabel, speaker);
+          },
+          onFail: () => {
+            live.current = null;
+            setPreview(null);
+            skipped = heard / 16000;
+            whisper();
+          },
+        });
+        setLiveEngine(live.current.local ? "local" : "cloud");
+      } catch {
+        whisper();
+      }
+    },
+    [settings.roomMode, cutOff, ensureAsr],
+  );
+
   const start = useCallback(
     async (opts: { title?: string; folder?: string } = {}) => {
       if (rec.state !== "idle") return rec.noteId;
       if (isDesktop && !modelsReady) {
+        toast({ title: "Getting the offline engine", body: "One time, about 500 MB. Recording starts as soon as it's ready." });
         await downloadModels();
+        if (!(await desktop!.models.status())[settings.model]) return;
       }
       setRec({ state: "starting", elapsed: 0 });
       const now = new Date();
@@ -396,65 +835,82 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setNotes((all) => [note, ...all]);
       persist(note);
       try {
-        const d = desktop;
-        if (d) {
-          await d.recorder.start(note.id, settings.model, note.vocabulary ?? []);
-          capture.current = await startCapture((s) => d.recorder.audio(s), settings.roomMode);
-        } else {
-          browserAsr.current ??= new Worker(new URL("../lib/browser-asr.worker.ts", import.meta.url), { type: "module" });
-          const w = browserAsr.current;
-          let n = 0;
-          w.onmessage = (e) => {
-            const m = e.data;
-            if (m.type === "progress") setRec((r) => ({ ...r, engineProgress: m.p < 1 ? m.p : undefined }));
-            if (m.type === "text" && m.text) onSegment(note.id, { id: m.id, start: m.start, end: m.end, text: m.text });
-          };
-          w.postMessage({ type: "load" });
-          chunker.current = new Chunker((samples, s, e) => w.postMessage({ type: "chunk", id: `${note.id.slice(-6)}-${++n}`, samples, start: s, end: e }, [samples.buffer]));
-          capture.current = await startCapture((s) => chunker.current!.push(s), settings.roomMode);
-          if ("Notification" in window && Notification.permission === "default") void Notification.requestPermission();
-        }
+        if (desktop) await desktop.recorder.start(note.id, settings.model, classTerms(`${opts.folder ?? ""} ${note.title}`, 120, []));
+        await openCapture(note.id, 0);
+        if (!desktop && "Notification" in window && Notification.permission === "default") void Notification.requestPermission();
       } catch (e) {
         setRec({ state: "idle", elapsed: 0, error: String(e) });
         update(note.id, { stage: "failed" });
         toast({ title: "Microphone unavailable", body: "Allow microphone access and try again." });
         return;
       }
-      const t0 = Date.now();
-      let pausedMs = 0;
-      let pausedAt = 0;
-      timer.current = window.setInterval(() => {
-        setRec((r) => {
-          if (r.state === "paused") {
-            pausedAt ||= Date.now();
-            return r;
-          }
-          if (pausedAt) {
-            pausedMs += Date.now() - pausedAt;
-            pausedAt = 0;
-          }
-          return { ...r, elapsed: (Date.now() - t0 - pausedMs) / 1000 };
-        });
-      }, 250);
+      startTimer();
+      logCut(note.id, "started", 0);
       setRec({ state: "recording", noteId: note.id, elapsed: 0 });
       track("recording_started", {}, note.device);
       return note.id;
     },
-    [rec.state, rec.noteId, modelsReady, downloadModels, persist, settings.model, settings.roomMode, onSegment, update, toast],
+    [rec.state, rec.noteId, modelsReady, downloadModels, persist, settings.model, openCapture, startTimer, update, toast],
   );
 
   const pause = useCallback(() => {
     capture.current?.setPaused(true);
+    live.current?.setPaused(true);
     chunker.current?.flush();
-    setRec((r) => ({ ...r, state: "paused" }));
-    if (rec.noteId) update(rec.noteId, { stage: "paused" });
-  }, [rec.noteId, update]);
+    setRec((r) => ({ ...r, state: "paused", stopReason: undefined }));
+    recStateRef.current = "paused";
+    const id = rec.noteId;
+    if (id) {
+      logCut(id, "paused", elapsedRef.current);
+      update(id, { stage: "paused" });
+      // Notes for what's been said so far, right away. The engine sends its last
+      // words a moment after it stops, so wait for them first.
+      setTimeout(() => {
+        if (worthUpdating(id) && recStateRef.current === "paused") void summarize(id);
+      }, 1200);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [rec.noteId, update, summarize]);
 
-  const resume = useCallback(() => {
-    capture.current?.setPaused(false);
-    setRec((r) => ({ ...r, state: "recording" }));
-    if (rec.noteId) update(rec.noteId, { stage: "recording" });
-  }, [rec.noteId, update]);
+  const resume = useCallback(async () => {
+    const id = noteIdRef.current;
+    if (!id) return;
+    if (capture.current) {
+      capture.current.setPaused(false);
+      live.current?.setPaused(false);
+    } else {
+      try {
+        await openCapture(id, elapsedRef.current);
+      } catch {
+        toast({ title: "Microphone unavailable", body: "Allow microphone access and try again." });
+        return;
+      }
+    }
+    logCut(id, "resumed", elapsedRef.current);
+    setRec((r) => ({ ...r, state: "recording", stopReason: undefined }));
+    update(id, { stage: "recording" });
+  }, [openCapture, update, toast]);
+
+  /** Picks a class back up after the tab was closed or reloaded (web only). */
+  const resumeNote = useCallback(
+    async (id: string) => {
+      const n = notesRef.current.find((x) => x.id === id);
+      if (!n || recStateRef.current !== "idle" || desktop) return;
+      setRec({ state: "starting", noteId: id, elapsed: n.durationSec });
+      try {
+        await openCapture(id, n.durationSec);
+      } catch {
+        setRec({ state: "idle", elapsed: 0 });
+        toast({ title: "Microphone unavailable", body: "Allow microphone access and try again." });
+        return;
+      }
+      startTimer();
+      logCut(id, "resumed", n.durationSec);
+      setRec({ state: "recording", noteId: id, elapsed: n.durationSec });
+      update(id, { stage: "recording" });
+    },
+    [openCapture, startTimer, update, toast],
+  );
 
   const stop = useCallback(async () => {
     const id = rec.noteId;
@@ -462,15 +918,23 @@ export function AppProvider({ children }: { children: ReactNode }) {
     clearInterval(timer.current);
     capture.current?.stop();
     capture.current = null;
+    live.current?.stop();
+    live.current = null;
+    setPreview(null);
     const elapsed = rec.elapsed;
+    logCut(id, "manual", elapsed);
     setRec((r) => ({ ...r, state: "finishing" }));
     update(id, { stage: "transcribing", durationSec: elapsed });
     if (desktop) {
       const r = await desktop.recorder.stop(id);
       if ("segments" in r) {
         const cur = notesRef.current.find((n) => n.id === id)!;
-        const extractions = extract(r.segments, new Date(cur.createdAt));
-        update(id, { segments: r.segments, speakers: speakersOf(r.segments), extractions, durationSec: r.seconds, stage: "queued" });
+        const segments = r.segments.map((s) => tidy(id, s));
+        const extractions = extract(segments, new Date(cur.createdAt));
+        // Speaker labelling can split lines: keep what the notes already cover pointing at the same moment.
+        const done = cur.summary?.covered ? cur.segments[cur.summary.covered - 1]?.end : undefined;
+        const summary = cur.summary && done !== undefined ? { ...cur.summary, covered: segments.filter((s) => s.start < done - 0.01).length } : cur.summary;
+        update(id, { segments, speakers: speakersOf(segments), extractions, summary, durationSec: r.seconds, stage: "queued" });
       } else update(id, { stage: "failed" });
     } else {
       chunker.current?.flush();
@@ -479,10 +943,81 @@ export function AppProvider({ children }: { children: ReactNode }) {
       await new Promise((r) => setTimeout(r, 1500));
       update(id, { stage: "queued" });
     }
+    setActive(null);
     setRec({ state: "idle", elapsed: 0 });
     track("recording_finished", { minutes: Math.round(elapsed / 60) }, deviceKind());
-    void summarize(id);
-  }, [rec.noteId, rec.elapsed, update, summarize]);
+    recStateRef.current = "idle";
+    const n = notesRef.current.find((x) => x.id === id);
+    // A class already summarised at its last pause only needs a new section if more was said.
+    if (!n?.summary || worthUpdating(id)) void summarize(id);
+    else update(id, { stage: "ready" });
+  }, [rec.noteId, rec.elapsed, update, summarize, tidy]);
+
+  // Tab safety: shout in the tab bar, warn before closing, keep the screen awake, and log Wi-Fi changes.
+  const active = rec.state === "recording" || rec.state === "paused" || rec.state === "starting";
+  useEffect(() => {
+    if (isDesktop || !active) return;
+    const mmss = () => {
+      const t = Math.floor(elapsedRef.current);
+      return `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+    };
+    const label = () => (recStateRef.current === "recording" ? `Recording ${mmss()}. Don't close this tab` : `STOPPED ${mmss()}. Tap Resume`);
+    startFlash(label, recStateRef.current === "recording" ? "#ef4444" : "#f59e0b");
+    const guard = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", guard);
+    const beat = () => noteIdRef.current && setActive({ noteId: noteIdRef.current, elapsed: elapsedRef.current });
+    beat();
+    const hb = window.setInterval(beat, 2000);
+    window.addEventListener("pagehide", beat);
+    let lock: WakeLockSentinel | undefined;
+    const grab = () => {
+      if (document.visibilityState === "visible") navigator.wakeLock?.request("screen").then((l) => (lock = l)).catch(() => {});
+    };
+    grab();
+    document.addEventListener("visibilitychange", grab);
+    return () => {
+      stopFlash();
+      window.removeEventListener("beforeunload", guard);
+      window.removeEventListener("pagehide", beat);
+      document.removeEventListener("visibilitychange", grab);
+      clearInterval(hb);
+      void lock?.release().catch(() => {});
+    };
+  }, [active]);
+  // The flash colour follows paused/stopped vs recording.
+  useEffect(() => {
+    if (isDesktop || !active) return;
+    startFlash(() => {
+      const t = Math.floor(elapsedRef.current);
+      const c = `${Math.floor(t / 60)}:${String(t % 60).padStart(2, "0")}`;
+      return recStateRef.current === "recording" ? `Recording ${c}. Don't close this tab` : `STOPPED ${c}. Tap Resume`;
+    }, rec.state === "recording" ? "#ef4444" : "#f59e0b");
+  }, [rec.state, active]);
+
+  const wasOnline = useRef(online);
+  useEffect(() => {
+    if (wasOnline.current === online) return;
+    wasOnline.current = online;
+    if (noteIdRef.current && recStateRef.current !== "idle") logCut(noteIdRef.current, online ? "online" : "offline", elapsedRef.current);
+  }, [online]);
+
+  // A class left "recording" by a closed or reloaded tab: save it as stopped and offer Resume.
+  useEffect(() => {
+    if (!loaded || isDesktop || recStateRef.current !== "idle") return;
+    const hb = getActive();
+    for (const n of notesRef.current) {
+      if (n.stage !== "recording") continue;
+      const sec = hb?.noteId === n.id ? Math.max(hb.elapsed, n.durationSec) : n.durationSec;
+      logCut(n.id, "tab", sec);
+      update(n.id, { stage: "paused", durationSec: sec });
+    }
+    setActive(null);
+    // once, after the first load
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loaded]);
 
   const value: Ctx = {
     notes,
@@ -495,9 +1030,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     start,
     pause,
     resume,
+    resumeNote,
     stop,
+    asr,
+    retryAsr,
+    preview,
+    liveEngine,
     summarize,
     session,
+    authReady,
     plan,
     online,
     syncState,
@@ -507,8 +1048,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
     toast,
     dismissToast,
     proOpen,
+    refreshPlan,
+    quota,
     openPro,
     closePro: () => setProOpen(false),
+    tier,
+    signupOpen,
+    openSignup,
+    closeSignup: () => setSignupOpen(false),
+    need,
     nudge,
     modelsReady,
     downloadModels,
