@@ -184,8 +184,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
   const get = useCallback((id: string) => notesRef.current.find((n) => n.id === id), []);
 
+  // Changes go up a moment after they're saved, not on the next minute's tick.
+  const syncSoon = useRef<() => void>(() => {});
   const persist = useCallback((n: Note) => {
-    void local.put(n);
+    void local.put(n).then(() => syncSoon.current());
   }, []);
 
   const update = useCallback(
@@ -370,6 +372,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const t = setInterval(syncNow, 60_000);
     return () => clearInterval(t);
   }, [syncNow]);
+  // Live: save-then-sync within a couple of seconds, and other devices' changes (and a Pro purchase) arrive as they happen.
+  useEffect(() => {
+    let t = 0;
+    syncSoon.current = () => {
+      clearTimeout(t);
+      t = window.setTimeout(() => void syncNow(), 1500);
+    };
+    const on = () => syncSoon.current();
+    addEventListener("focus", on);
+    addEventListener("online", on);
+    const uid = session?.user.id;
+    const ch =
+      supabase && uid
+        ? supabase
+            .channel(`live-${uid}`)
+            .on("postgres_changes", { event: "*", schema: "public", table: "notes", filter: `user_id=eq.${uid}` }, on)
+            .on("postgres_changes", { event: "UPDATE", schema: "public", table: "profiles", filter: `id=eq.${uid}` }, () => void refreshPlan())
+            .subscribe()
+        : undefined;
+    return () => {
+      clearTimeout(t);
+      syncSoon.current = () => {};
+      removeEventListener("focus", on);
+      removeEventListener("online", on);
+      if (ch) void supabase!.removeChannel(ch);
+    };
+  }, [syncNow, session?.user.id, refreshPlan]);
 
   // Signed into an account that already existed: bring the guest's classes onto it.
   useEffect(() => {
@@ -493,36 +522,67 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (e.kind !== "important") setTimeout(() => nudge("deadlineFound"), 4000);
   }
 
+  /** This class's vocabulary (its subject's terms and the names heard so far), so mishearings are fixed the same way as on the web. */
+  const termsOf = useCallback((noteId: string) => {
+    const n = notesRef.current.find((x) => x.id === noteId);
+    return classTerms(`${n?.folder ?? ""} ${n?.title ?? ""}`, 400, (n?.speakers ?? []).map((sp) => sp.name).filter((nm) => !/^S\d+$/.test(nm)));
+  }, []);
+  const tidy = useCallback(
+    (noteId: string, s: Segment): Segment => {
+      const fixed = fixTerms(s.text.trim(), termsOf(noteId));
+      return fixed ? { ...s, text: fixed[0].toUpperCase() + fixed.slice(1) } : s;
+    },
+    [termsOf],
+  );
+
   // Desktop engine events.
   useEffect(() => {
     if (!desktop) return;
-    const a = desktop.recorder.onSegment(({ noteId, segment }) => onSegment(noteId, segment));
+    const a = desktop.recorder.onSegment(({ noteId, segment }) => {
+      setPreview(null);
+      onSegment(noteId, tidy(noteId, segment));
+    });
     const b = desktop.recorder.onStage(({ noteId, stage, message }) => {
       update(noteId, { stage: stage as Stage });
       if (message) toast({ title: "Transcription problem", body: message });
     });
+    const p = desktop.recorder.onPartial?.(({ noteId, text }) => setPreview(text ? { note: noteId, text } : null));
     const c = desktop.onOpenNote((id) => (location.hash = `#/app/note/${id}`));
-    desktop.models.status().then((s) => setModelsReady(!!s[settings.model]));
+    // Get the offline engine as soon as the app opens, so the first class doesn't wait for it.
+    desktop.models.status().then((s) => {
+      setModelsReady(!!s[settings.model]);
+      if (!s[settings.model]) void downloadRef.current();
+    });
     return () => {
       a();
       b();
+      p?.();
       c();
     };
-  }, [onSegment, update, toast, settings.model]);
+  }, [onSegment, update, toast, settings.model, tidy]);
 
-  const downloadModels = useCallback(async () => {
-    if (!desktop) return;
-    const off = desktop.models.onProgress(({ p }) => setRec((r) => ({ ...r, engineProgress: p })));
-    try {
-      await desktop.models.download(settings.model);
-      setModelsReady(true);
-    } catch (e) {
-      toast({ title: "Model download failed", body: String(e) });
-    } finally {
-      off();
-      setRec((r) => ({ ...r, engineProgress: undefined }));
-    }
+  const downloading = useRef<Promise<void> | null>(null);
+  const downloadModels = useCallback(() => {
+    if (!desktop) return Promise.resolve();
+    // One download at a time, however many places ask for it.
+    downloading.current ??= (async () => {
+      const off = desktop.models.onProgress(({ p }) => setRec((r) => ({ ...r, engineProgress: p })));
+      setRec((r) => ({ ...r, engineProgress: r.engineProgress ?? 0 }));
+      try {
+        await desktop.models.download(settings.model);
+        setModelsReady(true);
+      } catch (e) {
+        toast({ title: "Couldn't download the offline engine", body: "Check your connection. Nevernote will try again when you press record." });
+      } finally {
+        off();
+        setRec((r) => ({ ...r, engineProgress: undefined }));
+        downloading.current = null;
+      }
+    })();
+    return downloading.current;
   }, [settings.model, toast]);
+  const downloadRef = useRef(downloadModels);
+  downloadRef.current = downloadModels;
 
   // ---------- recording ----------
   const recStateRef = useRef<RecState>("idle");
@@ -751,7 +811,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     async (opts: { title?: string; folder?: string } = {}) => {
       if (rec.state !== "idle") return rec.noteId;
       if (isDesktop && !modelsReady) {
+        toast({ title: "Getting the offline engine", body: "One time, about 500 MB. Recording starts as soon as it's ready." });
         await downloadModels();
+        if (!(await desktop!.models.status())[settings.model]) return;
       }
       setRec({ state: "starting", elapsed: 0 });
       const now = new Date();
@@ -773,7 +835,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       setNotes((all) => [note, ...all]);
       persist(note);
       try {
-        if (desktop) await desktop.recorder.start(note.id, settings.model, note.vocabulary ?? []);
+        if (desktop) await desktop.recorder.start(note.id, settings.model, classTerms(`${opts.folder ?? ""} ${note.title}`, 120, []));
         await openCapture(note.id, 0);
         if (!desktop && "Notification" in window && Notification.permission === "default") void Notification.requestPermission();
       } catch (e) {
@@ -867,8 +929,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const r = await desktop.recorder.stop(id);
       if ("segments" in r) {
         const cur = notesRef.current.find((n) => n.id === id)!;
-        const extractions = extract(r.segments, new Date(cur.createdAt));
-        update(id, { segments: r.segments, speakers: speakersOf(r.segments), extractions, durationSec: r.seconds, stage: "queued" });
+        const segments = r.segments.map((s) => tidy(id, s));
+        const extractions = extract(segments, new Date(cur.createdAt));
+        // Speaker labelling can split lines: keep what the notes already cover pointing at the same moment.
+        const done = cur.summary?.covered ? cur.segments[cur.summary.covered - 1]?.end : undefined;
+        const summary = cur.summary && done !== undefined ? { ...cur.summary, covered: segments.filter((s) => s.start < done - 0.01).length } : cur.summary;
+        update(id, { segments, speakers: speakersOf(segments), extractions, summary, durationSec: r.seconds, stage: "queued" });
       } else update(id, { stage: "failed" });
     } else {
       chunker.current?.flush();
@@ -885,7 +951,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // A class already summarised at its last pause only needs a new section if more was said.
     if (!n?.summary || worthUpdating(id)) void summarize(id);
     else update(id, { stage: "ready" });
-  }, [rec.noteId, rec.elapsed, update, summarize]);
+  }, [rec.noteId, rec.elapsed, update, summarize, tidy]);
 
   // Tab safety: shout in the tab bar, warn before closing, keep the screen awake, and log Wi-Fi changes.
   const active = rec.state === "recording" || rec.state === "paused" || rec.state === "starting";

@@ -1,7 +1,7 @@
 {
   "name": "@nevernote/desktop",
   "productName": "Nevernote",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "Every word, every speaker, offline. Free and open source class notes.",
   "author": "Aleks <aleksander@lucenko.com>",
   "license": "MIT",

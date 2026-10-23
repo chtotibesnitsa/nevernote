@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld("nevernote", {
     stop: (noteId: string) => ipcRenderer.invoke("rec:stop", noteId),
     onSegment: on("rec:segment"),
     onStage: on("rec:stage"),
+    onPartial: on("rec:partial"),
   },
   notes: {
     list: () => ipcRenderer.invoke("notes:list"),

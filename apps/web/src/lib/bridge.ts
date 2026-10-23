@@ -16,6 +16,8 @@ export interface DesktopBridge {
     stop(noteId: string): Promise<{ segments: Segment[]; seconds: number } | { error: string }>;
     onSegment(cb: (m: { noteId: string; segment: Segment }) => void): () => void;
     onStage(cb: (m: { noteId: string; stage: string; message?: string }) => void): () => void;
+    /** The words of the phrase being spoken right now, before it is final. */
+    onPartial?(cb: (m: { noteId: string; text: string }) => void): () => void;
   };
   notes: {
     list(): Promise<Note[]>;

@@ -66,28 +66,62 @@ function untar(file: string, dir: string): Promise<void> {
   });
 }
 
-/** Downloads whatever is missing. `onProgress` gets overall 0..1. */
-export async function ensureModels(dir: string, asr: AsrModelId, onProgress: (p: number, label: string) => void): Promise<void> {
+const inflight = new Map<string, Promise<void>>();
+
+/** Downloads whatever is missing. `onProgress` gets overall 0..1. Asking again while it runs joins the same download. */
+export function ensureModels(dir: string, asr: AsrModelId, onProgress: (p: number, label: string) => void): Promise<void> {
+  const key = `${dir}|${asr}`;
+  let run = inflight.get(key);
+  if (!run) {
+    run = download(dir, asr, onProgress).finally(() => inflight.delete(key));
+    inflight.set(key, run);
+  }
+  return run;
+}
+
+async function fetchTo(url: string, tmp: string, onBytes: (n: number) => void): Promise<void> {
+  const res = await fetch(url);
+  if (!res.ok || !res.body) throw new Error(`download failed (${res.status})`);
+  const counter = new TransformStream<Uint8Array, Uint8Array>({
+    transform(chunk, ctl) {
+      onBytes(chunk.byteLength);
+      ctl.enqueue(chunk);
+    },
+  });
+  await pipeline(Readable.fromWeb(res.body.pipeThrough(counter) as never), createWriteStream(tmp));
+}
+
+async function download(dir: string, asr: AsrModelId, onProgress: (p: number, label: string) => void): Promise<void> {
   mkdirSync(dir, { recursive: true });
   const todo = needed(asr).filter((m) => !existsSync(join(dir, m.installs)));
   const total = todo.reduce((a, m) => a + m.bytes, 0);
   let done = 0;
   for (const m of todo) {
     const tmp = join(dir, `.${m.id}.part`);
-    const res = await fetch(m.url);
-    if (!res.ok || !res.body) throw new Error(`download failed (${res.status}) for ${m.id}`);
-    let got = 0;
-    const counter = new TransformStream<Uint8Array, Uint8Array>({
-      transform(chunk, ctl) {
-        got += chunk.byteLength;
-        onProgress(total ? (done + got) / total : 1, m.id);
-        ctl.enqueue(chunk);
-      },
-    });
-    await pipeline(Readable.fromWeb(res.body.pipeThrough(counter) as never), createWriteStream(tmp));
+    // A dropped connection restarts this file, not the whole set.
+    for (let attempt = 1; ; attempt++) {
+      let got = 0;
+      try {
+        await fetchTo(m.url, tmp, (n) => {
+          got += n;
+          onProgress(total ? Math.min(1, (done + got) / total) : 1, m.id);
+        });
+        break;
+      } catch (e) {
+        rmSync(tmp, { force: true });
+        if (attempt >= 3) throw e;
+        await new Promise((r) => setTimeout(r, 1500 * attempt));
+      }
+    }
     if (m.archive) {
-      await untar(tmp, dir);
-      rmSync(tmp);
+      // Unpack beside the final place, then rename: an interrupted unpack never looks installed.
+      const stage = join(dir, `.${m.id}.unpack`);
+      rmSync(stage, { recursive: true, force: true });
+      mkdirSync(stage);
+      await untar(tmp, stage);
+      renameSync(join(stage, m.installs), join(dir, m.installs));
+      rmSync(stage, { recursive: true, force: true });
+      rmSync(tmp, { force: true });
     } else {
       renameSync(tmp, join(dir, m.installs));
     }

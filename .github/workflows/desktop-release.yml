@@ -58,7 +58,11 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # Public values, set under Settings > Secrets and variables > Actions > Variables.
       - run: npm run build -w @nevernote/desktop
+        env:
+          VITE_RC_PURCHASE_LINK: ${{ vars.VITE_RC_PURCHASE_LINK }}
+          VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
       - name: Package and publish
         working-directory: apps/desktop
         shell: bash
@@ -86,6 +90,29 @@ jobs:
           app=$(find release -maxdepth 2 -name "Nevernote.app" | head -1)
           codesign --verify --deep --strict --verbose=2 "$app"
           codesign -dv "$app" 2>&1 | grep -E "Signature|Identifier"
+      # Open the real packaged app, check its screen loads, then download the speech
+      # models and transcribe a sample recording. A release is only published if this passes.
+      - name: Self-test the packaged app (Mac)
+        if: runner.os == 'macOS'
+        working-directory: apps/desktop
+        run: |
+          app=$(find release -maxdepth 2 -name "Nevernote.app" | head -1)
+          set +e
+          NEVERNOTE_SELFTEST=full NEVERNOTE_SELFTEST_OUT="$PWD/selftest.log" "$app/Contents/MacOS/Nevernote"
+          code=$?
+          cat selftest.log || true
+          exit $code
+      - name: Self-test the packaged app (Windows)
+        if: runner.os == 'Windows'
+        shell: pwsh
+        working-directory: apps/desktop
+        env:
+          NEVERNOTE_SELFTEST: full
+          NEVERNOTE_SELFTEST_OUT: ${{ github.workspace }}\apps\desktop\selftest.log
+        run: |
+          $p = Start-Process -FilePath "release\win-unpacked\Nevernote.exe" -Wait -PassThru
+          if (Test-Path selftest.log) { Get-Content selftest.log }
+          exit $p.ExitCode
 
   # Publish only once every installer is attached.
   publish:

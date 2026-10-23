@@ -31,11 +31,13 @@ export class Engine {
     const threads = opts.threads ?? 4;
     const cfg: any = asrConfig(opts.modelsDir, opts.asr, threads);
     if (opts.hotwordsFile && opts.asr !== "moonshine-base") {
-      cfg.decodingMethod = "modified_beam_search";
-      cfg.hotwordsFile = opts.hotwordsFile;
-      cfg.hotwordsScore = 2.0;
+      try {
+        this.recognizer = new sherpa.OfflineRecognizer({ ...cfg, decodingMethod: "modified_beam_search", hotwordsFile: opts.hotwordsFile, hotwordsScore: 2.0 });
+      } catch {
+        // This model can't take hotwords: plain decoding, and the app corrects course terms in the text instead.
+      }
     }
-    this.recognizer = new sherpa.OfflineRecognizer(cfg);
+    this.recognizer ??= new sherpa.OfflineRecognizer(cfg);
   }
 
   newVad(): any {
@@ -102,6 +104,14 @@ export class LiveSession {
   private n = 0;
   private window = new Float32Array(0);
   segments: LiveSegment[] = [];
+  // Words as they're spoken: the last few seconds of the phrase in progress are decoded about once a second.
+  private tail = new Float32Array(SR * 8);
+  private tailLen = 0;
+  private speaking = 0; // samples of the current phrase so far
+  private partialAt = 0;
+  private queued = 0;
+  private partialBusy = false;
+  onPartial: (text: string) => void = () => {};
 
   constructor(
     private engine: Engine,
@@ -127,6 +137,38 @@ export class LiveSession {
     for (; i + 512 <= buf.length; i += 512) this.vad.acceptWaveform(buf.subarray(i, i + 512));
     this.window = buf.slice(i);
     this.drain();
+    this.trackPartial(samples);
+  }
+
+  private trackPartial(samples: Float32Array): void {
+    // Keep the newest 8 s.
+    if (samples.length >= this.tail.length) this.tail.set(samples.subarray(samples.length - this.tail.length));
+    else {
+      this.tail.copyWithin(0, samples.length);
+      this.tail.set(samples, this.tail.length - samples.length);
+    }
+    this.tailLen = Math.min(this.tail.length, this.tailLen + samples.length);
+    if (!this.vad.isDetected()) {
+      if (this.speaking) this.onPartial("");
+      this.speaking = 0;
+      return;
+    }
+    this.speaking += samples.length;
+    const nowMs = Date.now();
+    if (this.speaking < SR * 0.8 || nowMs - this.partialAt < 900 || this.partialBusy || this.queued > 0) return;
+    this.partialAt = nowMs;
+    this.partialBusy = true;
+    const n = Math.min(this.tailLen, this.speaking + Math.round(SR * 0.3));
+    const audio = this.tail.slice(this.tail.length - n);
+    this.pending = this.pending.then(async () => {
+      try {
+        const { text } = await this.engine.recognize(audio);
+        // A final line that finished while this was decoding has already replaced it.
+        if (this.speaking && this.queued === 0) this.onPartial(text);
+      } finally {
+        this.partialBusy = false;
+      }
+    });
   }
 
   private drain(): void {
@@ -135,8 +177,10 @@ export class LiveSession {
       this.vad.pop();
       const start = seg.start / SR;
       const audio = Float32Array.from(seg.samples);
+      this.queued++;
       this.pending = this.pending.then(async () => {
-        const { text, words } = await this.engine.recognize(audio, start);
+        const { text, words } = await this.engine.recognize(audio, start).finally(() => this.queued--);
+        this.onPartial("");
         if (!text) return;
         const end = start + audio.length / SR;
         const parts = words.length ? regroup(words, end, this.idPrefix, this.n) : [{ id: `${this.idPrefix}-${this.n + 1}`, start, end, text }];

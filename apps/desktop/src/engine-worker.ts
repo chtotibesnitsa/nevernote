@@ -16,6 +16,7 @@ parentPort!.on("message", async (m: any) => {
         key = k;
       }
       session = new LiveSession(engine, (s) => parentPort!.postMessage({ type: "segment", noteId: m.noteId, segment: s }), m.noteId.slice(0, 6));
+      session.onPartial = (text) => parentPort!.postMessage({ type: "partial", noteId: m.noteId, text });
       parentPort!.postMessage({ type: "started", noteId: m.noteId });
     } else if (m.type === "audio" && session) {
       session.push(new Float32Array(m.samples));

@@ -1,5 +1,5 @@
 import { app, BrowserWindow, ipcMain, nativeTheme, Notification, session, shell, systemPreferences } from "electron";
-import { writeFileSync } from "node:fs";
+import { appendFileSync, existsSync, readdirSync, writeFileSync } from "node:fs";
 import { cpus } from "node:os";
 import { join } from "node:path";
 import { Worker } from "node:worker_threads";
@@ -53,6 +53,7 @@ function getWorker(): Worker {
   worker.on("message", (m) => {
     if (m.type === "segment") win?.webContents.send("rec:segment", m);
     if (m.type === "stage") win?.webContents.send("rec:stage", m);
+    if (m.type === "partial") win?.webContents.send("rec:partial", m);
     if (m.type === "error") win?.webContents.send("rec:stage", { noteId: m.noteId, stage: "failed", message: m.message });
   });
   worker.on("exit", () => (worker = undefined));
@@ -88,7 +89,91 @@ function createWindow() {
   });
 }
 
+/**
+ * `NEVERNOTE_SELFTEST=1 Nevernote` (used by the release build on every platform) opens the real
+ * packaged app, checks the screen loads with its bridge, then starts the speech engine in its
+ * worker. With `=full` it also downloads the offline models and transcribes a sample recording.
+ * Exits 0 on success, 1 on any failure.
+ */
+async function selfTest() {
+  const full = process.env.NEVERNOTE_SELFTEST === "full";
+  const say = (m: string) => {
+    console.log(`SELFTEST ${m}`);
+    // Windows apps have no console, so CI reads the result from a file.
+    if (process.env.NEVERNOTE_SELFTEST_OUT) appendFileSync(process.env.NEVERNOTE_SELFTEST_OUT, `${m}\n`);
+  };
+  const fail = (m: string) => {
+    say(`FAIL ${m}`);
+    app.exit(1);
+  };
+  setTimeout(() => fail("timed out"), 25 * 60_000).unref();
+  try {
+    createWindow();
+    await new Promise<void>((ok) => win!.webContents.once("did-finish-load", () => ok()));
+    await new Promise((r) => setTimeout(r, 3000));
+    const ui = await win!.webContents.executeJavaScript(`({ bridge: !!window.nevernote && !!window.nevernote.recorder, rendered: (document.getElementById("root")?.children.length ?? 0) > 0, title: document.body.innerText.slice(0, 60) })`);
+    say(`window ${JSON.stringify(ui)}`);
+    if (!ui.bridge || !ui.rendered) return fail("the app screen did not load");
+
+    const asr: AsrModelId = "parakeet-en";
+    if (full) await ensureModels(modelsDir, asr, (p) => void p);
+    else if (!installed(modelsDir, asr)) {
+      say("OK (screen and bridge; engine needs models, run with =full to test it)");
+      return app.exit(0);
+    }
+    const w = getWorker();
+    const reply = (type: string) =>
+      new Promise<any>((ok, bad) => {
+        const h = (m: any) => {
+          if (m.type === "error") bad(new Error(m.message));
+          if (m.type === type) {
+            w.off("message", h);
+            ok(m);
+          }
+        };
+        w.on("message", h);
+      });
+    const started = reply("started");
+    // Course words are passed the way a real class passes them; models that can't use them must still start.
+    const hotwordsFile = join(data, "hotwords.txt");
+    writeFileSync(hotwordsFile, ["MITOSIS", "PHOTOSYNTHESIS", "PORTRAIT"].join("\n"));
+    w.postMessage({ type: "start", noteId: "selftest", modelsDir, asr, threads: 2, hotwordsFile });
+    await started;
+    say("engine loaded");
+
+    const dir = join(modelsDir, ASR_MODELS[asr].installs, "test_wavs");
+    const wav = existsSync(dir) ? readdirSync(dir).find((f) => f.endsWith(".wav")) : undefined;
+    if (!wav) {
+      say("OK (screen, bridge and engine; no sample recording in the model)");
+      return app.exit(0);
+    }
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const { samples, sampleRate } = require("sherpa-onnx-node").readWave(join(dir, wav), false);
+    if (sampleRate !== 16000) return fail(`sample is ${sampleRate} Hz`);
+    const done = reply("finished");
+    let partials = 0;
+    w.on("message", (m: any) => m.type === "partial" && m.text && partials++);
+    // Feed it like a microphone would (at twice real time), so the live words are exercised too.
+    for (let i = 0; i < samples.length; i += 1600) {
+      const c = Float32Array.from(samples.subarray(i, i + 1600));
+      w.postMessage({ type: "audio", samples: c.buffer }, [c.buffer]);
+      await new Promise((r) => setTimeout(r, 50));
+    }
+    say(`live words shown while speaking: ${partials}`);
+    w.postMessage({ type: "stop", noteId: "selftest" });
+    const r = await done;
+    const text = r.segments.map((s: { text: string }) => s.text).join(" ").trim();
+    say(`heard "${text.slice(0, 120)}"`);
+    if (text.split(/\s+/).length < 4) return fail("the engine heard almost nothing in the sample recording");
+    say("OK");
+    app.exit(0);
+  } catch (e) {
+    fail(e instanceof Error ? e.message : String(e));
+  }
+}
+
 app.whenReady().then(async () => {
+  if (process.env.NEVERNOTE_SELFTEST) return void selfTest();
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => cb(permission === "media" || permission === "notifications"));
   if (process.platform === "darwin") await systemPreferences.askForMediaAccess("microphone").catch(() => false);
   createWindow();
