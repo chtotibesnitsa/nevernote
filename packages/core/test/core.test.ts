@@ -42,8 +42,8 @@ describe("plans", () => {
   const base = { installedAt: "2026-10-01T00:00:00Z", shownCount: 0, dismissedInARow: 0 };
   it("routes free summaries past the daily limit to sponsored-or-overnight", () => {
     expect(summaryRoute("free", 0)).toBe("instant");
-    expect(summaryRoute("free", 9)).toBe("instant");
-    expect(summaryRoute("free", 10)).toBe("sponsored-or-overnight");
+    expect(summaryRoute("free", 4)).toBe("instant");
+    expect(summaryRoute("free", 5)).toBe("sponsored-or-overnight");
     expect(summaryRoute("pro", 99)).toBe("instant");
   });
   it("never upsells new users, pro users, or while recording", () => {

@@ -1,3 +1,4 @@
+import { QuotaPill } from "../components/Quota.tsx";
 import { insights, unlockStep, type Feature } from "@nevernote/core";
 import { motion } from "motion/react";
 import { useMemo } from "react";
@@ -30,6 +31,9 @@ export function Home() {
         {hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening"}
         {name ? `, ${name}` : ""}
       </h1>
+      <div className="mt-4 max-w-sm">
+        <QuotaPill wide />
+      </div>
       <div className="mt-6 grid gap-5 lg:grid-cols-[minmax(0,1fr)_340px]">
         <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={spring} className="panel relative overflow-hidden !rounded-[28px] p-7 md:p-9">
           <div className="flex flex-col gap-8 xl:flex-row xl:items-end xl:justify-between">

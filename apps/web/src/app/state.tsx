@@ -21,6 +21,8 @@ import {
   type Segment,
   type Tier,
   unlockStep,
+  FREE_INSTANT_SUMMARIES_PER_DAY,
+  nextReset,
   type Stage,
   type UpsellMoment,
   type UpsellState,
@@ -29,7 +31,7 @@ import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { desktop, isDesktop, type AsrModelId } from "../lib/bridge.ts";
 import { startCapture, type Capture } from "../lib/capture.ts";
-import { claimGuest, cloudEnabled, fetchPlan, remoteFor, requestSummary, supabase, track } from "../lib/cloud.ts";
+import { claimGuest, cloudEnabled, fetchInstantUsed, fetchPlan, remoteFor, requestSummary, supabase, track } from "../lib/cloud.ts";
 import { deviceKind, newId } from "../lib/ids.ts";
 import { local } from "../lib/local.ts";
 import { getActive, logCut, setActive } from "../lib/cutoffs.ts";
@@ -109,6 +111,8 @@ interface Ctx {
   dismissToast(id: number): void;
   proOpen: string | false;
   refreshPlan(): Promise<boolean>;
+  /** Today's free AI notes (free accounts only; null for guests and Pro). */
+  quota: { used: number; limit: number; left: number; resetAt: Date } | null;
   openPro(reason?: string): void;
   closePro(): void;
   /** Guest (no account yet), free account, or Pro. */
@@ -300,6 +304,22 @@ export function AppProvider({ children }: { children: ReactNode }) {
     setPlan(p);
     return p === "pro";
   }, [session]);
+  const [used, setUsed] = useState(0);
+  const refreshQuota = useCallback(async () => {
+    if (!session || session.user.is_anonymous) return;
+    setUsed(await fetchInstantUsed().catch(() => 0));
+  }, [session]);
+  useEffect(() => void refreshQuota(), [refreshQuota]);
+  // A new day: the allowance comes back without a reload.
+  useEffect(() => {
+    const t = setTimeout(() => void refreshQuota(), nextReset().getTime() - Date.now() + 2000);
+    return () => clearTimeout(t);
+  }, [refreshQuota, used]);
+  const quota = useMemo(() => {
+    if (!session || session.user.is_anonymous || plan === "pro") return null;
+    const limit = FREE_INSTANT_SUMMARIES_PER_DAY;
+    return { used, limit, left: Math.max(0, limit - used), resetAt: nextReset() };
+  }, [session, plan, used]);
   // Coming back from the checkout tab: pick up Pro straight away.
   useEffect(() => {
     const on = () => document.visibilityState === "visible" && void refreshPlan();
@@ -370,11 +390,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         await syncNow(); // the server summarises what it has
         const r = await requestSummary(id, sponsored);
+        void refreshQuota();
         if (r.route === "overnight") {
           update(id, { stage: liveStage(id) ?? "queued" });
           // Always say so: a button that seems to do nothing is worse than a limit.
           if (!quiet) {
-            toast({ title: "Notes for this class arrive tonight", body: "Today's 10 instant classes are used. Get them now with a 5-second sponsor card on the Summary tab, or with Pro." });
+            toast({ title: "Notes for this class arrive tonight", body: "Today's 5 instant notes are used. Get them now with a 5-second sponsor card on the Summary tab, or with Pro." });
             if (!liveStage(id)) openPro("batchQueued");
           }
           return;
@@ -393,7 +414,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [session, online, update, syncNow, nudge, toast, openSignup, openPro],
+    [session, online, update, syncNow, nudge, toast, openSignup, openPro, refreshQuota],
   );
   /**
    * Worth writing notes now? The first notes come as soon as there's a couple of
@@ -945,6 +966,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     dismissToast,
     proOpen,
     refreshPlan,
+    quota,
     openPro,
     closePro: () => setProOpen(false),
     tier,

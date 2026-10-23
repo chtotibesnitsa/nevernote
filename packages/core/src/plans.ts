@@ -51,8 +51,17 @@ export const PRICING = {
   yearly: { price: 29.99, label: "$29.99 / year", note: "4 months free" },
 } as const;
 
-/** Free AI summaries that run the moment you're online. Past this they still run, just batched overnight (or instantly after a short sponsor card). */
-export const FREE_INSTANT_SUMMARIES_PER_DAY = 10;
+/**
+ * Free AI notes a day that are written right away. Every write counts: a new
+ * class, and each update a pause or stop adds to one. Past this they still get
+ * written, overnight (or right away after a short sponsor card); Pro is unlimited.
+ */
+export const FREE_INSTANT_SUMMARIES_PER_DAY = 5;
+
+/** The daily allowance resets at midnight UTC, the same clock the server counts by. */
+export function nextReset(now: Date = new Date()): Date {
+  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+}
 
 /** Cost guards. A summary costs about $0.002 per class hour on Gemini Flash Lite, so these keep a heavy free user under a few cents a month. */
 export const LIMITS = {
@@ -125,7 +134,7 @@ export function shouldUpsell(plan: Plan, moment: UpsellMoment, state: UpsellStat
     summaryReady: ["Your notes are ready", "With Pro you can ask them questions, like \"what's on the test?\""],
     askedQuestion: ["Ask your notes with Pro", "Get answers from every class you've recorded, with the moment they said it."],
     streak: ["Nice streak", "Pro turns a week of lectures into one exam pack."],
-    batchQueued: ["Notes coming tonight", "Free notes past 10 classes a day are written overnight. Pro writes them instantly."],
+    batchQueued: ["Notes coming tonight", "Free accounts get 5 instant notes a day; the rest are written overnight. Pro writes them instantly."],
   };
   const [title, body] = copy[moment];
   return { show: true, title, body };

@@ -40,6 +40,15 @@ export async function fetchPlan(): Promise<Plan> {
   return data?.plan === "pro" && (!data.pro_until || Date.parse(data.pro_until) > Date.now()) ? "pro" : "free";
 }
 
+/** Instant AI notes written today (UTC), updates included: what the free daily allowance counts. */
+export async function fetchInstantUsed(): Promise<number> {
+  if (!supabase) return 0;
+  const now = new Date();
+  const since = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate())).toISOString();
+  const { count } = await supabase.from("summary_jobs").select("id", { count: "exact", head: true }).eq("route", "instant").neq("status", "failed").gte("created_at", since);
+  return count ?? 0;
+}
+
 /** How this student likes notes written. Lives on the profile so every device and the overnight batch use it. */
 export async function fetchSummaryPrefs(): Promise<SummaryPrefs> {
   if (!supabase) return {};

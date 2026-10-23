@@ -65,6 +65,7 @@ const WHY: Record<string, string> = {
   export: "Send your notes to Google Docs, Notion or a PDF.",
   flashcards: "Take your flashcards to Anki and Quizlet.",
   summaryRules: "Different note rules for every class.",
+  unlimited: "Unlimited instant AI notes, every update, no waiting for tomorrow.",
   batchQueued: "Notes the second class ends, every time.",
 };
 
@@ -191,7 +192,7 @@ export function SignupSheet() {
       <p className="mt-2 text-[14.5px] text-[var(--ink-2)]">{(signupOpen && SIGNUP_WHY[signupOpen]) || "You're using Nevernote as a guest. A free account unlocks the rest, and keeps what you've recorded."}</p>
       <ul className="mt-5 grid gap-2 sm:grid-cols-2">
         {[
-          ["AI notes and study guides", "Instant for 10 classes a day"],
+          ["AI notes and study guides", "5 instant AI notes a day"],
           ["Sync on every device", "Phone, laptop and the web"],
           ["Insights and streaks", "Hours, words, every due date"],
           ["Calendar files", "Any due date into Google or Apple Calendar"],

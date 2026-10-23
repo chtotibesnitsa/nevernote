@@ -1,3 +1,4 @@
+import { QuotaPill } from "../components/Quota.tsx";
 import { stageInfo, type Extraction, type Note, type Segment } from "@nevernote/core";
 import { ArrowLeft, CalendarPlus, Copy, Folder, MoreHorizontal, Pause, Play, Search, Sparkles, Square, Trash2, X } from "lucide-react";
 import { marked } from "marked";
@@ -131,7 +132,14 @@ export function NoteView() {
         <AnimatePresence mode="wait">
           <motion.div key={tab} initial={{ opacity: 0, x: 8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -8 }} transition={{ duration: 0.2 }} className="pb-44 pt-6">
             {tab === "transcript" && <Transcript note={note} live={live} jump={jump} />}
-            {tab === "summary" && <SummaryTab note={note} />}
+            {tab === "summary" && (
+              <>
+                <div className="mb-5 max-w-md">
+                  <QuotaPill wide />
+                </div>
+                <SummaryTab note={note} />
+              </>
+            )}
             {tab === "thoughts" && (
               <textarea
                 value={note.thoughts}
@@ -530,7 +538,7 @@ function SummaryTab({ note }: { note: Note }) {
                   : !online
                     ? "You're offline. This class is saved, and its notes get written the moment you're back on Wi-Fi."
                     : note.stage === "queued"
-                      ? "Queued for tonight: today's 10 instant classes are used. Get them now below."
+                      ? "Queued for tonight: today's 5 instant notes are used. Get them now below."
                       : "Ready when you are."}
             </p>
           )}

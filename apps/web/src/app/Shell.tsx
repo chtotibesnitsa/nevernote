@@ -1,3 +1,4 @@
+import { QuotaPill } from "../components/Quota.tsx";
 import { BarChart3, CircleDot, GraduationCap, Home, MessageCircleQuestion, Settings as Cog } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState, type ReactNode } from "react";
@@ -144,6 +145,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </nav>
         <div className="mt-auto flex flex-col gap-3" style={{ WebkitAppRegion: "no-drag" } as never}>
           <LiveCard />
+          <QuotaPill wide />
           <PlanCard />
         </div>
       </aside>

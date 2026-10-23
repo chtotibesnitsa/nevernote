@@ -1,7 +1,7 @@
 // POST { noteId, sponsored?: boolean, regenerate?: boolean }  (regenerate: write the notes again, e.g. after changing note style)
 // A note that already has notes and got more transcript (a resumed class) gets a
 // dated update section for just the new part; see _shared/run.ts.
-// Free: instant notes for 10 classes a day (every pause of a class counts once). After that the note is written overnight,
+// Free: 5 instant notes a day, each update a pause adds counts as one. After that the note is written overnight,
 // or instantly if the student just watched a short sponsor card.
 import { LIMITS, summaryRoute } from "../../../../packages/core/src/plans.ts";
 import { admin, cors, json, userFrom } from "../_shared/db.ts";
@@ -31,12 +31,9 @@ Deno.serve(async (req) => {
   const { count: again } = await jobs().eq("note_id", noteId).neq("status", "failed");
   if ((again ?? 0) >= LIMITS.resummariesPerNotePerDay) return json({ error: "This note was already summarised today. Try again tomorrow." }, 429);
 
-  const { data: instant } = await db.from("summary_jobs").select("note_id").eq("user_id", user.id).gte("created_at", today).eq("route", "instant");
-  const count = new Set((instant ?? []).map((j) => j.note_id)).size;
-  // A class that already got notes today keeps getting its updates instantly
-  // (each pause adds a section): the daily limit counts classes, not pauses.
-  const { count: doneToday } = await jobs().eq("note_id", noteId).in("route", ["instant", "sponsored"]).eq("status", "done");
-  const instantNow = (!!s && (doneToday ?? 0) > 0) || summaryRoute(user.plan, count) === "instant";
+  // Every instant write today counts toward the free allowance, updates included.
+  const { count } = await jobs().eq("route", "instant").neq("status", "failed");
+  const instantNow = summaryRoute(user.plan, count ?? 0) === "instant";
   let route: "instant" | "sponsored" | "overnight" = instantNow ? "instant" : sponsored ? "sponsored" : "overnight";
   if (route === "sponsored") {
     const { count: s } = await jobs().eq("route", "sponsored");

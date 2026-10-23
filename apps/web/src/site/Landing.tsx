@@ -1263,7 +1263,7 @@ function Pricing() {
           ))}
         </motion.div>
         <div className="mt-auto pt-6"><Cta big>Start free</Cta></div>
-        <p className="mt-4 text-[12.5px] leading-relaxed text-[#6e6e73]">Recording and transcription have no limits at all. AI notes: instant for 10 classes a day, and the rest arrive overnight or right away after a 5-second sponsor card.</p>
+        <p className="mt-4 text-[12.5px] leading-relaxed text-[#6e6e73]">Recording and transcription have no limits at all. AI notes: 5 instant a day (updates count), and the rest arrive overnight or right away after a 5-second sponsor card.</p>
       </motion.div>
       <ProCard />
     </div>

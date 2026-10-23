@@ -11,7 +11,7 @@ The apps work without any of this; they just stay local. Transcription never tou
 
 | Function | What it does | Auth |
 |---|---|---|
-| `summarize` | Writes notes, a study guide, key terms and due dates for one note. Free accounts get instant notes for 10 classes a day. After that the note is queued for overnight, or written now after a 5-second sponsor card. | User JWT |
+| `summarize` | Writes notes, a study guide, key terms and due dates for one note. Free accounts get 5 instant AI notes a day, and each update to a note counts as one. After that the note is queued for overnight, or written now after a 5-second sponsor card. | User JWT |
 | `ask` | "Ask your notes" (Pro only; returns 402 otherwise) | User JWT |
 | `nightly` | Works through the overnight queue | `Bearer $CRON_SECRET` |
 | `revenuecat` | App Store purchases flip `profiles.plan` | `Bearer $REVENUECAT_WEBHOOK_SECRET` |
