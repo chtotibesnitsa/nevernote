@@ -1,3 +1,5 @@
+import { desktopRedirect } from "../lib/handoff.ts";
+import { signInWithGoogle } from "./AuthGate.tsx";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Card, spring } from "../components/ui.tsx";
@@ -219,15 +221,17 @@ export function SignIn() {
   const [email, setEmail] = useState("");
   const [sent, setSent] = useState(false);
   const [err, setErr] = useState("");
-  const redirectTo = isDesktop ? "nevernote://auth" : `${location.origin}${import.meta.env.BASE_URL}app`;
+  const redirectTo = isDesktop ? desktopRedirect : `${location.origin}${import.meta.env.BASE_URL}app`;
   return (
     <div>
       <p className="text-sm text-[var(--ink-2)]">Sign in with the same account on your laptop and phone. Free.</p>
       <div className="mt-3 grid gap-2 sm:grid-cols-2">
-        <Button variant="primary" onClick={() => supabase!.auth.signInWithOAuth({ provider: "apple", options: { redirectTo } })}>
-           Continue with Apple
-        </Button>
-        <Button variant="glass" onClick={() => supabase!.auth.signInWithOAuth({ provider: "google", options: { redirectTo } })}>
+        {!isDesktop && (
+          <Button variant="primary" onClick={() => supabase!.auth.signInWithOAuth({ provider: "apple", options: { redirectTo } })}>
+             Continue with Apple
+          </Button>
+        )}
+        <Button variant="glass" onClick={() => void signInWithGoogle()}>
           Continue with Google
         </Button>
       </div>

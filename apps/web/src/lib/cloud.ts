@@ -2,6 +2,8 @@
 // only adds the phone/laptop link and the summaries.
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
 import { noteToRow, rowToNote, type Plan, type Remote, type Summary, type SummaryPrefs } from "@nevernote/core";
+import { isDesktop } from "./bridge.ts";
+import { handoffCode } from "./handoff.ts";
 
 // The official Nevernote project. The anon key is public by design (row-level
 // security protects the data); forks can point at their own project with env vars.
@@ -11,7 +13,11 @@ const key = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || "e
 /** The address the app opened on, before sign-in strips its query and hash (it can carry an OAuth error). */
 export const bootUrl = typeof location === "undefined" ? "" : location.href;
 
-export const supabase: SupabaseClient | undefined = url && key ? createClient(url, key, { auth: { persistSession: true, detectSessionInUrl: true } }) : undefined;
+export const supabase: SupabaseClient | undefined = url && key ? createClient(url, key, {
+        // The desktop app signs in through the browser and redeems a code (PKCE); a desktop
+        // handoff page must leave that code alone for the app.
+        auth: { persistSession: true, flowType: isDesktop ? "pkce" : "implicit", detectSessionInUrl: !isDesktop && !handoffCode },
+      }) : undefined;
 export const cloudEnabled = !!supabase;
 
 export const fromRow = rowToNote;

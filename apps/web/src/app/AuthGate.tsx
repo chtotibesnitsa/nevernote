@@ -4,13 +4,20 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { Logo, soft } from "../components/ui.tsx";
-import { isDesktop } from "../lib/bridge.ts";
+import { desktop, isDesktop } from "../lib/bridge.ts";
+import { desktopRedirect } from "../lib/handoff.ts";
 import { bootUrl, rememberGuest, supabase } from "../lib/cloud.ts";
 import { useApp } from "./state.tsx";
 
-const redirectTo = () => (isDesktop ? "nevernote://auth" : `${location.origin}${import.meta.env.BASE_URL}app`);
+const redirectTo = () => (isDesktop ? desktopRedirect : `${location.origin}${import.meta.env.BASE_URL}app`);
 
-export const signInWithGoogle = () => supabase!.auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectTo() } });
+/** On the desktop app Google opens in the student's browser, which hands the sign-in back (see handoff.ts). */
+export async function signInWithGoogle() {
+  if (!isDesktop) return supabase!.auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectTo() } });
+  const r = await supabase!.auth.signInWithOAuth({ provider: "google", options: { redirectTo: redirectTo(), skipBrowserRedirect: true, queryParams: { prompt: "select_account" } } });
+  if (r.data?.url) await desktop!.openExternal(r.data.url);
+  return r;
+}
 
 /**
  * One Google button for signing up and signing in. A new Google account is
@@ -85,8 +92,16 @@ export function AuthGate() {
             <span className="grid h-6 w-6 place-items-center rounded-full bg-white">
               <GoogleMark />
             </span>
-            {busy === "google" ? "Opening Google…" : "Continue with Google"}
+            {busy === "google" ? (isDesktop ? "Finish in your browser…" : "Opening Google…") : "Continue with Google"}
           </button>
+          {isDesktop && busy === "google" && (
+            <motion.p initial={{ opacity: 0, y: 4 }} animate={{ opacity: 1, y: 0 }} className="mt-3 text-[13px] text-[var(--ink-2)]">
+              Pick your Google account in the browser tab that opened, then come back here.{" "}
+              <button onClick={() => setBusy(null)} className="font-semibold underline underline-offset-2">
+                Try again
+              </button>
+            </motion.p>
+          )}
           {!isDesktop && (
             <button onClick={guest} disabled={!!busy} className="press-light mt-3 w-full rounded-full bg-white py-4 text-[16px] font-semibold transition hover:bg-[var(--bubble)] disabled:opacity-60">
               {busy === "guest" ? "Starting…" : "Try it now as a guest"}

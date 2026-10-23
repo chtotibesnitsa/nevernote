@@ -2,7 +2,7 @@ name: Desktop release
 
 # Push a tag like v1.0.0 to build the Mac and Windows apps and attach them to a
 # GitHub release. Without signing secrets the builds are unsigned (macOS will
-# ask users to right-click → Open the first time).
+# ad-hoc sign them; users approve them once in System Settings).
 on:
   push:
     tags: ["v*"]
@@ -78,6 +78,14 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.MAC_CERT_P12_BASE64 != '' }}
+      # Catch a broken signature before students do ("Nevernote is damaged").
+      - name: Check the Mac app's signature
+        if: runner.os == 'macOS'
+        working-directory: apps/desktop
+        run: |
+          app=$(find release -maxdepth 2 -name "Nevernote.app" | head -1)
+          codesign --verify --deep --strict --verbose=2 "$app"
+          codesign -dv "$app" 2>&1 | grep -E "Signature|Identifier"
 
   # Publish only once every installer is attached.
   publish:

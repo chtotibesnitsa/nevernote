@@ -95,9 +95,9 @@ export function Logo({ size = 22 }: { size?: number }) {
   return (
     <span className="inline-flex items-center gap-2">
       <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden>
-        <rect width="64" height="64" rx="15" fill="currentColor" />
-        <path d="M19 44V20h4l14 17V20h5v24h-4L24 27v17z" fill="var(--bg)" />
-        <circle cx="48" cy="45" r="4" fill="var(--color-clay)" />
+        <rect width="64" height="64" rx="16" fill="currentColor" />
+        <path d="M21 43.5V20.5L38 43.5V20.5" fill="none" stroke="var(--bg)" strokeWidth="7" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx="46.5" cy="43.2" r="3.4" fill="#ff3b30" />
       </svg>
       <span className="title-serif text-[1.35rem] leading-none">Nevernote</span>
     </span>

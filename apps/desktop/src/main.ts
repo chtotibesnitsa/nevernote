@@ -13,6 +13,40 @@ const store = new FileStore(data);
 let win: BrowserWindow | undefined;
 let worker: Worker | undefined;
 
+// The app is light only, so native glass and menus match it.
+nativeTheme.themeSource = "light";
+
+// Sign-in finishes in the browser, which opens nevernote://auth?code=… to hand it back.
+// macOS delivers that as open-url (sometimes before the window exists); Windows
+// starts a second copy of the app with the link in its arguments.
+let pendingAuth: string | undefined;
+let authListening = false;
+function deliverAuth(url: string) {
+  if (!url.startsWith("nevernote://")) return;
+  if (win && authListening) win.webContents.send("auth", url);
+  else pendingAuth = url;
+  if (win) {
+    if (win.isMinimized()) win.restore();
+    win.show();
+    win.focus();
+  }
+}
+if (process.defaultApp && process.argv[1]) app.setAsDefaultProtocolClient("nevernote", process.execPath, [process.argv[1]]);
+else app.setAsDefaultProtocolClient("nevernote");
+if (!app.requestSingleInstanceLock()) app.quit();
+app.on("second-instance", (_e, argv) => {
+  const link = argv.find((a) => a.startsWith("nevernote://"));
+  if (link) deliverAuth(link);
+  else if (win) {
+    if (win.isMinimized()) win.restore();
+    win.focus();
+  }
+});
+app.on("open-url", (e, url) => {
+  e.preventDefault();
+  deliverAuth(url);
+});
+
 function getWorker(): Worker {
   if (worker) return worker;
   worker = new Worker(join(__dirname, "engine-worker.cjs"));
@@ -34,12 +68,13 @@ function createWindow() {
     minHeight: 560,
     title: "Nevernote",
     titleBarStyle: mac ? "hiddenInset" : "hidden",
-    titleBarOverlay: mac ? undefined : { color: "#00000000", symbolColor: nativeTheme.shouldUseDarkColors ? "#f4efe6" : "#1c1915", height: 40 },
+    titleBarOverlay: mac ? undefined : { color: "#00000000", symbolColor: "#1d1d1f", height: 40 },
+    trafficLightPosition: mac ? { x: 18, y: 18 } : undefined,
     // Liquid glass: the desktop shows through the sidebar.
-    vibrancy: mac ? "under-window" : undefined,
+    vibrancy: mac ? "sidebar" : undefined,
     visualEffectState: "followWindow",
     backgroundMaterial: process.platform === "win32" ? "mica" : undefined,
-    backgroundColor: mac ? "#00000000" : nativeTheme.shouldUseDarkColors ? "#14120f" : "#f7f3ec",
+    backgroundColor: mac ? "#00000000" : "#f5f5f7",
     show: false,
     webPreferences: { preload: join(__dirname, "preload.cjs"), contextIsolation: true, sandbox: false },
   });
@@ -57,6 +92,8 @@ app.whenReady().then(async () => {
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => cb(permission === "media" || permission === "notifications"));
   if (process.platform === "darwin") await systemPreferences.askForMediaAccess("microphone").catch(() => false);
   createWindow();
+  const link = process.argv.find((a) => a.startsWith("nevernote://"));
+  if (link) deliverAuth(link);
   app.on("activate", () => BrowserWindow.getAllWindows().length === 0 && createWindow());
 });
 app.on("window-all-closed", () => process.platform !== "darwin" && app.quit());
@@ -107,5 +144,12 @@ ipcMain.handle("notify", (_e, title: string, body: string, noteId?: string) => {
     if (noteId) win?.webContents.send("open-note", noteId);
   });
   n.show();
+});
+// The page asks for a link that arrived before it was listening.
+ipcMain.handle("auth:pending", () => {
+  authListening = true;
+  const url = pendingAuth;
+  pendingAuth = undefined;
+  return url;
 });
 ipcMain.handle("open-external", (_e, url: string) => /^https:\/\//.test(url) && shell.openExternal(url));

@@ -154,7 +154,12 @@ const mb = (a?: Asset) => (a ? `${Math.round(a.size / 1e6)} MB` : "");
 const STEPS: Record<Os, { title: string; steps: string[] }> = {
   mac: {
     title: "Installing on your Mac",
-    steps: ["Open Nevernote.dmg from your Downloads.", "Drag Nevernote into the Applications folder.", "First time only: right-click Nevernote in Applications and choose Open, then Open again.", "Hit record. The speech model downloads once, then everything runs offline."],
+    steps: [
+      "Open Nevernote.dmg from your Downloads and drag Nevernote into Applications.",
+      "Open Nevernote from Applications. The first time, macOS says it can't check the developer: click Done.",
+      "Open System Settings, then Privacy & Security, scroll down and click Open Anyway next to Nevernote. Confirm with your password or Touch ID.",
+      "Nevernote opens, and from now on it opens like any other app. Sign in with Google and hit record.",
+    ],
   },
   win: {
     title: "Installing on Windows",
@@ -232,6 +237,11 @@ function InstallSheet({ os, onClose, file }: { os: Os; onClose: () => void; file
             </motion.li>
           ))}
         </ol>
+        {os === "mac" && (
+          <p className="mt-4 rounded-[14px] bg-black/[0.04] px-3.5 py-2.5 text-[12.5px] leading-snug text-[#6e6e73]">
+            No Open Anyway button? In Terminal, paste <code className="rounded bg-white px-1 py-0.5 font-mono text-[11.5px] text-[#1d1d1f]">xattr -cr /Applications/Nevernote.app</code> and press Return, then open Nevernote again.
+          </p>
+        )}
         <div className="mt-6">
           <Press dark onClick={onClose}>Got it</Press>
         </div>

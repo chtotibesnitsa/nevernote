@@ -27,6 +27,8 @@ export interface DesktopBridge {
   notify(title: string, body: string, noteId?: string): Promise<void>;
   onOpenNote(cb: (id: string) => void): () => void;
   openExternal(url: string): Promise<void>;
+  /** A nevernote:// link the app was opened with (sign-in handoff). Older builds lack it. */
+  onAuth?(cb: (url: string) => void): () => void;
 }
 
 declare global {

@@ -12,6 +12,8 @@ import { Shell } from "./app/Shell.tsx";
 import { Study } from "./app/Study.tsx";
 import { AppProvider } from "./app/state.tsx";
 import { isDesktop } from "./lib/bridge.ts";
+import { handoffCode } from "./lib/handoff.ts";
+import { DesktopHandoff } from "./site/DesktopHandoff.tsx";
 import { Admin } from "./site/Admin.tsx";
 import { Landing } from "./site/Landing.tsx";
 import { Privacy, Support } from "./site/Legal.tsx";
@@ -42,6 +44,9 @@ function App() {
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
+    {handoffCode ? (
+      <DesktopHandoff code={handoffCode} />
+    ) : (
     <Router basename={isDesktop ? undefined : import.meta.env.BASE_URL.replace(/\/$/, "")}>
       <Routes>
         <Route path="/" element={isDesktop ? <Navigate to="/app" replace /> : <Landing />} />
@@ -52,5 +57,6 @@ createRoot(document.getElementById("root")!).render(
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </Router>
+    )}
   </StrictMode>,
 );

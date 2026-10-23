@@ -31,4 +31,9 @@ contextBridge.exposeInMainWorld("nevernote", {
   notify: (title: string, body: string, noteId?: string) => ipcRenderer.invoke("notify", title, body, noteId),
   onOpenNote: on("open-note"),
   openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
+  onAuth: (cb: (url: string) => void) => {
+    const off = on("auth")(cb);
+    ipcRenderer.invoke("auth:pending").then((url?: string) => url && cb(url));
+    return off;
+  },
 });

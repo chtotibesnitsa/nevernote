@@ -297,6 +297,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (session) fetchPlan().then(setPlan);
     else setPlan("free");
   }, [session]);
+  // Desktop: the browser hands the Google sign-in back over nevernote://auth?code=…
+  useEffect(
+    () =>
+      desktop?.onAuth?.(async (link) => {
+        const code = new URL(link).searchParams.get("code");
+        if (!code || !supabase) return;
+        const { error } = await supabase.auth.exchangeCodeForSession(code);
+        if (error) toast({ title: "Couldn't finish signing in", body: "Click Continue with Google again. If it keeps happening, restart Nevernote." });
+      }),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
   /** Checks the plan again, e.g. after checkout in another tab. True once it's Pro. */
   const refreshPlan = useCallback(async () => {
     if (!session) return false;
@@ -324,7 +336,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     const on = () => document.visibilityState === "visible" && void refreshPlan();
     document.addEventListener("visibilitychange", on);
-    return () => document.removeEventListener("visibilitychange", on);
+    // The desktop window stays visible behind the browser, so focus counts too.
+    addEventListener("focus", on);
+    return () => {
+      document.removeEventListener("visibilitychange", on);
+      removeEventListener("focus", on);
+    };
   }, [refreshPlan]);
   useEffect(() => {
     const on = () => setOnline(true);
