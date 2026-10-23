@@ -45,6 +45,8 @@ export interface Extraction {
   segmentId?: string;
   confidence: number;
   source: "keywords" | "ai";
+  /** The student's answer to "is this real?": confirmed items are certain, dismissed ones are hidden everywhere. */
+  status?: "confirmed" | "dismissed";
 }
 
 export interface Summary {

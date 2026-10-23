@@ -170,7 +170,7 @@ function Inspector({ note, live }: { note: Note; live: boolean }) {
     const total = [...count.values()].reduce((a, b) => a + b, 0) || 1;
     return [...count].sort((a, b) => b[1] - a[1]).map(([id, w], i) => ({ id, share: w / total, color: SPEAKER_TINTS[i % SPEAKER_TINTS.length], name: note.speakers.find((x) => x.id === id)?.name ?? id }));
   }, [note.segments, note.speakers]);
-  const due = note.extractions.filter((e) => e.kind !== "important");
+  const due = note.extractions.filter((e) => e.kind !== "important" && e.status !== "dismissed");
   const important = note.extractions.filter((e) => e.kind === "important");
   const rename = (id: string, cur: string) => {
     const name = prompt(`Who is ${cur}?`, cur);
@@ -509,7 +509,7 @@ function SummaryTab({ note }: { note: Note }) {
   const { session, online, summarize, plan, tier, openSignup } = useApp();
   const [sponsor, setSponsor] = useState(false);
   const s = note.summary;
-  const due = note.extractions.filter((e) => e.kind !== "important");
+  const due = note.extractions.filter((e) => e.kind !== "important" && e.status !== "dismissed");
   const important = note.extractions.filter((e) => e.kind === "important");
 
   if (!s) {
@@ -808,7 +808,7 @@ function BottomBar({ note, live, onPause, onResume, onStop }: { note: Note; live
 function CalendarButton({ note }: { note: Note }) {
   const { tier, need, openPro } = useApp();
   const nav = useNavigate();
-  const dated = note.extractions.filter((e) => e.when && e.kind !== "important");
+  const dated = note.extractions.filter((e) => e.when && e.kind !== "important" && e.status !== "dismissed");
   return (
     <Button
       variant="glass"

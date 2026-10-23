@@ -7,6 +7,7 @@ import { Card, LockBadge, spring, StatusDot } from "../components/ui.tsx";
 import { isDesktop } from "../lib/bridge.ts";
 import { NoteCard, StartButton } from "./Notes.tsx";
 import { useApp } from "./state.tsx";
+import { Today } from "./Today.tsx";
 
 function compact(n: number): string {
   return n >= 1e6 ? `${(n / 1e6).toFixed(1)}M` : n >= 1e3 ? `${(n / 1e3).toFixed(1)}K` : String(n);
@@ -16,13 +17,6 @@ export function Home() {
   const { notes, settings, session, asr, retryAsr, tier } = useApp();
   const stats = useMemo(() => insights(notes), [notes]);
   const name = settings.name || session?.user.user_metadata?.full_name?.split(" ")[0] || "";
-  const upcoming = useMemo(() => {
-    const now = new Date().toISOString().slice(0, 10);
-    return notes
-      .flatMap((n) => n.extractions.filter((e) => e.when && e.when.slice(0, 10) >= now && e.kind !== "important").map((e) => ({ e, n })))
-      .sort((a, b) => a.e.when!.localeCompare(b.e.when!))
-      .slice(0, 5);
-  }, [notes]);
   const hour = new Date().getHours();
 
   return (
@@ -70,6 +64,8 @@ export function Home() {
         </Card>
       </div>
 
+      <Today />
+
       <section className="mt-5 grid gap-3 sm:grid-cols-3">
         {TOOLS.map((t, i) => {
           const step = unlockStep(tier, t.feature);
@@ -87,25 +83,6 @@ export function Home() {
           );
         })}
       </section>
-
-      {upcoming.length > 0 && (
-        <section className="mt-10">
-          <div className="eyebrow mb-3">Coming up</div>
-          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-5">
-            {upcoming.map(({ e, n }, i) => (
-              <motion.div key={e.id} initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} transition={{ ...spring, delay: i * 0.05 }}>
-                <Link to={`/app/note/${n.id}`} className="panel block h-full !rounded-[18px] p-4 transition hover:-translate-y-0.5">
-                  <div className="text-[11px] font-semibold uppercase tracking-wider text-[var(--color-dot-red)]">
-                    {new Date(e.when!).toLocaleDateString(undefined, { weekday: "short", month: "short", day: "numeric" })}
-                  </div>
-                  <div className="mt-1 font-medium leading-snug">{e.title}</div>
-                  <div className="mt-1 truncate text-xs text-[var(--mute)]">{n.folder ?? n.title}</div>
-                </Link>
-              </motion.div>
-            ))}
-          </div>
-        </section>
-      )}
 
       <section className="mt-10">
         <div className="flex items-center justify-between">

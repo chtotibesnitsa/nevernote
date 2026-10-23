@@ -1,6 +1,6 @@
-// POST { question, noteIds?: string[] }  (Pro)
+// POST { question, noteIds?: string[], tool?: AskTool, history?: {q,a}[] }  (Pro)
 import { LIMITS } from "../../../../packages/core/src/plans.ts";
-import { askMessages } from "../../../../packages/core/src/summarize.ts";
+import { askMessages, type AskTool } from "../../../../packages/core/src/summarize.ts";
 import { admin, cors, json, userFrom } from "../_shared/db.ts";
 import { chat, PRO_MODEL } from "../_shared/llm.ts";
 
@@ -10,7 +10,7 @@ Deno.serve(async (req) => {
   if (!user) return json({ error: "sign in first" }, 401);
   if (user.guest) return json({ error: "signup" }, 403);
   if (user.plan !== "pro") return json({ error: "pro", upsell: "askedQuestion" }, 402);
-  const { question, noteIds } = await req.json().catch(() => ({}));
+  const { question, noteIds, tool, history } = await req.json().catch(() => ({}));
   if (typeof question !== "string" || !question.trim()) return json({ error: "question required" }, 400);
   const since = new Date();
   since.setUTCHours(0, 0, 0, 0);
@@ -21,8 +21,10 @@ Deno.serve(async (req) => {
   const { data } = await q;
   const ctx = (data ?? []).map((n) => ({ title: n.title, date: new Date(n.created_at), segments: n.segments, notes: n.summary?.notes }));
   try {
-    const r = await chat(askMessages(question, ctx), PRO_MODEL, false);
-    await admin().from("usage_events").insert({ user_id: user.id, kind: "ask", meta: { tokens_in: r.tokensIn, tokens_out: r.tokensOut, cost_usd: r.cost } });
+    const tools: AskTool[] = ["answer", "quiz", "explain", "plan", "recap"];
+    const past = Array.isArray(history) ? history.filter((t) => typeof t?.q === "string" && typeof t?.a === "string") : [];
+    const r = await chat(askMessages(question.slice(0, 2000), ctx, { tool: tools.includes(tool) ? tool : "answer", history: past }), PRO_MODEL, false);
+    await admin().from("usage_events").insert({ user_id: user.id, kind: "ask", meta: { tool: tools.includes(tool) ? tool : "answer", tokens_in: r.tokensIn, tokens_out: r.tokensOut, cost_usd: r.cost } });
     return json({ answer: r.text });
   } catch (e) {
     return json({ error: String(e instanceof Error ? e.message : e) }, 502);

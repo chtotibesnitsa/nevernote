@@ -45,7 +45,7 @@ export function insights(notes: Note[], today: Date = new Date()): Insights {
     words += w;
     seconds += n.durationSec;
     speakers += n.speakers.length;
-    deadlines += n.extractions.filter((e) => e.kind === "deadline" || e.kind === "exam").length;
+    deadlines += n.extractions.filter((e) => (e.kind === "deadline" || e.kind === "exam") && e.status !== "dismissed").length;
     const k = dayKey(new Date(n.createdAt));
     heatmap[k] = (heatmap[k] ?? 0) + n.durationSec / 60;
     byDevice[n.device] = (byDevice[n.device] ?? 0) + w;

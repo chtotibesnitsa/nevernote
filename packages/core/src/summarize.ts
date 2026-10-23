@@ -107,6 +107,8 @@ export function parseSummary(raw: string, model: string, segments: Segment[] = [
   const j = extractJson(raw) as Record<string, unknown>;
   const arr = <T>(v: unknown): T[] => (Array.isArray(v) ? (v as T[]) : []);
   const items = arr<Record<string, unknown>>(j.items ?? j.extractions);
+  // Unique across summaries, so an update's items never collide with earlier ones.
+  const stamp = Date.now().toString(36);
   const extractions: Extraction[] = items
     .filter((i) => typeof i.title === "string")
     .map((i, k) => {
@@ -115,7 +117,7 @@ export function parseSummary(raw: string, model: string, segments: Segment[] = [
       const quote = typeof i.quote === "string" ? i.quote : "";
       const seg = quote ? segments.find((s) => s.text.toLowerCase().includes(quote.toLowerCase().slice(0, 40))) : undefined;
       return {
-        id: `ai${k}`,
+        id: `ai-${stamp}-${k}`,
         kind: (KINDS.has(String(i.kind)) ? i.kind : "reminder") as Extraction["kind"],
         title: String(i.title),
         when: date ? (time ? `${date}T${time}:00` : date) : undefined,
@@ -143,20 +145,46 @@ export function parseSummary(raw: string, model: string, segments: Segment[] = [
  */
 export function mergeExtractions(keyword: Extraction[], ai: Extraction[]): Extraction[] {
   const sameDay = (a?: string, b?: string) => !!a && !!b && a.slice(0, 10) === b.slice(0, 10);
-  const extra = keyword.filter((k) => !ai.some((a) => a.kind === k.kind && (sameDay(a.when, k.when) || a.segmentId === k.segmentId)));
-  return [...ai, ...extra].sort((a, b) => (a.when ?? "9999").localeCompare(b.when ?? "9999"));
+  const same = (a: Extraction, k: Extraction) => a.id === k.id || (a.kind === k.kind && (sameDay(a.when, k.when) || (!!a.segmentId && a.segmentId === k.segmentId)));
+  const extra = keyword.filter((k) => !ai.some((a) => same(a, k)));
+  // A yes or no the student already gave carries over to the rewritten item.
+  const answered = ai.map((a) => {
+    const k = !a.status ? keyword.find((k) => k.status && same(a, k)) : undefined;
+    return k ? { ...a, status: k.status, confidence: k.status === "confirmed" ? 1 : a.confidence } : a;
+  });
+  return [...answered, ...extra].sort((a, b) => (a.when ?? "9999").localeCompare(b.when ?? "9999"));
 }
 
-export function askMessages(question: string, context: { title: string; date: Date; segments: Segment[]; notes?: string }[]): ChatMessage[] {
+/** What Ask can do besides answer: each is the same notes with a different job. */
+export type AskTool = "answer" | "quiz" | "explain" | "plan" | "recap";
+
+const ASK_JOBS: Record<AskTool, string> = {
+  answer: "Answer the student's question.",
+  quiz: "Write a short quiz from these classes: 5 questions, mixed multiple choice (4 options, A-D) and short answer, the kind a teacher would really ask. Put all the answers, with one line of why, under a final \"### Answers\" heading.",
+  explain: "Explain what the student asks about in plain, friendly words a younger student would follow, with one everyday example and one line on how it's likely to be tested.",
+  plan: "Make a short, realistic study plan up to the next test or deadline these classes mention: a dated list of 20-40 minute sessions, each with what to review and how (flashcards, practice questions, re-reading a part of class). Say which test or deadline it's for.",
+  recap: "Recap these classes as a quick catch-up: what was covered, what was assigned or announced, and anything the teacher stressed.",
+};
+
+export function askMessages(
+  question: string,
+  context: { title: string; date: Date; segments: Segment[]; notes?: string }[],
+  opts: { tool?: AskTool; history?: { q: string; a: string }[] } = {},
+): ChatMessage[] {
   const docs = context
     .map((c) => `## ${c.title} (${toLocalISO(c.date, true)})\n${c.notes ? `${c.notes}\n` : ""}${transcriptText(c.segments).slice(0, 12000)}`)
     .join("\n\n");
+  // A few earlier turns, trimmed, so follow-ups ("and the second one?") make sense.
+  const past = (opts.history ?? []).slice(-4).flatMap((t): ChatMessage[] => [
+    { role: "user", content: t.q.slice(0, 600) },
+    { role: "assistant", content: t.a.slice(0, 1500) },
+  ]);
   return [
     {
       role: "system",
-      content:
-        "Answer the student's question using only their class notes below. Be brief and concrete. Back each point with the words actually said, copied exactly from the transcript inside double quotes (at least 4 words, so the app can jump to that moment), and name which class and date they came from. The transcript comes from live speech recognition, so read past misheard words using context, but quote them as written. If the notes don't say, say so.",
+      content: `${ASK_JOBS[opts.tool ?? "answer"]} Use only the student's class notes below. Be brief and concrete, and use markdown. Back each point with the words actually said, copied exactly from the transcript inside double quotes (at least 4 words, so the app can jump to that moment), and name which class and date they came from. The transcript comes from live speech recognition, so read past misheard words using context, but quote them as written. If the notes don't say, say so.\n\n${docs}`,
     },
-    { role: "user", content: `${docs}\n\nQuestion: ${question}` },
+    ...past,
+    { role: "user", content: question },
   ];
 }

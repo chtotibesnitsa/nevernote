@@ -153,3 +153,28 @@ describe("summary styles", () => {
     expect(msgs[0].content).toContain("Bold every date");
   });
 });
+
+import { answer, comingUp, needsReview, reviewQueue } from "../src/review.ts";
+describe("daily review", () => {
+  const now = new Date("2026-10-23T12:00:00Z");
+  const note = (extractions: any[]) => ({ id: "n", title: "Bio", createdAt: "2026-10-23T09:00:00Z", updatedAt: "", durationSec: 0, device: "web", stage: "ready", segments: [], speakers: [], extractions, thoughts: "" }) as any;
+  const kw = { id: "a", kind: "deadline", title: "Lab report", when: "2026-10-27", allDay: true, phrase: "lab report due monday", confidence: 0.8, source: "keywords" };
+  const ai = { ...kw, id: "b", confidence: 0.9, source: "ai", when: "2026-10-28" };
+  it("asks about keyword guesses and undated items, not confident AI ones", () => {
+    expect(needsReview(kw as any, now)).toBe(true);
+    expect(needsReview({ ...ai, when: undefined } as any, now)).toBe(true);
+    expect(needsReview(ai as any, now)).toBe(false);
+    expect(needsReview({ ...kw, kind: "important" } as any, now)).toBe(false);
+    expect(needsReview({ ...kw, when: "2026-10-01" } as any, now)).toBe(false);
+  });
+  it("confirming tracks it, dismissing hides it", () => {
+    const n = note([kw, ai]);
+    expect(reviewQueue([n], now).map((p) => p.e.id)).toEqual(["a"]);
+    expect(comingUp([n], now).map((p) => p.e.id)).toEqual(["b"]);
+    const yes = { ...n, extractions: answer(n, "a", "confirmed") };
+    expect(reviewQueue([yes], now)).toEqual([]);
+    expect(comingUp([yes], now).map((p) => p.e.id)).toEqual(["a", "b"]);
+    const no = { ...n, extractions: answer(n, "b", "dismissed") };
+    expect(comingUp([no], now)).toEqual([]);
+  });
+});

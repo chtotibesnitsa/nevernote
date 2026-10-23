@@ -12,3 +12,4 @@ export * from "./voice.ts";
 export * from "./styles.ts";
 export * from "./ics.ts";
 export * from "./vocab.ts";
+export * from "./review.ts";

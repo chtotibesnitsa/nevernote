@@ -451,7 +451,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           summary: r.summary,
           stage: liveStage(id) ?? "ready",
           title: /^Class \d+\/\d+$/.test(cur.title) ? r.summary.title : cur.title,
-          extractions: mergeExtractions(cur.extractions.filter((e) => e.source === "keywords"), r.summary.extractions),
+          extractions: mergeExtractions(cur.extractions, r.summary.extractions),
         });
         nudge("summaryReady");
       } catch (e) {

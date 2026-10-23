@@ -1,7 +1,7 @@
 // Supabase: sign-in, sync and AI summaries. Everything works signed out; this
 // only adds the phone/laptop link and the summaries.
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
-import { noteToRow, rowToNote, type Plan, type Remote, type Summary, type SummaryPrefs } from "@nevernote/core";
+import { noteToRow, rowToNote, type AskTool, type Plan, type Remote, type Summary, type SummaryPrefs } from "@nevernote/core";
 import { isDesktop } from "./bridge.ts";
 import { handoffCode } from "./handoff.ts";
 
@@ -78,8 +78,8 @@ export async function requestSummary(noteId: string, sponsored = false): Promise
   return data as SummaryResult;
 }
 
-export async function ask(question: string, noteIds?: string[]): Promise<{ answer?: string; error?: string }> {
-  const { data, error } = await supabase!.functions.invoke("ask", { body: { question, noteIds } });
+export async function ask(question: string, noteIds?: string[], opts: { tool?: AskTool; history?: { q: string; a: string }[] } = {}): Promise<{ answer?: string; error?: string }> {
+  const { data, error } = await supabase!.functions.invoke("ask", { body: { question, noteIds, ...opts } });
   if (error) return { error: (error as { context?: { status?: number } }).context?.status === 402 ? "pro" : String(error.message) };
   return data;
 }

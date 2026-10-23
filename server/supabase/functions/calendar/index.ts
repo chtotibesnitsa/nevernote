@@ -33,7 +33,7 @@ Deno.serve(async (req) => {
     const { data: notes } = await db.from("notes").select("title, folder, extractions").eq("user_id", p.id).eq("deleted", false).gte("created_at", new Date(Date.now() - 180 * 86_400_000).toISOString());
     for (const n of notes ?? [])
       for (const e of (n.extractions ?? []) as Extraction[])
-        if (e.when && e.kind !== "important" && e.when >= since) items.push({ ...e, course: n.folder ?? n.title });
+        if (e.when && e.kind !== "important" && e.status !== "dismissed" && e.when >= since) items.push({ ...e, course: n.folder ?? n.title });
   }
   return new Response(icsFor(items, undefined, "Nevernote due dates"), {
     headers: { ...cors, "Content-Type": "text/calendar; charset=utf-8", "Cache-Control": "max-age=900" },
