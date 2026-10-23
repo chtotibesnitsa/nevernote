@@ -71,17 +71,26 @@ function untar(file: string, dir: string): Promise<void> {
   });
 }
 
-const inflight = new Map<string, Promise<void>>();
+const inflight = new Map<string, { run: Promise<void>; listeners: Set<(p: number, label: string) => void> }>();
 
-/** Downloads whatever is missing. `onProgress` gets overall 0..1. Asking again while it runs joins the same download. */
+/** Downloads whatever is missing. `onProgress` gets overall 0..1. Asking again while it runs joins the same download, and hears its progress too. */
 export function ensureModels(dir: string, asr: AsrModelId, onProgress: (p: number, label: string) => void): Promise<void> {
   const key = `${dir}|${asr}`;
-  let run = inflight.get(key);
-  if (!run) {
-    run = download(dir, asr, onProgress).finally(() => inflight.delete(key));
-    inflight.set(key, run);
+  let job = inflight.get(key);
+  if (!job) {
+    const listeners = new Set<(p: number, label: string) => void>();
+    const run = download(dir, asr, (p, label) => listeners.forEach((l) => l(p, label))).finally(() => inflight.delete(key));
+    job = { run, listeners };
+    inflight.set(key, job);
   }
-  return run;
+  job.listeners.add(onProgress);
+  return job.run;
+}
+
+// Main passes Electron's own network stack (Chromium's, with the system's proxy and DNS) once the app is ready.
+let fetcher: typeof fetch = fetch;
+export function useFetch(f: typeof fetch) {
+  fetcher = f;
 }
 
 async function fetchTo(url: string, tmp: string, onBytes: (n: number) => void): Promise<void> {
@@ -94,7 +103,7 @@ async function fetchTo(url: string, tmp: string, onBytes: (n: number) => void): 
   };
   alive();
   try {
-    const res = await fetch(url, { signal: ctl.signal });
+    const res = await fetcher(url, { signal: ctl.signal });
     if (!res.ok || !res.body) throw new Error(`download failed (${res.status})`);
     const counter = new TransformStream<Uint8Array, Uint8Array>({
       transform(chunk, c) {
@@ -128,6 +137,7 @@ async function download(dir: string, asr: AsrModelId, onProgress: (p: number, la
       } catch (e) {
         rmSync(tmp, { force: true });
         if (attempt >= 3) throw e;
+        onProgress(total ? Math.min(1, done / total) : 0, `retrying ${m.id} (${e instanceof Error ? e.message : e})`);
         await new Promise((r) => setTimeout(r, 1500 * attempt));
       }
     }

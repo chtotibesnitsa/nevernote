@@ -1,10 +1,10 @@
-import { app, BrowserWindow, ipcMain, nativeTheme, Notification, powerSaveBlocker, session, shell, systemPreferences } from "electron";
+import { app, BrowserWindow, ipcMain, nativeTheme, net, Notification, powerSaveBlocker, session, shell, systemPreferences } from "electron";
 import { appendFileSync, existsSync, readdirSync, writeFileSync } from "node:fs";
 import { cpus } from "node:os";
 import { join } from "node:path";
 import { Worker } from "node:worker_threads";
 import type { Note } from "../../../packages/core/src/types.ts";
-import { ASR_MODELS, ensureModels, installed, type AsrModelId } from "./models.ts";
+import { ASR_MODELS, ensureModels, installed, useFetch, type AsrModelId } from "./models.ts";
 import { FileStore } from "./store.ts";
 
 const data = app.getPath("userData");
@@ -128,7 +128,7 @@ async function selfTest() {
     if (full)
       await ensureModels(modelsDir, asr, (p, label) => {
         const tenth = Math.floor(p * 10);
-        if (tenth > shown || label === "ready") say(`models ${Math.round(p * 100)}% ${label} after ${Math.round((Date.now() - t0) / 1000)}s`);
+        if (tenth > shown || label === "ready" || label.startsWith("retrying")) say(`models ${Math.round(p * 100)}% ${label} after ${Math.round((Date.now() - t0) / 1000)}s`);
         shown = tenth;
       });
     else if (!installed(modelsDir, asr)) {
@@ -187,6 +187,7 @@ async function selfTest() {
 }
 
 app.whenReady().then(async () => {
+  useFetch(net.fetch as typeof fetch);
   if (process.env.NEVERNOTE_SELFTEST) return void selfTest();
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => cb(permission === "media" || permission === "notifications"));
   if (process.platform === "darwin") await systemPreferences.askForMediaAccess("microphone").catch(() => false);
