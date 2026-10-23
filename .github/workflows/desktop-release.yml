@@ -28,8 +28,9 @@ jobs:
           echo "tag=$v" >> "$GITHUB_OUTPUT"
           done=0
           for id in $(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" -q ".[] | select(.tag_name == \"$v\") | .id"); do
-            names=$(gh api "repos/$GITHUB_REPOSITORY/releases/$id" -q '[.assets[].name] | join(" ")')
-            if [[ $names == *arm64.dmg* && $names == *.exe* && $(echo "$names" | tr " " "\n" | grep -c "\.dmg$") -ge 2 ]]; then done=1; else gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; fi
+            # Only a published release counts: a draft is what a failed run leaves behind, so it's rebuilt.
+            draft=$(gh api "repos/$GITHUB_REPOSITORY/releases/$id" -q '.draft')
+            if [ "$draft" = false ]; then done=1; else gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; fi
           done
           if [ $done = 1 ]; then echo "$v is complete; nothing to do"; exit 1; fi
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
