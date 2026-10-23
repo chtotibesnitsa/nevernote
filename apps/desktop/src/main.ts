@@ -106,7 +106,7 @@ async function selfTest() {
     say(`FAIL ${m}`);
     app.exit(1);
   };
-  setTimeout(() => fail("timed out"), 25 * 60_000).unref();
+  setTimeout(() => fail("timed out"), 12 * 60_000);
   try {
     createWindow();
     await new Promise<void>((ok) => win!.webContents.once("did-finish-load", () => ok()));
@@ -116,6 +116,7 @@ async function selfTest() {
     if (!ui.bridge || !ui.rendered) return fail("the app screen did not load");
 
     const asr: AsrModelId = "parakeet-en";
+    say("screen OK, getting the speech models");
     if (full) await ensureModels(modelsDir, asr, (p) => void p);
     else if (!installed(modelsDir, asr)) {
       say("OK (screen and bridge; engine needs models, run with =full to test it)");

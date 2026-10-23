@@ -94,16 +94,23 @@ jobs:
       # models and transcribe a sample recording. A release is only published if this passes.
       - name: Self-test the packaged app (Mac)
         if: runner.os == 'macOS'
+        timeout-minutes: 15
         working-directory: apps/desktop
         run: |
           app=$(find release -maxdepth 2 -name "Nevernote.app" | head -1)
           set +e
-          NEVERNOTE_SELFTEST=full NEVERNOTE_SELFTEST_OUT="$PWD/selftest.log" "$app/Contents/MacOS/Nevernote"
+          # A hung app still has to end the step, with whatever it logged so far.
+          NEVERNOTE_SELFTEST=full NEVERNOTE_SELFTEST_OUT="$PWD/selftest.log" "$app/Contents/MacOS/Nevernote" > app.log 2>&1 &
+          pid=$!
+          ( sleep 600; kill -9 $pid 2>/dev/null && echo "FAIL killed after 10 minutes" >> selftest.log ) &
+          wait $pid
           code=$?
+          tail -40 app.log
           cat selftest.log || true
           exit $code
       - name: Self-test the packaged app (Windows)
         if: runner.os == 'Windows'
+        timeout-minutes: 15
         shell: pwsh
         working-directory: apps/desktop
         env:

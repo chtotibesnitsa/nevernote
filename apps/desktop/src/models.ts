@@ -80,15 +80,28 @@ export function ensureModels(dir: string, asr: AsrModelId, onProgress: (p: numbe
 }
 
 async function fetchTo(url: string, tmp: string, onBytes: (n: number) => void): Promise<void> {
-  const res = await fetch(url);
-  if (!res.ok || !res.body) throw new Error(`download failed (${res.status})`);
-  const counter = new TransformStream<Uint8Array, Uint8Array>({
-    transform(chunk, ctl) {
-      onBytes(chunk.byteLength);
-      ctl.enqueue(chunk);
-    },
-  });
-  await pipeline(Readable.fromWeb(res.body.pipeThrough(counter) as never), createWriteStream(tmp));
+  // A connection that goes quiet for a minute is dropped and retried, instead of hanging forever.
+  const ctl = new AbortController();
+  let stall: ReturnType<typeof setTimeout> | undefined;
+  const alive = () => {
+    clearTimeout(stall);
+    stall = setTimeout(() => ctl.abort(new Error("download stalled")), 60_000);
+  };
+  alive();
+  try {
+    const res = await fetch(url, { signal: ctl.signal });
+    if (!res.ok || !res.body) throw new Error(`download failed (${res.status})`);
+    const counter = new TransformStream<Uint8Array, Uint8Array>({
+      transform(chunk, c) {
+        alive();
+        onBytes(chunk.byteLength);
+        c.enqueue(chunk);
+      },
+    });
+    await pipeline(Readable.fromWeb(res.body.pipeThrough(counter) as never), createWriteStream(tmp), { signal: ctl.signal });
+  } finally {
+    clearTimeout(stall);
+  }
 }
 
 async function download(dir: string, asr: AsrModelId, onProgress: (p: number, label: string) => void): Promise<void> {
