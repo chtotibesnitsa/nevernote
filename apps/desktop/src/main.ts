@@ -106,7 +106,7 @@ async function selfTest() {
     say(`FAIL ${m}`);
     app.exit(1);
   };
-  setTimeout(() => fail("timed out"), 12 * 60_000);
+  setTimeout(() => fail("timed out"), 16 * 60_000);
   try {
     createWindow();
     await new Promise<void>((ok) => win!.webContents.once("did-finish-load", () => ok()));
@@ -117,7 +117,15 @@ async function selfTest() {
 
     const asr: AsrModelId = "parakeet-en";
     say("screen OK, getting the speech models");
-    if (full) await ensureModels(modelsDir, asr, (p) => void p);
+    // Progress every tenth, so a slow or stuck download shows where it stopped.
+    const t0 = Date.now();
+    let shown = -1;
+    if (full)
+      await ensureModels(modelsDir, asr, (p, label) => {
+        const tenth = Math.floor(p * 10);
+        if (tenth > shown || label === "ready") say(`models ${Math.round(p * 100)}% ${label} after ${Math.round((Date.now() - t0) / 1000)}s`);
+        shown = tenth;
+      });
     else if (!installed(modelsDir, asr)) {
       say("OK (screen and bridge; engine needs models, run with =full to test it)");
       return app.exit(0);

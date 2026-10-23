@@ -29,7 +29,7 @@ jobs:
           done=0
           for id in $(gh api "repos/$GITHUB_REPOSITORY/releases?per_page=100" -q ".[] | select(.tag_name == \"$v\") | .id"); do
             names=$(gh api "repos/$GITHUB_REPOSITORY/releases/$id" -q '[.assets[].name] | join(" ")')
-            if [[ $names == *.dmg* && $names == *.exe* ]]; then done=1; else gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; fi
+            if [[ $names == *arm64.dmg* && $names == *.exe* && $(echo "$names" | tr " " "\n" | grep -c "\.dmg$") -ge 2 ]]; then done=1; else gh api -X DELETE "repos/$GITHUB_REPOSITORY/releases/$id"; fi
           done
           if [ $done = 1 ]; then echo "$v is complete; nothing to do"; exit 1; fi
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
@@ -94,7 +94,7 @@ jobs:
       # models and transcribe a sample recording. A release is only published if this passes.
       - name: Self-test the packaged app (Mac)
         if: runner.os == 'macOS'
-        timeout-minutes: 15
+        timeout-minutes: 22
         working-directory: apps/desktop
         run: |
           app=$(find release -maxdepth 2 -name "Nevernote.app" | head -1)
@@ -102,7 +102,7 @@ jobs:
           # A hung app still has to end the step, with whatever it logged so far.
           NEVERNOTE_SELFTEST=full NEVERNOTE_SELFTEST_OUT="$PWD/selftest.log" "$app/Contents/MacOS/Nevernote" > app.log 2>&1 &
           pid=$!
-          ( sleep 600; kill -9 $pid 2>/dev/null && echo "FAIL killed after 10 minutes" >> selftest.log ) &
+          ( sleep 1080; kill -9 $pid 2>/dev/null && echo "FAIL killed after 18 minutes" >> selftest.log ) &
           wait $pid
           code=$?
           tail -40 app.log

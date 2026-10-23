@@ -61,8 +61,13 @@ function untar(file: string, dir: string): Promise<void> {
   return new Promise((resolve, reject) => {
     // bsdtar ships with macOS and Windows 10+, GNU tar with Linux; all read .tar.bz2.
     const p = spawn("tar", ["-xjf", file, "-C", dir], { stdio: "ignore" });
+    // A stuck unpack fails (and the download is retried next launch) instead of hanging the app.
+    const limit = setTimeout(() => p.kill(), 10 * 60_000);
     p.on("error", reject);
-    p.on("close", (code) => (code === 0 ? resolve() : reject(new Error(`tar exited ${code}`))));
+    p.on("close", (code) => {
+      clearTimeout(limit);
+      code === 0 ? resolve() : reject(new Error(`unpacking failed (tar ${code})`));
+    });
   });
 }
 
@@ -126,6 +131,7 @@ async function download(dir: string, asr: AsrModelId, onProgress: (p: number, la
         await new Promise((r) => setTimeout(r, 1500 * attempt));
       }
     }
+    onProgress(total ? Math.min(1, (done + m.bytes) / total) : 1, `unpacking ${m.id}`);
     if (m.archive) {
       // Unpack beside the final place, then rename: an interrupted unpack never looks installed.
       const stage = join(dir, `.${m.id}.unpack`);
