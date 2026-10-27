@@ -1,9 +1,7 @@
 name: Deploy website
 
-# Builds the website and web app and publishes it to GitHub Pages.
-# One-time setup: Settings → Pages → Source: GitHub Actions.
-# It talks to the official Supabase project by default; forks can set the repository
-# variables VITE_SUPABASE_URL and VITE_SUPABASE_ANON_KEY. With a custom domain, set VITE_BASE=/ .
+# Publishes a forwarding page to GitHub Pages that sends visitors to the real site.
+# One-time setup: Settings → Pages → Source: GitHub Actions. Set the variable VITE_SITE_URL once the real domain is live.
 on:
   push:
     branches: [main]
@@ -23,21 +21,17 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: npm
-      - run: npm ci
-      - run: npm run build:web
+      # Nevernote lives on Vercel now. This old address only forwards there, so a
+      # stale link or a Google sign-in sent back here still lands in the real app.
+      - run: |
+          mkdir -p out
+          sed "s#__SITE__#${SITE}#" apps/web/pages-redirect/index.html > out/index.html
+          cp out/index.html out/404.html
         env:
-          VITE_BASE: ${{ vars.VITE_BASE || format('/{0}/', github.event.repository.name) }}
-          VITE_SUPABASE_URL: ${{ vars.VITE_SUPABASE_URL }}
-          VITE_SUPABASE_ANON_KEY: ${{ vars.VITE_SUPABASE_ANON_KEY }}
-      # Single-page app: unknown paths like /app/notes fall back to the app.
-      - run: cp apps/web/dist/index.html apps/web/dist/404.html
+          SITE: ${{ vars.VITE_SITE_URL || 'https://nevernote-git-site-v3-cookerprojects.vercel.app' }}
       - uses: actions/upload-pages-artifact@v3
         with:
-          path: apps/web/dist
+          path: out
   deploy:
     needs: build
     runs-on: ubuntu-latest
