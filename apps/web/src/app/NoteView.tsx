@@ -13,6 +13,7 @@ import { cardsOf, exportDoc, exportFlashcards, exportMarkdown, exportPdf, noteMa
 import { unlockStep } from "@nevernote/core";
 import { LockBadge } from "../components/ui.tsx";
 import { CutBanner, EnginePanel } from "./RecordingUI.tsx";
+import { NotesTeaser } from "./GuestUnlock.tsx";
 import { useApp } from "./state.tsx";
 
 type Tab = "thoughts" | "transcript" | "summary";
@@ -511,6 +512,17 @@ function SummaryTab({ note }: { note: Note }) {
   const s = note.summary;
   const due = note.extractions.filter((e) => e.kind !== "important" && e.status !== "dismissed");
   const important = note.extractions.filter((e) => e.kind === "important");
+
+  if (!s && tier === "guest" && cloudEnabled) {
+    const lines = note.segments.map((g) => g.text.trim()).filter((t) => t.split(" ").length > 5).slice(0, 5).map((t) => (t.length > 90 ? `${t.slice(0, 90)}…` : t));
+    return (
+      <div className="space-y-8">
+        <NotesTeaser lines={lines} />
+        <DueList items={due} note={note} />
+        {important.length > 0 && <Important items={important} />}
+      </div>
+    );
+  }
 
   if (!s) {
     const info = stageInfo(note.stage, tier === "guest");

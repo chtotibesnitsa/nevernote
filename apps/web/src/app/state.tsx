@@ -11,6 +11,7 @@ import {
   SpeakerTracker,
   classTerms,
   fixTerms,
+  tidyPhrase,
   voiceprint,
   Syncer,
   tombstone,
@@ -529,7 +530,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, []);
   const tidy = useCallback(
     (noteId: string, s: Segment): Segment => {
-      const fixed = fixTerms(s.text.trim(), termsOf(noteId));
+      const fixed = tidyPhrase(fixTerms(s.text.trim(), termsOf(noteId))) || s.text.trim();
       return fixed ? { ...s, text: fixed[0].toUpperCase() + fixed.slice(1) } : s;
     },
     [termsOf],
@@ -759,7 +760,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       try {
         live.current = await startLiveSpeech({
           track: capture.current.track,
-          phrases: terms.slice(0, 120),
+          phrases: terms.slice(0, 40),
           onLocal: () => setLiveEngine("local"),
           onInterim: (text) => {
             // The engine is about a second behind the audio.
@@ -767,7 +768,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
             setPreview(text ? { note: noteId, text } : null);
           },
           onFinal: (text, key, drop) => {
-            const fixed = fixTerms(text.trim(), terms);
+            const fixed = tidyPhrase(fixTerms(text.trim(), terms));
+            if (!fixed) return; // "um", or a loop of nothing
             const clean = fixed[0].toUpperCase() + fixed.slice(1);
             const gone = drop.map((k) => ids.get(k)?.id).filter(Boolean) as string[];
             if (gone.length) dropSegsRef.current(noteId, gone);

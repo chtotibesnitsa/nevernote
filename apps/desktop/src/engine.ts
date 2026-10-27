@@ -32,7 +32,7 @@ export class Engine {
     const cfg: any = asrConfig(opts.modelsDir, opts.asr, threads);
     if (opts.hotwordsFile && opts.asr !== "moonshine-base") {
       try {
-        this.recognizer = new sherpa.OfflineRecognizer({ ...cfg, decodingMethod: "modified_beam_search", hotwordsFile: opts.hotwordsFile, hotwordsScore: 2.0 });
+        this.recognizer = new sherpa.OfflineRecognizer({ ...cfg, decodingMethod: "modified_beam_search", hotwordsFile: opts.hotwordsFile, hotwordsScore: 1.5 });
       } catch {
         // This model can't take hotwords: plain decoding, and the app corrects course terms in the text instead.
       }

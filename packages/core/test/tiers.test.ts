@@ -41,9 +41,27 @@ describe("class vocabulary", () => {
     expect(t).toContain("mitosis");
     expect(t.length).toBe(50);
   });
+  it("adds no subject terms when the class name gives no subject", () => {
+    expect(classTerms("Class 10/27", 100, ["Mr. Wang"])).toEqual(["Mr. Wang"]);
+  });
   it("spells terms properly without touching ordinary words", () => {
     const terms = classTerms("AP Chem", 200);
     expect(fixTerms("le chateliers principle says the dna and ph change", [...terms, "DNA"])).toBe("Le Chatelier's principle says the DNA and pH change");
     expect(fixTerms("we went to the base of the hill", terms)).toBe("we went to the base of the hill");
+  });
+});
+
+import { cleanAsrText, tidyPhrase } from "../src/transcript.ts";
+describe("phrase tidying", () => {
+  it("keeps a looped word or phrase once", () => {
+    expect(tidyPhrase("they testified before Congress Congress Congress about it")).toBe("they testified before Congress about it");
+    expect(tidyPhrase("go team go team go team go team")).toBe("go team");
+    expect(cleanAsrText("we need to talk we need to talk we need to talk now")).toBe("we need to talk now");
+  });
+  it("keeps natural repeats and drops filler-only phrases", () => {
+    expect(tidyPhrase("this past weekend the weekend before")).toBe("this past weekend the weekend before");
+    expect(tidyPhrase("very very good")).toBe("very very good");
+    expect(tidyPhrase("Um")).toBe("");
+    expect(tidyPhrase("uh um")).toBe("");
   });
 });

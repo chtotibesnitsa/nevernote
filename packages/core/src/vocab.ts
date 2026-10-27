@@ -139,14 +139,16 @@ export function subjectsOf(name = ""): Subject[] {
 }
 
 /**
- * Terms to bias a speech engine toward for one class, most useful first.
- * With a known subject: that subject's terms, then a few from the rest. With
- * none: an even mix across every subject. `extra` (names the student added,
- * words from earlier notes in this class) always comes first.
+ * Terms to bias a speech engine toward for one class, most useful first: its
+ * subject's terms when the class name gives one away, and none otherwise.
+ * `extra` (names the student added, words from earlier notes in this class)
+ * always comes first.
  */
 export function classTerms(name = "", max = 100, extra: string[] = []): string[] {
   const subs = subjectsOf(name);
-  const lists = subs.length ? subs.map((s) => VOCAB[s]) : Object.values(VOCAB);
+  // No known subject: no subject terms at all. Biasing toward every subject's
+  // words made engines hear "chain rule" or "Hammurabi" in a government class.
+  const lists = subs.map((s) => VOCAB[s]);
   const out: string[] = [];
   const seen = new Set<string>();
   const add = (t: string) => {

@@ -1,6 +1,6 @@
 import { PRICING, PRO_PITCH } from "@nevernote/core";
 import { useState, type ReactNode } from "react";
-import { Check, X } from "lucide-react";
+import { BarChart3, CalendarDays, Check, RefreshCw, Sparkles, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { GoogleMark, upgradeGuest } from "../app/AuthGate.tsx";
 import { useApp } from "../app/state.tsx";
@@ -185,41 +185,75 @@ const SIGNUP_WHY: Record<string, string> = {
 
 /** For guests: what a free account adds, and one Google button. */
 export function SignupSheet() {
-  const { signupOpen, closeSignup } = useApp();
+  const { signupOpen, closeSignup, notes } = useApp();
+  const classes = notes.filter((n) => n.segments.length > 0).length;
   return (
     <Sheet open={!!signupOpen} onClose={closeSignup}>
-      <h2 className="title-serif text-[2rem] leading-[1.05]">
-        Keep everything. <span className="text-[var(--mute)]">Free forever.</span>
+      <TranscriptToNotes />
+      <h2 className="mt-6 text-[2rem] font-bold leading-[1.05] tracking-[-0.04em]">
+        Keep everything. <span className="text-[#6e6e73]">Free forever.</span>
       </h2>
-      <p className="mt-2 text-[14.5px] text-[var(--ink-2)]">{(signupOpen && SIGNUP_WHY[signupOpen]) || "You're using Nevernote as a guest. A free account unlocks the rest, and keeps what you've recorded."}</p>
-      <ul className="mt-5 grid gap-2 sm:grid-cols-2">
+      <p className="mt-2 text-[15px] text-[#6e6e73]">{(signupOpen && SIGNUP_WHY[signupOpen]) || "You're using Nevernote as a guest. A free account unlocks the rest, and keeps what you've recorded."}</p>
+      <ul className="mt-5 space-y-3.5">
         {[
-          ["AI notes and study guides", "5 instant AI notes a day"],
-          ["Sync on every device", "Phone, laptop and the web"],
-          ["Insights and streaks", "Hours, words, every due date"],
-          ["Calendar files", "Any due date into Google or Apple Calendar"],
-        ].map(([t, b]) => (
-          <li key={t} className="rounded-[16px] bg-[var(--bubble)] p-3.5">
-            <div className="flex items-center gap-2 text-[13.5px] font-semibold">
-              <span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-[var(--fg)] text-[var(--bg)]">
-                <Check size={10} strokeWidth={3.4} />
+          [Sparkles, "AI notes the second class ends", "Notes, study guide and key terms. 5 a day, free."],
+          [RefreshCw, "On every device", "Phone, laptop and the web, synced live."],
+          [BarChart3, "Insights and streaks", "Hours, words and every due date caught."],
+          [CalendarDays, "Due dates in your calendar", "Google or Apple Calendar in one tap."],
+        ].map(([Icon, t, b], i) => {
+          const I = Icon as typeof Sparkles;
+          return (
+            <motion.li key={t as string} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ ...spring, delay: 0.12 + i * 0.05 }} className="flex items-center gap-3.5">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[13px] bg-[linear-gradient(180deg,#3a3a3c,#1d1d1f)] text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_3px_0_#000,0_8px_16px_-8px_rgb(0_0_0/0.5)]">
+                <I size={18} strokeWidth={2.4} />
               </span>
-              {t}
-            </div>
-            <div className="mt-1 text-[12.5px] text-[var(--mute)]">{b}</div>
-          </li>
-        ))}
+              <span>
+                <span className="block text-[15px] font-bold leading-tight">{t as string}</span>
+                <span className="block text-[13.5px] text-[#6e6e73]">{b as string}</span>
+              </span>
+            </motion.li>
+          );
+        })}
       </ul>
       <button
         onClick={() => void upgradeGuest()}
-        className="press mt-6 flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(180deg,#3a3a3c,#1d1d1f)] py-3.5 text-[15.5px] font-bold text-white"
+        className="press mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(180deg,#3a3a3c,#1d1d1f)] py-4 text-[16px] font-bold text-white"
       >
-        <span className="grid h-6 w-6 place-items-center rounded-full bg-white">
+        <span className="grid h-7 w-7 place-items-center rounded-full bg-white">
           <GoogleMark />
         </span>
         Continue with Google
       </button>
-      <p className="mt-3 text-center text-[11.5px] text-[var(--mute)]">New here or already have an account, it's the same button. What you recorded as a guest, transcript and notes, moves into your account.</p>
+      <p className="mt-3 text-center text-[12.5px] text-[#6e6e73]">
+        {classes > 0 ? `Your ${classes} class${classes > 1 ? "es" : ""} from this browser move${classes > 1 ? "" : "s"} into your account. ` : ""}New or existing account, same button.
+      </p>
     </Sheet>
+  );
+}
+
+/** A tiny loop: transcript lines on the left turn into tidy notes on the right. */
+function TranscriptToNotes() {
+  return (
+    <div className="flex items-center gap-3 rounded-[22px] bg-[#f5f5f7] p-4 pr-12" aria-hidden>
+      <div className="flex-1 space-y-2">
+        {[92, 70, 84, 58].map((w, i) => (
+          <motion.div key={i} className="h-2.5 rounded-full bg-[#c7c7cc]" style={{ width: `${w}%` }} animate={{ opacity: [0.35, 1, 0.35] }} transition={{ duration: 2.4, delay: i * 0.25, repeat: Infinity }} />
+        ))}
+      </div>
+      <motion.span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#1d1d1f] shadow-[0_2px_0_rgb(0_0_0/0.1)]" animate={{ rotate: [0, 12, 0], scale: [1, 1.08, 1] }} transition={{ duration: 2.4, repeat: Infinity }}>
+        <Sparkles size={16} strokeWidth={2.6} />
+      </motion.span>
+      <div className="flex-1 space-y-2 rounded-[14px] bg-white p-3 shadow-[0_0_0_1px_rgb(0_0_0/0.05),0_8px_18px_-12px_rgb(0_0_0/0.3)]">
+        {[80, 64, 72].map((w, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <motion.span className="grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full bg-[#1d1d1f] text-white" initial={{ scale: 0 }} animate={{ scale: [0, 1, 1, 0] }} transition={{ duration: 2.4, times: [0, 0.2, 0.85, 1], delay: 0.4 + i * 0.2, repeat: Infinity }}>
+              <Check size={8} strokeWidth={4} />
+            </motion.span>
+            <motion.span className="h-2.5 rounded-full bg-[#1d1d1f]" initial={{ width: 0 }} animate={{ width: [`0%`, `${w}%`, `${w}%`, `0%`] }} transition={{ duration: 2.4, times: [0, 0.25, 0.85, 1], delay: 0.4 + i * 0.2, repeat: Infinity }} />
+          </div>
+        ))}
+        <span className="inline-block rounded-[4px] bg-[#ffe58a] px-1.5 text-[10px] font-bold">due Fri</span>
+      </div>
+    </div>
   );
 }

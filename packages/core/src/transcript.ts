@@ -233,6 +233,36 @@ export function boostChunk(c: Float32Array, maxGain = 30): Float32Array {
   return out;
 }
 
+const FILLER = /^(?:u+h+|u+m+|h+m+|a+h+|e+r+|m+)$/i;
+
+/**
+ * Cleans a finished phrase from any engine: a word or short phrase stuck on
+ * repeat ("Congress Congress Congress") is kept once, and a phrase of nothing
+ * but "um" and "uh" is dropped. Two repeats stay, people do say "very very".
+ */
+export function tidyPhrase(text: string): string {
+  let w = text.trim().split(/\s+/).filter(Boolean);
+  const key = (x: string) => x.toLowerCase().replace(/[^\p{L}\p{N}']/gu, "");
+  for (let n = 1; n <= 6; n++) {
+    const out: string[] = [];
+    for (let i = 0; i < w.length; ) {
+      const gram = w.slice(i, i + n).map(key).join(" ");
+      let reps = 1;
+      while (i + (reps + 1) * n <= w.length && w.slice(i + reps * n, i + (reps + 1) * n).map(key).join(" ") === gram) reps++;
+      if (reps >= 3 && gram.trim()) {
+        out.push(...w.slice(i, i + n));
+        i += reps * n;
+      } else {
+        out.push(w[i]);
+        i++;
+      }
+    }
+    w = out;
+  }
+  if (w.every((x) => FILLER.test(key(x)))) return "";
+  return w.join(" ");
+}
+
 /** What Whisper-style models print for noise, music or silence instead of words. */
 export function cleanAsrText(text: string): string {
   const t = text
@@ -244,7 +274,7 @@ export function cleanAsrText(text: string): string {
   // A phrase looped over and over is the model stuck on noise.
   const words = t.split(" ");
   if (words.length >= 8 && new Set(words.map((w) => w.toLowerCase())).size / words.length < 0.3) return "";
-  return t;
+  return tidyPhrase(t);
 }
 
 /** Who talked, sorted by share of talk time. */

@@ -138,7 +138,8 @@ export async function startLiveSpeech(opts: {
     if (phrases && local) {
       try {
         const P = PhraseCtor()!;
-        r.phrases = opts.phrases!.map((p) => new P(p, 3));
+        // A light boost: a strong one makes the engine "hear" class terms in noise.
+        r.phrases = opts.phrases!.map((p) => new P(p, 1.5));
       } catch {
         phrases = false;
       }
@@ -157,6 +158,12 @@ export async function startLiveSpeech(opts: {
         if (!text) continue;
         if (res.isFinal) {
           if (sent.get(i) === text) continue;
+          // A short phrase the engine itself doubts is usually noise heard as words.
+          const conf = Number(res[0]?.confidence ?? 0);
+          if (conf > 0 && conf < 0.3 && words(text).length <= 4) {
+            sent.set(i, text);
+            continue;
+          }
           sent.set(i, text);
           final(text, `${id}-${i}`);
         } else interim += (interim ? " " : "") + text;
