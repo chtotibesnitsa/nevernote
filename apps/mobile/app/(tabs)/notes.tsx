@@ -1,5 +1,5 @@
 // Every class, newest first, revealed a page at a time as you scroll.
-import type { Note } from "@nevernote/core";
+import type { Note } from "@notelater/core";
 import { useMemo, useState } from "react";
 import { FlatList, TextInput, View } from "react-native";
 import Animated, { FadeInDown, LinearTransition } from "react-native-reanimated";

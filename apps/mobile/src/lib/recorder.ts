@@ -3,7 +3,7 @@
 //   disk:  every sample also goes to a WAV in Documents, so nothing is lost if the app dies
 //   stop:  WAV -> GTCRN denoise -> pyannote + TitaNet speaker turns -> words relabelled
 // iOS keeps the mic running with the screen locked (UIBackgroundModes: audio).
-import { Chunker, labelSpeakers, levelChunk, regroup, tokensToWords, type LiveSegment } from "@nevernote/core";
+import { Chunker, labelSpeakers, levelChunk, regroup, tokensToWords, type LiveSegment } from "@notelater/core";
 import { FileMode, type File } from "expo-file-system";
 import { createPcmLiveStream, type PcmLiveStreamHandle } from "react-native-sherpa-onnx/audio";
 import { createSTT, type SttEngine } from "react-native-sherpa-onnx/stt";

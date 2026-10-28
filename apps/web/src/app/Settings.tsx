@@ -4,7 +4,7 @@ import { motion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Card, spring } from "../components/ui.tsx";
 import { desktop, isDesktop, type AsrModelId } from "../lib/bridge.ts";
-import { PRICING, STYLE_LIMITS, SUMMARY_STYLES, type SummaryPrefs, type SummaryStyleId } from "@nevernote/core";
+import { PRICING, STYLE_LIMITS, SUMMARY_STYLES, type SummaryPrefs, type SummaryStyleId } from "@notelater/core";
 import { billingLink, cloudEnabled, fetchSubscription, fetchSummaryPrefs, saveSummaryPrefs, supabase, type Subscription } from "../lib/cloud.ts";
 import { CalendarSync } from "./CalendarSync.tsx";
 import { useApp, type Settings as S } from "./state.tsx";
@@ -23,7 +23,7 @@ export function Settings() {
 
       <Section title="Account">
         {!cloudEnabled ? (
-          <p className="text-sm text-[var(--ink-2)]">This build runs fully local. Sync and AI notes turn on when the app is connected to a Nevernote server.</p>
+          <p className="text-sm text-[var(--ink-2)]">This build runs fully local. Sync and AI notes turn on when the app is connected to a NoteLater server.</p>
         ) : tier === "guest" ? (
           <div className="flex flex-wrap items-center justify-between gap-4">
             <div>
@@ -54,13 +54,13 @@ export function Settings() {
       {cloudEnabled && session && tier !== "guest" && <NoteStyle />}
 
       {cloudEnabled && (
-        <Section title="Calendar sync" hint="Pro: every due date and test Nevernote hears goes straight into Google or Apple Calendar, with a reminder the night before.">
+        <Section title="Calendar sync" hint="Pro: every due date and test NoteLater hears goes straight into Google or Apple Calendar, with a reminder the night before.">
           <CalendarSync />
         </Section>
       )}
 
       <Section title="Your name">
-        <input value={settings.name} onChange={(e) => setSettings({ name: e.target.value })} placeholder="What should Nevernote call you?" className="w-full rounded-[12px] bg-[var(--bubble)] px-3.5 py-2.5 outline-none shadow-[inset_0_0_0_1px_var(--line)]" />
+        <input value={settings.name} onChange={(e) => setSettings({ name: e.target.value })} placeholder="What should NoteLater call you?" className="w-full rounded-[12px] bg-[var(--bubble)] px-3.5 py-2.5 outline-none shadow-[inset_0_0_0_1px_var(--line)]" />
       </Section>
 
       {isDesktop && (
@@ -88,14 +88,14 @@ export function Settings() {
         <Toggle k="roomMode" label="Room mode" hint="Hears the whole room, not just you. Turn off for a one-on-one call with headphones." />
       </Section>
 
-      <Section title="Notifications" hint="Shown the moment Nevernote hears it, during class.">
+      <Section title="Notifications" hint="Shown the moment NoteLater hears it, during class.">
         <Toggle k="notifyDeadlines" label="Due dates" hint="“Your lab report is due Friday at 11:59”" />
         <Toggle k="notifyExams" label="Tests and quizzes" hint="“Unit 3 test next Tuesday”" />
         <Toggle k="notifyImportant" label="“This will be on the test” moments" />
         <Toggle k="proTips" label="Occasional Pro tips" hint="At most one every few days, never while you're recording." />
       </Section>
 
-      <p className="mt-10 text-center text-sm text-[var(--mute)]">Nevernote is free. Pro is optional. Made by a student, for students.</p>
+      <p className="mt-10 text-center text-sm text-[var(--mute)]">NoteLater is free. Pro is optional. Made by a student, for students.</p>
     </div>
   );
 }
@@ -136,7 +136,7 @@ function PlanCard() {
         <div className="space-y-4">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
-              <div className="text-[1.5rem] font-bold leading-tight tracking-[-0.03em]">Nevernote Pro{sub?.product ? ` · ${yearly ? "Yearly" : "Monthly"}` : ""}</div>
+              <div className="text-[1.5rem] font-bold leading-tight tracking-[-0.03em]">NoteLater Pro{sub?.product ? ` · ${yearly ? "Yearly" : "Monthly"}` : ""}</div>
               {price && <div className="mt-0.5 text-sm text-[var(--mute)]">{price}</div>}
             </div>
             <Button variant="primary" disabled={busy === "manage"} onClick={() => void manage()}>

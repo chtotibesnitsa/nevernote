@@ -1,5 +1,5 @@
 import { QuotaPill } from "../components/Quota.tsx";
-import { insights, unlockStep, type Feature } from "@nevernote/core";
+import { insights, unlockStep, type Feature } from "@notelater/core";
 import { motion } from "motion/react";
 import { useMemo } from "react";
 import { Link } from "react-router-dom";
@@ -105,7 +105,7 @@ export function Home() {
 const TOOLS: { to: string; title: string; body: string; cta: string; feature: Feature }[] = [
   { to: "/app/ask", title: "Ask your notes", body: "“What's on Monday's quiz?” Answered from every class, with the moment it was said.", cta: "Ask a question", feature: "askNotes" },
   { to: "/app/study", title: "Study", body: "Flashcards from every class, and exam packs that turn a unit into one review guide.", cta: "Start studying", feature: "studyGuide" },
-  { to: "/app/insights", title: "Insights", body: "Your streak, hours of class and every due date Nevernote has caught.", cta: "See insights", feature: "insights" },
+  { to: "/app/insights", title: "Insights", body: "Your streak, hours of class and every due date NoteLater has caught.", cta: "See insights", feature: "insights" },
 ];
 
 function Stat({ big, label }: { big: string; label: string }) {

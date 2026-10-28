@@ -7,6 +7,9 @@ import type { Note } from "../../../packages/core/src/types.ts";
 import { ASR_MODELS, ensureModels, installed, useFetch, type AsrModelId } from "./models.ts";
 import { FileStore } from "./store.ts";
 
+// Installs from before the NoteLater rename keep their notes and models in the old folder.
+const legacyData = join(app.getPath("appData"), "Nevernote");
+if (!existsSync(app.getPath("userData")) && existsSync(legacyData)) app.setPath("userData", legacyData);
 const data = app.getPath("userData");
 const modelsDir = join(data, "models");
 const store = new FileStore(data);
@@ -22,7 +25,7 @@ class EngineProcess extends EventEmitter {
   private withWords = false;
   constructor() {
     super();
-    this.child = utilityProcess.fork(join(__dirname, "engine-worker.cjs"), [], { serviceName: "Nevernote engine", stdio: "inherit" });
+    this.child = utilityProcess.fork(join(__dirname, "engine-worker.cjs"), [], { serviceName: "NoteLater engine", stdio: "inherit" });
     this.child.on("message", (m) => {
       if (m?.type === "started") this.starting = false;
       this.emit("message", m);
@@ -49,13 +52,13 @@ let skipWords = false;
 // The app is light only, so native glass and menus match it.
 nativeTheme.themeSource = "light";
 
-// Sign-in finishes in the browser, which opens nevernote://auth?code=… to hand it back.
+// Sign-in finishes in the browser, which opens notelater://auth?code=… to hand it back.
 // macOS delivers that as open-url (sometimes before the window exists); Windows
 // starts a second copy of the app with the link in its arguments.
 let pendingAuth: string | undefined;
 let authListening = false;
 function deliverAuth(url: string) {
-  if (!url.startsWith("nevernote://")) return;
+  if (!url.startsWith("notelater://")) return;
   if (win && authListening) win.webContents.send("auth", url);
   else pendingAuth = url;
   if (win) {
@@ -64,11 +67,11 @@ function deliverAuth(url: string) {
     win.focus();
   }
 }
-if (process.defaultApp && process.argv[1]) app.setAsDefaultProtocolClient("nevernote", process.execPath, [process.argv[1]]);
-else app.setAsDefaultProtocolClient("nevernote");
+if (process.defaultApp && process.argv[1]) app.setAsDefaultProtocolClient("notelater", process.execPath, [process.argv[1]]);
+else app.setAsDefaultProtocolClient("notelater");
 if (!app.requestSingleInstanceLock()) app.quit();
 app.on("second-instance", (_e, argv) => {
-  const link = argv.find((a) => a.startsWith("nevernote://"));
+  const link = argv.find((a) => a.startsWith("notelater://"));
   if (link) deliverAuth(link);
   else if (win) {
     if (win.isMinimized()) win.restore();
@@ -103,7 +106,7 @@ function createWindow() {
     height: 820,
     minWidth: 380,
     minHeight: 560,
-    title: "Nevernote",
+    title: "NoteLater",
     titleBarStyle: mac ? "hiddenInset" : "hidden",
     titleBarOverlay: mac ? undefined : { color: "#00000000", symbolColor: "#1d1d1f", height: 40 },
     trafficLightPosition: mac ? { x: 18, y: 18 } : undefined,
@@ -116,7 +119,7 @@ function createWindow() {
     webPreferences: { preload: join(__dirname, "preload.cjs"), contextIsolation: true, sandbox: false },
   });
   win.once("ready-to-show", () => win?.show());
-  const dev = process.env.NEVERNOTE_DEV_URL;
+  const dev = process.env.NOTELATER_DEV_URL;
   if (dev) win.loadURL(`${dev}/app`);
   else win.loadFile(join(__dirname, "..", "renderer", "index.html"), { hash: "/app" });
   win.webContents.setWindowOpenHandler(({ url }) => {
@@ -126,17 +129,17 @@ function createWindow() {
 }
 
 /**
- * `NEVERNOTE_SELFTEST=1 Nevernote` (used by the release build on every platform) opens the real
+ * `NOTELATER_SELFTEST=1 NoteLater` (used by the release build on every platform) opens the real
  * packaged app, checks the screen loads with its bridge, then starts the speech engine in its
  * worker. With `=full` it also downloads the offline models and transcribes a sample recording.
  * Exits 0 on success, 1 on any failure.
  */
 async function selfTest() {
-  const full = process.env.NEVERNOTE_SELFTEST === "full";
+  const full = process.env.NOTELATER_SELFTEST === "full";
   const say = (m: string) => {
     console.log(`SELFTEST ${m}`);
     // Windows apps have no console, so CI reads the result from a file.
-    if (process.env.NEVERNOTE_SELFTEST_OUT) appendFileSync(process.env.NEVERNOTE_SELFTEST_OUT, `${m}\n`);
+    if (process.env.NOTELATER_SELFTEST_OUT) appendFileSync(process.env.NOTELATER_SELFTEST_OUT, `${m}\n`);
   };
   const fail = (m: string) => {
     say(`FAIL ${m}`);
@@ -152,7 +155,7 @@ async function selfTest() {
     createWindow();
     await new Promise<void>((ok) => win!.webContents.once("did-finish-load", () => ok()));
     await new Promise((r) => setTimeout(r, 3000));
-    const ui = await win!.webContents.executeJavaScript(`({ bridge: !!window.nevernote && !!window.nevernote.recorder, rendered: (document.getElementById("root")?.children.length ?? 0) > 0, title: document.body.innerText.slice(0, 60) })`);
+    const ui = await win!.webContents.executeJavaScript(`({ bridge: !!window.notelater && !!window.notelater.recorder, rendered: (document.getElementById("root")?.children.length ?? 0) > 0, title: document.body.innerText.slice(0, 60) })`);
     say(`window ${JSON.stringify(ui)}`);
     if (!ui.bridge || !ui.rendered) return fail("the app screen did not load");
 
@@ -237,11 +240,11 @@ async function selfTest() {
 
 app.whenReady().then(async () => {
   useFetch(net.fetch as typeof fetch);
-  if (process.env.NEVERNOTE_SELFTEST) return void selfTest();
+  if (process.env.NOTELATER_SELFTEST) return void selfTest();
   session.defaultSession.setPermissionRequestHandler((_wc, permission, cb) => cb(permission === "media" || permission === "notifications"));
   if (process.platform === "darwin") await systemPreferences.askForMediaAccess("microphone").catch(() => false);
   createWindow();
-  const link = process.argv.find((a) => a.startsWith("nevernote://"));
+  const link = process.argv.find((a) => a.startsWith("notelater://"));
   if (link) deliverAuth(link);
   app.on("activate", () => BrowserWindow.getAllWindows().length === 0 && createWindow());
 });

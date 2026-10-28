@@ -7,7 +7,7 @@ const on = (channel: string) => (cb: (payload: any) => void) => {
   return () => ipcRenderer.removeListener(channel, h);
 };
 
-contextBridge.exposeInMainWorld("nevernote", {
+contextBridge.exposeInMainWorld("notelater", {
   platform: process.platform,
   models: {
     status: () => ipcRenderer.invoke("models:status"),

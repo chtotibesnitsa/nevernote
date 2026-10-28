@@ -16,9 +16,9 @@ export function DesktopHandoff({ code }: { code: string }) {
           ✓
         </motion.div>
         <h1 className="title-serif mt-6 text-[2rem] leading-tight">You're signed in.</h1>
-        <p className="mt-2 text-[15px] text-[#6e6e73]">Head back to the Nevernote app. If your browser asks, allow it to open Nevernote.</p>
+        <p className="mt-2 text-[15px] text-[#6e6e73]">Head back to the NoteLater app. If your browser asks, allow it to open NoteLater.</p>
         <a href={appLink(code)} className="press mt-7 flex w-full items-center justify-center rounded-full bg-[linear-gradient(180deg,#3a3a3c,#1d1d1f)] py-4 text-[16px] font-bold text-white">
-          Open Nevernote
+          Open NoteLater
         </a>
         <p className="mt-4 text-xs text-[#6e6e73]">You can close this tab afterwards.</p>
       </motion.div>

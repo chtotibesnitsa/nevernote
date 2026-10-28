@@ -9,7 +9,7 @@
 // The app starts this worker as soon as it opens, so the download is done
 // before the first class. One load at a time and one chunk at a time: parallel
 // downloads of the same 40 MB file were what made first runs fail.
-import { boostChunk, cleanAsrText, voiceprint } from "@nevernote/core";
+import { boostChunk, cleanAsrText, voiceprint } from "@notelater/core";
 import { pipeline, type AutomaticSpeechRecognitionPipeline } from "@huggingface/transformers";
 
 // The same model is published twice; the second copy is a fallback if the first is missing a file.

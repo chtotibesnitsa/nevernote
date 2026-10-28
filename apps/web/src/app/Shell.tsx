@@ -38,7 +38,7 @@ function PlanCard() {
   return (
     <button onClick={() => openPro("sidebar")} className="group relative overflow-hidden rounded-[22px] bg-[linear-gradient(180deg,#2a2a2d,#161618)] p-4 text-left text-white shadow-[0_0_0_1.5px_#4a4a4f,0_14px_28px_-14px_rgb(0_0_0/0.6)] transition hover:-translate-y-0.5">
       <div className="title-serif text-[17px]">
-        Nevernote <span className="bg-[linear-gradient(180deg,#fff,#9a9aa0)] bg-clip-text text-transparent">Pro</span>
+        NoteLater <span className="bg-[linear-gradient(180deg,#fff,#9a9aa0)] bg-clip-text text-transparent">Pro</span>
       </div>
       <p className="mt-1 text-[12px] leading-snug text-white/55">Ask your notes, exam packs, calendar sync and exports.</p>
       <span className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-[12px] font-bold text-[#1d1d1f] shadow-[0_3px_0_#9a9aa0]">See Pro · from $2.50/mo</span>

@@ -36,7 +36,7 @@ jobs:
           if [ "$GITHUB_EVENT_NAME" = workflow_dispatch ]; then
             git tag -f "$v" && git push -f origin "refs/tags/$v"
           fi
-          gh release create "$v" --draft --verify-tag --title "Nevernote ${v#v}" --notes "Free, on-device class transcriber for Mac and Windows. Download the .dmg for Mac (arm64 = Apple Silicon) or the Setup .exe for Windows."
+          gh release create "$v" --draft --verify-tag --title "NoteLater ${v#v}" --notes "Free, on-device class transcriber for Mac and Windows. Download the .dmg for Mac (arm64 = Apple Silicon) or the Setup .exe for Windows."
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
   build:
@@ -60,7 +60,7 @@ jobs:
           cache: npm
       - run: npm ci
       # Public values, set under Settings > Secrets and variables > Actions > Variables.
-      - run: npm run build -w @nevernote/desktop
+      - run: npm run build -w @notelater/desktop
         env:
           VITE_RC_PURCHASE_LINK: ${{ vars.VITE_RC_PURCHASE_LINK }}
           VITE_SITE_URL: ${{ vars.VITE_SITE_URL }}
@@ -83,13 +83,13 @@ jobs:
           APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           CSC_IDENTITY_AUTO_DISCOVERY: ${{ secrets.MAC_CERT_P12_BASE64 != '' }}
-      # Catch a broken signature before students do ("Nevernote is damaged").
+      # Catch a broken signature before students do ("NoteLater is damaged").
       - name: Check the Mac app's signature
         if: runner.os == 'macOS'
         working-directory: apps/desktop
         run: |
-          app=$(find release -maxdepth 2 -name "Nevernote.app" | head -1)
-          file "$app/Contents/MacOS/Nevernote"
+          app=$(find release -maxdepth 2 -name "NoteLater.app" | head -1)
+          file "$app/Contents/MacOS/NoteLater"
           codesign --verify --deep --strict --verbose=2 "$app"
           codesign -dv "$app" 2>&1 | grep -E "Signature|Identifier"
       # Open the real packaged app, check its screen loads, then download the speech
@@ -99,11 +99,11 @@ jobs:
         timeout-minutes: 22
         working-directory: apps/desktop
         run: |
-          app=$(find release -maxdepth 2 -name "Nevernote.app" | head -1)
-          file "$app/Contents/MacOS/Nevernote"
+          app=$(find release -maxdepth 2 -name "NoteLater.app" | head -1)
+          file "$app/Contents/MacOS/NoteLater"
           set +e
           # A hung app still has to end the step, with whatever it logged so far.
-          NEVERNOTE_SELFTEST=full NEVERNOTE_SELFTEST_OUT="$PWD/selftest.log" "$app/Contents/MacOS/Nevernote" > app.log 2>&1 &
+          NOTELATER_SELFTEST=full NOTELATER_SELFTEST_OUT="$PWD/selftest.log" "$app/Contents/MacOS/NoteLater" > app.log 2>&1 &
           pid=$!
           ( sleep 1080; kill -9 $pid 2>/dev/null && echo "FAIL killed after 18 minutes" >> selftest.log ) &
           wait $pid
@@ -117,10 +117,10 @@ jobs:
         shell: pwsh
         working-directory: apps/desktop
         env:
-          NEVERNOTE_SELFTEST: full
-          NEVERNOTE_SELFTEST_OUT: ${{ github.workspace }}\apps\desktop\selftest.log
+          NOTELATER_SELFTEST: full
+          NOTELATER_SELFTEST_OUT: ${{ github.workspace }}\apps\desktop\selftest.log
         run: |
-          $p = Start-Process -FilePath "release\win-unpacked\Nevernote.exe" -Wait -PassThru
+          $p = Start-Process -FilePath "release\win-unpacked\NoteLater.exe" -Wait -PassThru
           if (Test-Path selftest.log) { Get-Content selftest.log }
           exit $p.ExitCode
 

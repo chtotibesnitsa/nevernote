@@ -35,7 +35,7 @@ Deno.serve(async (req) => {
       for (const e of (n.extractions ?? []) as Extraction[])
         if (e.when && e.kind !== "important" && e.status !== "dismissed" && e.when >= since) items.push({ ...e, course: n.folder ?? n.title });
   }
-  return new Response(icsFor(items, undefined, "Nevernote due dates"), {
+  return new Response(icsFor(items, undefined, "NoteLater due dates"), {
     headers: { ...cors, "Content-Type": "text/calendar; charset=utf-8", "Cache-Control": "max-age=900" },
   });
 });

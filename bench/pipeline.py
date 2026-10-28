@@ -1,4 +1,4 @@
-"""Reference implementation of the Nevernote transcription pipeline.
+"""Reference implementation of the NoteLater transcription pipeline.
 
 The desktop app (apps/desktop/src/main/engine.ts) runs the same steps with
 sherpa-onnx-node, so numbers measured here describe what users get:

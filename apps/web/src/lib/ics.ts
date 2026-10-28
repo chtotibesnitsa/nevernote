@@ -1,4 +1,4 @@
-export { icsFor } from "@nevernote/core";
+export { icsFor } from "@notelater/core";
 
 export function download(name: string, text: string, type = "text/calendar"): void {
   const a = document.createElement("a");

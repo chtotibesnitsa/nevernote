@@ -1,6 +1,6 @@
 // The small set of pieces every screen is built from: glass, type, dots,
 // the waveform and the springy pressable.
-import { pipelineDots, stageInfo, type Dot, type Stage } from "@nevernote/core";
+import { pipelineDots, stageInfo, type Dot, type Stage } from "@notelater/core";
 import { BlurView } from "expo-blur";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import * as WebBrowser from "expo-web-browser";
@@ -184,11 +184,8 @@ export function Logo({ size = 26 }: { size?: number }) {
   const t = useTheme();
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-      <View style={{ width: size, height: size, borderRadius: size * 0.24, backgroundColor: t.fg, alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ fontFamily: serif, color: t.bg, fontSize: size * 0.62, marginTop: -size * 0.04 }}>N</Text>
-        <View style={{ position: "absolute", right: size * 0.12, bottom: size * 0.12, width: size * 0.14, height: size * 0.14, borderRadius: size, backgroundColor: t.clay }} />
-      </View>
-      <Text style={{ fontFamily: serif, fontSize: size * 0.82, color: t.fg }}>Nevernote</Text>
+      <Image source={require("../../assets/icon.png")} style={{ width: size, height: size, borderRadius: size * 0.24 }} />
+      <Text style={{ fontFamily: serif, fontSize: size * 0.82, color: t.fg }}>NoteLater</Text>
     </View>
   );
 }

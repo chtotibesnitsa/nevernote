@@ -1,8 +1,8 @@
-# Nevernote
+# NoteLater
 
 **Every word in the room, on your phone. Free and open source.**
 
-Put your phone (or laptop) on the desk. Nevernote:
+Put your phone (or laptop) on the desk. NoteLater:
 
 - writes down everything said in class, offline;
 - tells the voices apart;
@@ -54,7 +54,7 @@ Word error rate on the bench (lower is better). See [bench/README.md](bench/READ
 <!-- results:start -->
 | Engine | Real speech | Quiet room | Echoey room | Classroom noise | Loud room | Brutal | Speed |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Nevernote · Parakeet | 2.0% | 4.2% | 3.7% | 12.8% | 24.1% | 89.9% | 3.0× real time |
+| NoteLater · Parakeet | 2.0% | 4.2% | 3.7% | 12.8% | 24.1% | 89.9% | 3.0× real time |
 | Moonshine base | 6.1% | 4.9% | 6.6% | 27.1% | 58.2% | 98.0% | 4.7× real time |
 | Whisper base | 7.1% | 10.6% | 5.4% | 19.7% | 52.2% | 98.0% | 3.5× real time |
 
@@ -127,4 +127,4 @@ The code is MIT licensed (see [LICENSE](LICENSE)). The models are downloaded on 
 | NVIDIA NeMo TitaNet small | speaker embeddings | CC-BY-4.0 |
 | Kokoro v0.19 | voices for the synthetic bench only | Apache-2.0 |
 
-Nevernote is an independent project. It is not affiliated with Wispr Flow or any other note taker, and uses none of their code, models or APIs.
+NoteLater is an independent project. It is not affiliated with Wispr Flow or any other note taker, and uses none of their code, models or APIs.

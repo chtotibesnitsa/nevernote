@@ -1,7 +1,7 @@
 // Ask your notes (Pro): a full-screen chat over every class, with saved chats,
 // follow-ups, and tools (quiz me, explain simply, study plan, catch me up).
 // Answers quote what was said, and each quote jumps to that moment.
-import type { AskTool, Note } from "@nevernote/core";
+import type { AskTool, Note } from "@notelater/core";
 import { ArrowUp, BookOpenCheck, CalendarClock, Check, Copy, History, Lightbulb, MessageSquarePlus, Rewind, Sparkles, Trash2 } from "lucide-react";
 import { marked } from "marked";
 import { AnimatePresence, motion } from "motion/react";

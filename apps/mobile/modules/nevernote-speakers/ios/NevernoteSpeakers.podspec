@@ -13,10 +13,10 @@ xcframework = File.join(sherpa_root, "ios", "Frameworks", "sherpa_onnx.xcframewo
 Pod::Spec.new do |s|
   s.name           = "NevernoteSpeakers"
   s.version        = "1.0.0"
-  s.summary        = "On-device speaker labels for Nevernote"
+  s.summary        = "On-device speaker labels for NoteLater"
   s.homepage       = "https://github.com/chtotibesnitsa/nevernote"
   s.license        = "MIT"
-  s.author         = "Nevernote"
+  s.author         = "NoteLater"
   s.platforms      = { :ios => "15.1" }
   s.source         = { git: "" }
   s.static_framework = true

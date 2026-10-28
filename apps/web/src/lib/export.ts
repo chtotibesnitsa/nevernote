@@ -1,6 +1,6 @@
-// Getting notes out of Nevernote: Markdown (Notion, Obsidian), a Word file that
+// Getting notes out of NoteLater: Markdown (Notion, Obsidian), a Word file that
 // Google Docs opens as a doc, a print-ready PDF, and flashcards for Anki and Quizlet.
-import type { Note, Summary } from "@nevernote/core";
+import type { Note, Summary } from "@notelater/core";
 import { marked } from "marked";
 import { download } from "./ics.ts";
 
@@ -102,7 +102,7 @@ export function exportFlashcards(name: string, cards: { front: string; back: str
 
 /**
  * An exam pack: every lecture in a unit folded into one review guide. Built
- * from the notes Nevernote already wrote, so it's instant and works offline.
+ * from the notes NoteLater already wrote, so it's instant and works offline.
  */
 export function examPack(name: string, notes: Note[]) {
   const sorted = [...notes].sort((a, b) => a.createdAt.localeCompare(b.createdAt));
@@ -130,7 +130,7 @@ export function examPack(name: string, notes: Note[]) {
   for (const n of sorted) {
     out.push(`### ${n.title} · ${new Date(n.createdAt).toLocaleDateString(undefined, { month: "short", day: "numeric" })}`, "");
     const b = n.summary ? bullets(n.summary.notes) : [];
-    out.push(...(b.length ? b : ["- Notes not written yet; the transcript is in Nevernote."]), "");
+    out.push(...(b.length ? b : ["- Notes not written yet; the transcript is in NoteLater."]), "");
   }
   if (terms.size) out.push("## Key terms", "", ...[...terms.values()].map((t) => `- ${t}`), "");
   if (questions.length) {

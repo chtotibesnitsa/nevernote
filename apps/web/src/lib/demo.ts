@@ -1,5 +1,5 @@
 // Sample notes for screenshots and first-run exploration (?demo=1).
-import { extract, type Note, type Segment } from "@nevernote/core";
+import { extract, type Note, type Segment } from "@notelater/core";
 import { local } from "./local.ts";
 
 const APES: [string, string][] = [

@@ -1,6 +1,6 @@
-// The daily check-in on Home: a quick yes or no on anything Nevernote isn't sure
+// The daily check-in on Home: a quick yes or no on anything NoteLater isn't sure
 // was a real deadline, and the next two weeks at a glance.
-import { answer, comingUp, reviewQueue, type Extraction, type Note } from "@nevernote/core";
+import { answer, comingUp, reviewQueue, type Extraction, type Note } from "@notelater/core";
 import { AnimatePresence, motion, useMotionValue, useTransform, type PanInfo } from "motion/react";
 import { CalendarPlus, Check, X } from "lucide-react";
 import { useMemo, useState } from "react";
@@ -51,7 +51,7 @@ export function Today() {
             </motion.span>
           </AnimatePresence>
         </div>
-        <p className="mt-0.5 text-[13px] text-[var(--mute)]">Nevernote heard these but isn't sure. Swipe or tap.</p>
+        <p className="mt-0.5 text-[13px] text-[var(--mute)]">NoteLater heard these but isn't sure. Swipe or tap.</p>
         <div className="relative mt-5 h-[218px]">
           {/* The next two cards peek out underneath. */}
           {queue.slice(1, 3).map((p, i) => (
@@ -146,7 +146,7 @@ function Week({ items }: { items: { e: Extraction; n: Note; unsure?: boolean }[]
       <div className="flex items-baseline justify-between">
         <h2 className="text-[19px] font-bold tracking-tight">Next two weeks</h2>
         {dated.length > 0 && (
-          <button onClick={() => need("calendarFile", "calendarFile") && download("Nevernote due dates.ics", icsFor(dated.map((p) => ({ ...p.e, title: `${p.e.title} · ${p.n.folder ?? p.n.title}` }))))} className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-semibold text-[var(--ink-2)] transition hover:bg-[var(--bubble)] hover:text-[var(--fg)]">
+          <button onClick={() => need("calendarFile", "calendarFile") && download("NoteLater due dates.ics", icsFor(dated.map((p) => ({ ...p.e, title: `${p.e.title} · ${p.n.folder ?? p.n.title}` }))))} className="flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[13px] font-semibold text-[var(--ink-2)] transition hover:bg-[var(--bubble)] hover:text-[var(--fg)]">
             <CalendarPlus size={15} /> Add all
           </button>
         )}

@@ -1,5 +1,5 @@
 // Your year in class: words, hours, streaks and a heat grid of recorded days.
-import { insights } from "@nevernote/core";
+import { insights } from "@notelater/core";
 import { useMemo } from "react";
 import { ScrollView, View } from "react-native";
 import Animated, { FadeInDown } from "react-native-reanimated";

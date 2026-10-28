@@ -5,7 +5,7 @@
 // Nothing here touches the network.
 
 import { join } from "node:path";
-import { labelSpeakers, levelChunk, regroup, tokensToWords, type LiveSegment, type Word } from "@nevernote/core";
+import { labelSpeakers, levelChunk, regroup, tokensToWords, type LiveSegment, type Word } from "@notelater/core";
 import { asrConfig, type AsrModelId } from "./models.ts";
 
 export { regroup, tokensToWords, levelChunk, type LiveSegment, type Word };

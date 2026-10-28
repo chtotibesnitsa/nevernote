@@ -1,4 +1,4 @@
-import { FREE_INSTANT_SUMMARIES_PER_DAY, PRICING } from "@nevernote/core";
+import { FREE_INSTANT_SUMMARIES_PER_DAY, PRICING } from "@notelater/core";
 import { Apple, ArrowRight, Check, ChevronDown, Play } from "lucide-react";
 import { AnimatePresence, motion, useInView, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useTransform, type MotionValue } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
@@ -51,7 +51,7 @@ function Nav() {
         transition={spring}
         className={`flex w-full items-center gap-6 rounded-full py-1.5 pl-5 pr-1.5 ${condensed ? "lglass max-w-[820px]" : "max-w-[1180px] bg-transparent"}`}
       >
-        <Link to="/" aria-label="Nevernote home" className="shrink-0">
+        <Link to="/" aria-label="NoteLater home" className="shrink-0">
           <Logo size={20} />
         </Link>
         <div className="ml-auto hidden items-center gap-6 text-[14px] text-[#424245] md:flex">
@@ -108,7 +108,7 @@ function Section({ id, a, b, sub, children, className = "", tone, line }: { id?:
 
 const BEATS: { at: number; a: string; b: string; sub: string }[] = [
   { at: 0.12, a: "Most of class is filler.", b: "One line isn't.", sub: "Attendance, tangents, the slide read out loud. Somewhere in there is the thing you need." },
-  { at: 0.32, a: "Everyone's watching the board.", b: "One of them doesn't have to.", sub: "Nevernote hears every word the teacher says and writes it down on the laptop." },
+  { at: 0.32, a: "Everyone's watching the board.", b: "One of them doesn't have to.", sub: "NoteLater hears every word the teacher says and writes it down on the laptop." },
   { at: 0.52, a: "Every word. Every speaker.", b: "Every due date.", sub: "Transcribed on the device, offline, with who said what and when it's due." },
   { at: 0.72, a: "Spend class on", b: "your own work.", sub: "Catch up later in five minutes. Or look over. It's all there." },
 ];
@@ -299,7 +299,7 @@ function Hero() {
               </span>
             </h1>
             <motion.p initial={{ opacity: 0, y: 14 }} animate={ready ? { opacity: 1, y: 0 } : {}} transition={{ ...soft, delay: 0.45 }} className="mx-auto mt-5 max-w-[560px] text-[17px] leading-relaxed text-[#424245] md:text-[20px]">
-              Nevernote listens to class, writes every word down and flags what matters. Free forever, on every device.
+              NoteLater listens to class, writes every word down and flags what matters. Free forever, on every device.
             </motion.p>
             <motion.div initial={{ opacity: 0, y: 16 }} animate={ready ? { opacity: 1, y: 0 } : {}} transition={{ ...soft, delay: 0.58 }} className="pointer-events-auto">
               <HeroActions />
@@ -336,7 +336,7 @@ const CHAT: { me?: boolean; t?: string; audio?: string; card?: string[] }[] = [
 
 /**
  * Plays the conversation on a loop while it's on screen: the student types,
- * Nevernote "types" back, the class card fills in line by line, then it
+ * NoteLater "types" back, the class card fills in line by line, then it
  * starts over. Reduced motion shows the whole thread, still.
  */
 function useChatLoop(on: boolean, still: boolean) {
@@ -401,7 +401,7 @@ function Chat() {
             <div className="relative flex flex-col items-center gap-1 border-b border-black/[0.06] bg-[#f9f9f9]/90 pb-2.5 pt-1">
               <span className="absolute left-3 top-3 text-[26px] leading-none text-[#0a84ff]">‹</span>
               <motion.span animate={typing ? { scale: [1, 1.08, 1] } : { scale: 1 }} transition={{ duration: 0.9, repeat: typing ? Infinity : 0 }} className="grid h-11 w-11 place-items-center rounded-full bg-[linear-gradient(180deg,#a1a1a6,#6e6e73)] text-[17px] font-semibold text-white">N</motion.span>
-              <span className="text-[11.5px] font-medium">Nevernote <span className="text-[#8e8e93]">›</span></span>
+              <span className="text-[11.5px] font-medium">NoteLater <span className="text-[#8e8e93]">›</span></span>
             </div>
             <div className="flex min-h-0 flex-1 flex-col justify-start gap-2 overflow-hidden px-3.5 pb-3 pt-3">
               <div className="text-center text-[11px] text-[#8e8e93]"><b className="font-semibold">Today</b> 10:52 AM</div>
@@ -679,7 +679,7 @@ function Safety() {
             <div className="flex items-end gap-1">
               <span className="flex items-center gap-1.5 rounded-t-[8px] bg-white px-2.5 py-1.5 font-medium text-[#1d1d1f]">Google Docs</span>
               <span className="flex items-center gap-1.5 px-2.5 py-1.5 text-[#6e6e73]">
-                <span className={`h-[7px] w-[7px] rounded-full transition-opacity duration-300 ${t % 8 < 4 ? "bg-[#ff3b30]" : "bg-[#ff3b30]/25"}`} /> Nevernote
+                <span className={`h-[7px] w-[7px] rounded-full transition-opacity duration-300 ${t % 8 < 4 ? "bg-[#ff3b30]" : "bg-[#ff3b30]/25"}`} /> NoteLater
               </span>
             </div>
             <div className="space-y-1.5 rounded-t-[8px] bg-white p-3">
@@ -841,7 +841,7 @@ const ROOMS = [
   { label: "Loud room", i: 4 },
 ];
 const pct = (s: string) => parseFloat(s);
-const name = (r: { engine: string; ours: boolean }) => (r.ours ? "Nevernote" : r.engine);
+const name = (r: { engine: string; ours: boolean }) => (r.ours ? "NoteLater" : r.engine);
 const BAR: Record<string, string> = {
   ours: "linear-gradient(90deg,#1d1d1f,#4a4a4f)",
   whisper: "linear-gradient(90deg,#9a9aa0,#b9b9be)",
@@ -950,7 +950,7 @@ function Accuracy() {
                                 <span className="display text-[2rem] leading-none">{(100 - v).toFixed(1)}%</span>
                                 <span className="text-[12px] text-white/70">words right</span>
                               </div>
-                              <div className="mt-1 text-[12px] text-white/70">{v} of every 100 words wrong{!r.ours && ` · ${(v / pct(ours.wer[room.i])).toFixed(1)}× Nevernote's mistakes`}</div>
+                              <div className="mt-1 text-[12px] text-white/70">{v} of every 100 words wrong{!r.ours && ` · ${(v / pct(ours.wer[room.i])).toFixed(1)}× NoteLater's mistakes`}</div>
                               <div className="mt-3 grid grid-cols-5 gap-1.5 border-t border-white/10 pt-2.5">
                                 {BENCH.tiers.map((t, ti) => (
                                   <div key={t} className="text-center">
@@ -992,10 +992,10 @@ function Devices() {
   return (
     <div ref={ref} className="mt-16 [perspective:1800px]">
       <motion.div style={{ rotateX, y }} className="relative mx-auto max-w-[1040px]">
-        <MacBook src="/shots/mac.webp" alt="Nevernote on a Mac, showing a class transcript with notes" />
+        <MacBook src="/shots/mac.webp" alt="NoteLater on a Mac, showing a class transcript with notes" />
         <motion.div style={{ y: phoneY }} className="absolute -bottom-12 right-[-1%] w-[22%] min-w-[118px] md:right-[-3%]">
           <IPhone small>
-            <img src="/shots/iphone.webp" alt="Nevernote on iPhone" className="block h-full w-full object-cover object-top" loading="lazy" />
+            <img src="/shots/iphone.webp" alt="NoteLater on iPhone" className="block h-full w-full object-cover object-top" loading="lazy" />
           </IPhone>
         </motion.div>
       </motion.div>
@@ -1022,11 +1022,11 @@ function Marquee() {
 const FAQ: [string, string][] = [
   ["Is it really free?", "Yes. Recording, transcription, speaker labels, deadline alerts, sync and AI notes are free. Transcription runs on your own device, so it costs us nothing, and AI notes cost a fraction of a cent. Pro adds calendar auto-add, Ask your notes and instant notes every time."],
   ["Does my audio get uploaded?", "No. Speech recognition and speaker labels run on your phone or computer. Only the transcript text syncs, so your other devices can show it and notes can be written. Your audio stays on the device that recorded it."],
-  ["Isn't this just skipping class?", "No. You're still in the room, and you still get everything that was said. Nevernote just means you don't have to spend the whole hour taking notes to catch the five minutes that count."],
+  ["Isn't this just skipping class?", "No. You're still in the room, and you still get everything that was said. NoteLater just means you don't have to spend the whole hour taking notes to catch the five minutes that count."],
   ["Does it work without internet?", "Yes. Record and transcribe with Wi-Fi off. Notes are written as soon as you're back online."],
   ["How accurate is it?", "We test it on real classroom recordings, from a quiet room to a loud one with an echo. The on-device Parakeet engine misses about 4 words in 100 in a quiet room and about 13 in a noisy classroom."],
   ["Can I try it without an account?", "Yes, on the website. Guest mode keeps notes in your browser only. Sign up with Google any time to keep them and use them on your phone and laptop."],
-  ["Is it okay to record class?", "Ask first. Many schools and states require consent from your teacher or everyone in the room. Nevernote reminds you before every recording."],
+  ["Is it okay to record class?", "Ask first. Many schools and states require consent from your teacher or everyone in the room. NoteLater reminds you before every recording."],
   ["Can I cancel Pro anytime?", "Yes, from the link in your receipt email, or in App Store subscriptions on iPhone. You keep everything you recorded and go back to the free plan."],
 ];
 
@@ -1140,7 +1140,7 @@ const UNLOCKS = [
   "A reminder the night before each deadline",
   "A day-by-day study plan up to every test",
   "Flashcards for Anki and Quizlet",
-  "Keeps Nevernote free for every student",
+  "Keeps NoteLater free for every student",
 ];
 
 /** The digits slide when they change, like a real price counter. */
@@ -1156,7 +1156,7 @@ function Price({ value }: { value: string }) {
   );
 }
 
-/** Apps Nevernote's calendar sync and exports work with, as a slow row of discs. */
+/** Apps NoteLater's calendar sync and exports work with, as a slow row of discs. */
 function Connections() {
   return (
     <div className="mt-7">
@@ -1221,7 +1221,7 @@ function ProCard() {
         <div className="relative">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <h3 className="display text-[2.3rem] font-[780] leading-none tracking-[-0.045em] md:text-[2.7rem]">
-              Nevernote <span className="bg-[linear-gradient(180deg,#ffffff,#9a9aa0)] bg-clip-text text-transparent">Pro</span>
+              NoteLater <span className="bg-[linear-gradient(180deg,#ffffff,#9a9aa0)] bg-clip-text text-transparent">Pro</span>
             </h3>
             {/* Yearly is the default: it's the better deal, and the toggle shows exactly how much. */}
             <div className="relative flex rounded-full bg-white/[0.08] p-1 ring-1 ring-white/10">
@@ -1434,15 +1434,15 @@ export function Landing() {
       <Nav />
       <Hero />
 
-      <Section a="Zoned out?" b="Covered." sub="You looked away for one minute and missed the only thing that mattered. Nevernote didn't.">
+      <Section a="Zoned out?" b="Covered." sub="You looked away for one minute and missed the only thing that mattered. NoteLater didn't.">
         <Chat />
       </Section>
 
-      <Section id="features" tone="grey" line a="Everything class says." b="Sorted for you." sub="Six things Nevernote does while you get on with your own work.">
+      <Section id="features" tone="grey" line a="Everything class says." b="Sorted for you." sub="Six things NoteLater does while you get on with your own work.">
         <Features />
       </Section>
 
-      <Section a="Never loses a word." b="Even when things go wrong." sub="Words stream in as they're said, and Nevernote picks out due dates, names and new voices on its own. Mic unplugged or Wi-Fi gone, it keeps going.">
+      <Section a="Never loses a word." b="Even when things go wrong." sub="Words stream in as they're said, and NoteLater picks out due dates, names and new voices on its own. Mic unplugged or Wi-Fi gone, it keeps going.">
         <Safety />
       </Section>
 
@@ -1513,7 +1513,7 @@ export function Landing() {
           ))}
         </div>
         <div className="mt-10 flex flex-col items-center justify-between gap-3 text-xs text-[#86868b] sm:flex-row">
-          <span>© {new Date().getFullYear()} Nevernote. Made by a student, for students.</span>
+          <span>© {new Date().getFullYear()} NoteLater. Made by a student, for students.</span>
         </div>
       </footer>
     </div>

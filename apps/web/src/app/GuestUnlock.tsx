@@ -234,7 +234,7 @@ export function NotesTeaser({ lines }: { lines: string[] }) {
         <div className="mt-3 text-[1.7rem] font-bold leading-tight tracking-[-0.035em]">
           One tap away. <span className="text-[#6e6e73]">Free.</span>
         </div>
-        <p className="mt-1.5 max-w-md text-[14.5px] text-[#6e6e73]">Sign up and Nevernote writes the notes, study guide and key terms for this class right away. Your recordings come with you.</p>
+        <p className="mt-1.5 max-w-md text-[14.5px] text-[#6e6e73]">Sign up and NoteLater writes the notes, study guide and key terms for this class right away. Your recordings come with you.</p>
         <div className="mt-5">
           <SignUpButton label="Write my notes" />
         </div>

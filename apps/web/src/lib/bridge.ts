@@ -1,5 +1,5 @@
 // What the desktop app exposes to this UI (apps/desktop/src/preload.ts).
-import type { Note, Segment } from "@nevernote/core";
+import type { Note, Segment } from "@notelater/core";
 
 export type AsrModelId = "parakeet-en" | "parakeet-multi" | "moonshine-base";
 
@@ -29,17 +29,17 @@ export interface DesktopBridge {
   notify(title: string, body: string, noteId?: string): Promise<void>;
   onOpenNote(cb: (id: string) => void): () => void;
   openExternal(url: string): Promise<void>;
-  /** A nevernote:// link the app was opened with (sign-in handoff). Older builds lack it. */
+  /** A notelater:// link the app was opened with (sign-in handoff). Older builds lack it. */
   onAuth?(cb: (url: string) => void): () => void;
 }
 
 declare global {
   interface Window {
-    nevernote?: DesktopBridge;
+    notelater?: DesktopBridge;
   }
 }
 
-export const desktop: DesktopBridge | undefined = typeof window !== "undefined" ? window.nevernote : undefined;
+export const desktop: DesktopBridge | undefined = typeof window !== "undefined" ? window.notelater : undefined;
 export const isDesktop = !!desktop;
 
 export const GITHUB_PROFILE = "https://github.com/chtotibesnitsa";

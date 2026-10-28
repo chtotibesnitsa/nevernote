@@ -1,5 +1,5 @@
 // The Pro sheet. One calm page, no countdowns, easy to close.
-import { PRICING, PRO_PITCH } from "@nevernote/core";
+import { PRICING, PRO_PITCH } from "@notelater/core";
 import { router, useLocalSearchParams } from "expo-router";
 import { SymbolView, type SFSymbol } from "expo-symbols";
 import { useEffect, useState } from "react";
@@ -64,7 +64,7 @@ export default function Pro() {
     return (
       <View style={{ flex: 1, alignItems: "center", justifyContent: "center", padding: 30, gap: 10 }}>
         <T kind="title">You're Pro</T>
-        <T kind="small" style={{ textAlign: "center" }}>Thanks for keeping Nevernote free for everyone else.</T>
+        <T kind="small" style={{ textAlign: "center" }}>Thanks for keeping NoteLater free for everyone else.</T>
       </View>
     );
   }
@@ -72,7 +72,7 @@ export default function Pro() {
   return (
     <ScrollView contentContainerStyle={{ padding: 24, paddingTop: 30, gap: 22 }}>
       <View style={{ gap: 6 }}>
-        <T kind="eyebrow" style={{ color: t.clay }}>Nevernote Pro</T>
+        <T kind="eyebrow" style={{ color: t.clay }}>NoteLater Pro</T>
         <T kind="title">Never miss a due date again.</T>
         <T kind="small">Recording, transcripts, speaker labels and reminders stay free forever. Pro is for the extras.</T>
       </View>

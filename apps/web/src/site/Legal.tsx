@@ -36,7 +36,7 @@ export function Privacy() {
       <ul>
         <li>Your email address (or the private relay address from Sign in with Apple).</li>
         <li>Your notes: titles, transcripts, speaker names you choose, due dates, summaries and your typed thoughts.</li>
-        <li>Basic usage events, such as "a recording finished, 47 minutes". These never include audio or transcript text, and they help us see whether Nevernote is working for people.</li>
+        <li>Basic usage events, such as "a recording finished, 47 minutes". These never include audio or transcript text, and they help us see whether NoteLater is working for people.</li>
         <li>Your plan (Free or Pro). Payments are handled by Apple; we never see card details.</li>
       </ul>
       <h2>AI notes</h2>
@@ -54,7 +54,7 @@ export function Privacy() {
         Delete any note in the app, and it's deleted everywhere it synced. To delete your whole account and everything synced to it, tap Settings › Delete account in the app.
       </p>
       <h2>Children</h2>
-      <p>Nevernote is meant for students 13 and older. Recording a class can require the teacher's permission; please follow your school's rules.</p>
+      <p>NoteLater is meant for students 13 and older. Recording a class can require the teacher's permission; please follow your school's rules.</p>
     </Page>
   );
 }
@@ -77,9 +77,9 @@ export function Support() {
       <h3>Will it keep recording if I lock my phone?</h3>
       <p>Yes. Lock the screen or switch apps; the red indicator shows it's still listening. Stop it from the note or the bar above the tabs.</p>
       <h3>The first recording took a while to start.</h3>
-      <p>The first time, Nevernote downloads its on-device models (about 530 MB). After that it starts instantly, even in airplane mode.</p>
+      <p>The first time, NoteLater downloads its on-device models (about 530 MB). After that it starts instantly, even in airplane mode.</p>
       <h3>How do I cancel Pro?</h3>
-      <p>On the website, Mac or Windows: open Settings, then Pro, then Manage or cancel. You keep Pro until the end of the period you paid for. If you subscribed on iPhone: iPhone Settings › your name › Subscriptions › Nevernote.</p>
+      <p>On the website, Mac or Windows: open Settings, then Pro, then Manage or cancel. You keep Pro until the end of the period you paid for. If you subscribed on iPhone: iPhone Settings › your name › Subscriptions › NoteLater.</p>
     </Page>
   );
 }

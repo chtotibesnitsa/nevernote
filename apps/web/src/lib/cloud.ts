@@ -1,11 +1,11 @@
 // Supabase: sign-in, sync and AI summaries. Everything works signed out; this
 // only adds the phone/laptop link and the summaries.
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
-import { noteToRow, rowToNote, type AskTool, type Plan, type Remote, type Summary, type SummaryPrefs } from "@nevernote/core";
+import { noteToRow, rowToNote, type AskTool, type Plan, type Remote, type Summary, type SummaryPrefs } from "@notelater/core";
 import { isDesktop } from "./bridge.ts";
 import { handoffCode } from "./handoff.ts";
 
-// The official Nevernote project. The anon key is public by design (row-level
+// The official NoteLater project. The anon key is public by design (row-level
 // security protects the data); forks can point at their own project with env vars.
 const url = (import.meta.env.VITE_SUPABASE_URL as string | undefined) || "https://bbvaqcsyinbeopyhrqzi.supabase.co";
 const key = (import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined) || "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImJidmFxY3N5aW5iZW9weWhycXppIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTI2MDUzNjksImV4cCI6MjEwODE4MTM2OX0.v-0eHe-bUWvXqSsmCbs8oqlA3EzhYJLtk0hxI2uCI3c";

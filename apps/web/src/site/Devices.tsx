@@ -119,7 +119,7 @@ function BrowserWindow({ src }: { src: string }) {
         {["#ff5f57", "#febc2e", "#28c840"].map((c) => (
           <span key={c} className="h-[7px] w-[7px] rounded-full" style={{ background: c }} />
         ))}
-        <span className="ml-2 flex-1 truncate rounded-[6px] bg-white px-2 py-[2px] text-center text-[9px] text-[#6e6e73]">nevernote.app/app</span>
+        <span className="ml-2 flex-1 truncate rounded-[6px] bg-white px-2 py-[2px] text-center text-[9px] text-[#6e6e73]">notelater.com/app</span>
       </div>
       <img src={src} alt="" loading="lazy" className="block aspect-[16/10] w-full object-cover object-top" />
     </div>
@@ -155,19 +155,19 @@ const STEPS: Record<Os, { title: string; steps: string[] }> = {
   mac: {
     title: "Installing on your Mac",
     steps: [
-      "Open Nevernote.dmg from your Downloads and drag Nevernote into Applications.",
-      "Open Nevernote from Applications. The first time, macOS says it can't check the developer: click Done.",
-      "Open System Settings, then Privacy & Security, scroll down and click Open Anyway next to Nevernote. Confirm with your password or Touch ID.",
-      "Nevernote opens, and from now on it opens like any other app. Sign in with Google and hit record.",
+      "Open NoteLater.dmg from your Downloads and drag NoteLater into Applications.",
+      "Open NoteLater from Applications. The first time, macOS says it can't check the developer: click Done.",
+      "Open System Settings, then Privacy & Security, scroll down and click Open Anyway next to NoteLater. Confirm with your password or Touch ID.",
+      "NoteLater opens, and from now on it opens like any other app. Sign in with Google and hit record.",
     ],
   },
   win: {
     title: "Installing on Windows",
-    steps: ["Open Nevernote Setup.exe from your Downloads.", "If Windows shows \"Windows protected your PC\", click More info, then Run anyway.", "Nevernote installs and opens by itself, with a shortcut on your desktop.", "Hit record. The speech model downloads once, then everything runs offline."],
+    steps: ["Open NoteLater Setup.exe from your Downloads.", "If Windows shows \"Windows protected your PC\", click More info, then Run anyway.", "NoteLater installs and opens by itself, with a shortcut on your desktop.", "Hit record. The speech model downloads once, then everything runs offline."],
   },
   ios: {
     title: "On iPhone and iPad",
-    steps: ["The App Store app is on its way.", "Until then, open nevernote in Safari.", "Tap Share, then Add to Home Screen.", "Open it from your Home Screen and hit record."],
+    steps: ["The App Store app is on its way.", "Until then, open notelater.com in Safari.", "Tap Share, then Add to Home Screen.", "Open it from your Home Screen and hit record."],
   },
   web: { title: "", steps: [] },
 };
@@ -239,7 +239,7 @@ function InstallSheet({ os, onClose, file }: { os: Os; onClose: () => void; file
         </ol>
         {os === "mac" && (
           <p className="mt-4 rounded-[14px] bg-black/[0.04] px-3.5 py-2.5 text-[12.5px] leading-snug text-[#6e6e73]">
-            No Open Anyway button? In Terminal, paste <code className="rounded bg-white px-1 py-0.5 font-mono text-[11.5px] text-[#1d1d1f]">xattr -cr /Applications/Nevernote.app</code> and press Return, then open Nevernote again.
+            No Open Anyway button? In Terminal, paste <code className="rounded bg-white px-1 py-0.5 font-mono text-[11.5px] text-[#1d1d1f]">xattr -cr /Applications/NoteLater.app</code> and press Return, then open NoteLater again.
           </p>
         )}
         <div className="mt-6">

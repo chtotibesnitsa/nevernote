@@ -1,6 +1,6 @@
 # Accuracy bench
 
-How Nevernote checks that it catches every word and every speaker, and how you can re-run it.
+How NoteLater checks that it catches every word and every speaker, and how you can re-run it.
 
 ## The trials
 
@@ -38,7 +38,7 @@ All runs are on CPU and on-device, with nothing sent anywhere. Each engine is sc
 <!-- results:start -->
 | Engine | Real speech | Quiet room | Echoey room | Classroom noise | Loud room | Brutal | Speed |
 |---|---:|---:|---:|---:|---:|---:|---:|
-| Nevernote · Parakeet | 2.0% | 4.2% | 3.7% | 12.8% | 24.1% | 89.9% | 3.0× real time |
+| NoteLater · Parakeet | 2.0% | 4.2% | 3.7% | 12.8% | 24.1% | 89.9% | 3.0× real time |
 | Moonshine base | 6.1% | 4.9% | 6.6% | 27.1% | 58.2% | 98.0% | 4.7× real time |
 | Whisper base | 7.1% | 10.6% | 5.4% | 19.7% | 52.2% | 98.0% | 3.5× real time |
 
@@ -57,7 +57,7 @@ What the numbers say:
 
 ## Compare against any app (including Wispr Flow)
 
-Nevernote doesn't call Wispr Flow's or anyone else's API. To compare fairly:
+NoteLater doesn't call Wispr Flow's or anyone else's API. To compare fairly:
 
 1. Play a trial WAV into the other app.
 2. Paste its transcript into a text file.

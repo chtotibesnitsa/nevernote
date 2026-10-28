@@ -1,11 +1,11 @@
 {
-  "name": "@nevernote/mobile",
+  "name": "@notelater/mobile",
   "version": "1.0.0",
   "main": "expo-router/entry",
   "dependencies": {
     "@dr.pogodin/react-native-fs": "^2.40.4",
     "@kesha-antonov/react-native-background-downloader": "^4.6.4",
-    "@nevernote/core": "file:../../packages/core",
+    "@notelater/core": "file:../../packages/core",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@supabase/supabase-js": "^2.118.0",
     "expo": "~58.0.16",
