@@ -1,6 +1,5 @@
 import { PRICING } from "@nevernote/core";
 import * as AppleAuthentication from "expo-apple-authentication";
-import * as WebBrowser from "expo-web-browser";
 import { useState, type ReactNode } from "react";
 import { Alert, Platform, ScrollView, Switch, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,7 +7,7 @@ import { cloudEnabled, deleteAccount, sendEmailCode, signInWithApple, signInWith
 import { useTheme } from "../../src/lib/theme";
 import { downloadModels, openPro, useApp } from "../../src/state/app";
 import { settings, useSettings, type Settings as S } from "../../src/state/settings";
-import { Button, Card, GITHUB_REPO, Hmu, Press, T } from "../../src/ui/kit";
+import { Button, Card, Hmu, Press, T } from "../../src/ui/kit";
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
@@ -189,8 +188,8 @@ export default function SettingsScreen() {
         </Press>
       )}
 
-      <T kind="mute" style={{ textAlign: "center", marginTop: 30 }} onPress={() => void WebBrowser.openBrowserAsync(GITHUB_REPO)}>
-        Nevernote is free and open source · source on GitHub
+      <T kind="mute" style={{ textAlign: "center", marginTop: 30 }}>
+        Nevernote is free. Pro is optional. Made by a student, for students.
       </T>
     </ScrollView>
   );

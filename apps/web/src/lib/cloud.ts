@@ -46,6 +46,33 @@ export async function fetchPlan(): Promise<Plan> {
   return data?.plan === "pro" && (!data.pro_until || Date.parse(data.pro_until) > Date.now()) ? "pro" : "free";
 }
 
+export interface Subscription {
+  product: string | null;
+  store: string | null;
+  startedAt: string | null;
+  expiresAt: string | null;
+  willRenew: boolean;
+  billingIssue: boolean;
+}
+
+/** The signed-in student's subscription details (plan, renewal or end date), or null when they have none. */
+export async function fetchSubscription(): Promise<Subscription | null> {
+  if (!supabase) return null;
+  const { data } = await supabase.from("subscriptions").select("product, store, started_at, expires_at, will_renew, billing_issue").maybeSingle();
+  if (!data) return null;
+  return { product: data.product, store: data.store, startedAt: data.started_at, expiresAt: data.expires_at, willRenew: data.will_renew, billingIssue: data.billing_issue };
+}
+
+/** `manage`: the page where the student cancels or changes their plan. `restore`: re-checks what they bought. */
+export async function billingLink(action: "manage" | "restore"): Promise<{ url?: string; pro?: boolean; error?: "not_configured" | "no_subscription" | "unavailable" }> {
+  const { data, error } = await supabase!.functions.invoke("billing", { body: { action } });
+  if (error) {
+    const status = (error as { context?: { status?: number } }).context?.status;
+    return { error: status === 503 ? "not_configured" : status === 404 ? "no_subscription" : "unavailable" };
+  }
+  return data ?? { error: "unavailable" };
+}
+
 /** Instant AI notes written today (UTC), updates included: what the free daily allowance counts. */
 export async function fetchInstantUsed(): Promise<number> {
   if (!supabase) return 0;

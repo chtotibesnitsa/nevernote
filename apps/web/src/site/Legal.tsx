@@ -55,10 +55,6 @@ export function Privacy() {
       </p>
       <h2>Children</h2>
       <p>Nevernote is meant for students 13 and older. Recording a class can require the teacher's permission; please follow your school's rules.</p>
-      <h2>Open source</h2>
-      <p>
-        Every line of Nevernote is public, so you can check all of this yourself: <a href={GITHUB_REPO}>{GITHUB_REPO.replace("https://", "")}</a>.
-      </p>
     </Page>
   );
 }
@@ -83,7 +79,7 @@ export function Support() {
       <h3>The first recording took a while to start.</h3>
       <p>The first time, Nevernote downloads its on-device models (about 530 MB). After that it starts instantly, even in airplane mode.</p>
       <h3>How do I cancel Pro?</h3>
-      <p>In iPhone Settings › your name › Subscriptions › Nevernote.</p>
+      <p>On the website, Mac or Windows: open Settings, then Pro, then Manage or cancel. You keep Pro until the end of the period you paid for. If you subscribed on iPhone: iPhone Settings › your name › Subscriptions › Nevernote.</p>
     </Page>
   );
 }

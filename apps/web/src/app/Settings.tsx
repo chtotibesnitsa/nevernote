@@ -3,9 +3,9 @@ import { signInWithGoogle } from "./AuthGate.tsx";
 import { motion } from "motion/react";
 import { useEffect, useRef, useState, type ReactNode } from "react";
 import { Button, Card, spring } from "../components/ui.tsx";
-import { isDesktop, GITHUB_REPO, type AsrModelId } from "../lib/bridge.ts";
-import { STYLE_LIMITS, SUMMARY_STYLES, type SummaryPrefs, type SummaryStyleId } from "@nevernote/core";
-import { cloudEnabled, fetchSummaryPrefs, saveSummaryPrefs, supabase } from "../lib/cloud.ts";
+import { desktop, isDesktop, type AsrModelId } from "../lib/bridge.ts";
+import { PRICING, STYLE_LIMITS, SUMMARY_STYLES, type SummaryPrefs, type SummaryStyleId } from "@nevernote/core";
+import { billingLink, cloudEnabled, fetchSubscription, fetchSummaryPrefs, saveSummaryPrefs, supabase, type Subscription } from "../lib/cloud.ts";
 import { CalendarSync } from "./CalendarSync.tsx";
 import { useApp, type Settings as S } from "./state.tsx";
 
@@ -39,11 +39,6 @@ export function Settings() {
               <div className="text-sm text-[var(--mute)]">{plan === "pro" ? "Pro" : "Free plan"} · notes sync to every device you sign in on</div>
             </div>
             <div className="flex gap-2">
-              {plan !== "pro" && (
-                <Button variant="primary" onClick={() => openPro("settings")}>
-                  Get Pro
-                </Button>
-              )}
               <Button variant="ghost" onClick={() => supabase!.auth.signOut()}>
                 Sign out
               </Button>
@@ -53,6 +48,8 @@ export function Settings() {
           <SignIn />
         )}
       </Section>
+
+      {cloudEnabled && session && tier !== "guest" && <PlanCard />}
 
       {cloudEnabled && session && tier !== "guest" && <NoteStyle />}
 
@@ -98,13 +95,83 @@ export function Settings() {
         <Toggle k="proTips" label="Occasional Pro tips" hint="At most one every few days, never while you're recording." />
       </Section>
 
-      <p className="mt-10 text-center text-sm text-[var(--mute)]">
-        Nevernote is free and open source ·{" "}
-        <a className="underline" href={GITHUB_REPO} target="_blank" rel="noreferrer">
-          source on GitHub
-        </a>
-      </p>
+      <p className="mt-10 text-center text-sm text-[var(--mute)]">Nevernote is free. Pro is optional. Made by a student, for students.</p>
     </div>
+  );
+}
+
+const day = (iso: string | null) => (iso ? new Date(iso).toLocaleDateString(undefined, { month: "long", day: "numeric", year: "numeric" }) : "");
+
+/** Plan, price, renewal or end date, and the buttons to cancel or fix a payment. */
+function PlanCard() {
+  const { plan, openPro, refreshPlan, toast } = useApp();
+  const [sub, setSub] = useState<Subscription | null>(null);
+  const [busy, setBusy] = useState<"manage" | "restore" | null>(null);
+  useEffect(() => {
+    void fetchSubscription().then(setSub).catch(() => {});
+  }, [plan]);
+  const pro = plan === "pro";
+  const yearly = /year|annual/i.test(sub?.product ?? "");
+  const price = pro && sub?.product ? (yearly ? PRICING.yearly.label : PRICING.monthly.label) : "";
+  const manage = async () => {
+    setBusy("manage");
+    const r = await billingLink("manage");
+    setBusy(null);
+    if (r.url) return void (desktop ? desktop.openExternal(r.url) : window.open(r.url, "_blank"));
+    toast({
+      title: "Couldn't open your billing page",
+      body: r.error === "no_subscription" ? "There's no active subscription on this account. If you paid, tap Check my purchase." : "Try again in a minute. If it keeps failing, write to us from the Support page.",
+    });
+  };
+  const restore = async () => {
+    setBusy("restore");
+    const r = await billingLink("restore");
+    const now = await refreshPlan();
+    setBusy(null);
+    toast(r.pro || now ? { title: "You're on Pro", body: "Your purchase is on this account." } : { title: "No purchase found", body: "Nothing paid is linked to this Google account yet." });
+  };
+  return (
+    <Section title="Your plan">
+      {pro ? (
+        <div className="space-y-4">
+          <div className="flex flex-wrap items-start justify-between gap-4">
+            <div>
+              <div className="text-[1.5rem] font-bold leading-tight tracking-[-0.03em]">Nevernote Pro{sub?.product ? ` · ${yearly ? "Yearly" : "Monthly"}` : ""}</div>
+              {price && <div className="mt-0.5 text-sm text-[var(--mute)]">{price}</div>}
+            </div>
+            <Button variant="primary" disabled={busy === "manage"} onClick={() => void manage()}>
+              {busy === "manage" ? "Opening…" : "Manage or cancel"}
+            </Button>
+          </div>
+          {sub && (
+            <dl className="grid gap-x-8 gap-y-2 border-t border-[var(--line)] pt-4 text-[15px] sm:grid-cols-2">
+              {sub.startedAt && (
+                <div className="flex justify-between gap-4"><dt className="text-[var(--mute)]">Started</dt><dd className="font-medium">{day(sub.startedAt)}</dd></div>
+              )}
+              {sub.expiresAt && (
+                <div className="flex justify-between gap-4"><dt className="text-[var(--mute)]">{sub.willRenew ? "Renews" : "Pro ends"}</dt><dd className="font-medium">{day(sub.expiresAt)}</dd></div>
+              )}
+            </dl>
+          )}
+          {sub && !sub.willRenew && <p className="rounded-2xl bg-[var(--bubble)] p-3.5 text-sm">You cancelled. You keep Pro until {day(sub.expiresAt)}, and nothing more is charged.</p>}
+          {sub?.billingIssue && <p className="rounded-2xl bg-[#ffe58a] p-3.5 text-sm font-medium text-[#1d1d1f]">Your last payment didn't go through. Update your card with Manage or cancel to keep Pro.</p>}
+        </div>
+      ) : (
+        <div className="space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-4">
+            <div>
+              <div className="text-[1.5rem] font-bold leading-tight tracking-[-0.03em]">Free plan</div>
+              <div className="mt-0.5 text-sm text-[var(--mute)]">5 instant AI notes a day, sync on every device.</div>
+            </div>
+            <Button variant="primary" onClick={() => openPro("settings")}>Get Pro</Button>
+          </div>
+          {sub && !sub.willRenew && sub.expiresAt && <p className="text-sm text-[var(--mute)]">Your last Pro period ended {day(sub.expiresAt)}.</p>}
+        </div>
+      )}
+      <button onClick={() => void restore()} disabled={busy === "restore"} className="mt-4 text-[13px] font-semibold text-[var(--mute)] underline underline-offset-2 hover:text-[var(--fg)]">
+        {busy === "restore" ? "Checking…" : "Paid but don't see Pro? Check my purchase"}
+      </button>
+    </Section>
   );
 }
 

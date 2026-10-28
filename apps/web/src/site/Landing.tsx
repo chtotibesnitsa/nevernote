@@ -1,10 +1,10 @@
 import { FREE_INSTANT_SUMMARIES_PER_DAY, PRICING } from "@nevernote/core";
-import { Apple, ArrowRight, Check, ChevronDown, Github, Play } from "lucide-react";
+import { Apple, ArrowRight, Check, ChevronDown, Play } from "lucide-react";
 import { AnimatePresence, motion, useInView, useMotionValue, useMotionValueEvent, useReducedMotion, useScroll, useTransform, type MotionValue } from "motion/react";
 import { useCallback, useEffect, useRef, useState, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { Hmu, Logo, soft, spring } from "../components/ui.tsx";
-import { GITHUB_REPO, RELEASES } from "../lib/bridge.ts";
+import { RELEASES } from "../lib/bridge.ts";
 import { deviceOs, Downloads, IPhone, MacBook, useInstaller } from "./Devices.tsx";
 import { GoogleMark, signInWithGoogle } from "../app/AuthGate.tsx";
 import { cloudEnabled } from "../lib/cloud.ts";
@@ -974,8 +974,7 @@ function Accuracy() {
           ))}
         </div>
         <p className="mt-6 text-[12px] text-[#6e6e73]">
-          {BENCH.note}{" "}
-          <a className="font-medium text-[#1d1d1f] underline decoration-black/20 underline-offset-2 hover:decoration-black" href={`${GITHUB_REPO}/tree/main/bench`}>Run it yourself</a>
+          {BENCH.note}
         </p>
       </motion.div>
     </div>
@@ -1025,7 +1024,7 @@ const FAQ: [string, string][] = [
   ["Does my audio get uploaded?", "No. Speech recognition and speaker labels run on your phone or computer. Only the transcript text syncs, so your other devices can show it and notes can be written. Your audio stays on the device that recorded it."],
   ["Isn't this just skipping class?", "No. You're still in the room, and you still get everything that was said. Nevernote just means you don't have to spend the whole hour taking notes to catch the five minutes that count."],
   ["Does it work without internet?", "Yes. Record and transcribe with Wi-Fi off. Notes are written as soon as you're back online."],
-  ["How accurate is it?", "We test it on real classroom recordings, from a quiet room to a loud one with an echo. The open-source Parakeet engine misses about 4 words in 100 in a quiet room and about 13 in a noisy classroom. The full results are on GitHub."],
+  ["How accurate is it?", "We test it on real classroom recordings, from a quiet room to a loud one with an echo. The on-device Parakeet engine misses about 4 words in 100 in a quiet room and about 13 in a noisy classroom."],
   ["Can I try it without an account?", "Yes, on the website. Guest mode keeps notes in your browser only. Sign up with Google any time to keep them and use them on your phone and laptop."],
   ["Is it okay to record class?", "Ask first. Many schools and states require consent from your teacher or everyone in the room. Nevernote reminds you before every recording."],
   ["Can I cancel Pro anytime?", "Yes, from the link in your receipt email, or in App Store subscriptions on iPhone. You keep everything you recorded and go back to the free plan."],
@@ -1141,7 +1140,7 @@ const UNLOCKS = [
   "A reminder the night before each deadline",
   "A day-by-day study plan up to every test",
   "Flashcards for Anki and Quizlet",
-  "Keeps an open-source student project going",
+  "Keeps Nevernote free for every student",
 ];
 
 /** The digits slide when they change, like a real price counter. */
@@ -1501,7 +1500,7 @@ export function Landing() {
           {[
             ["Product", [["Features", "#features"], ["How it works", "#how"], ["Pricing", "#pricing"], ["Accuracy", "#accuracy"]]],
             ["Get it", [["Web app", "/app"], ["Mac and Windows", RELEASES], ["iPhone and iPad", "#platforms"]]],
-            ["Company", [["Open source", GITHUB_REPO], ["Privacy", "/privacy"], ["Support", "/support"]]],
+            ["Company", [["Privacy", "/privacy"], ["Support", "/support"]]],
           ].map(([h, ls]) => (
             <div key={h as string}>
               <div className="font-semibold">{h as string}</div>
@@ -1515,7 +1514,6 @@ export function Landing() {
         </div>
         <div className="mt-10 flex flex-col items-center justify-between gap-3 text-xs text-[#86868b] sm:flex-row">
           <span>© {new Date().getFullYear()} Nevernote. Made by a student, for students.</span>
-          <a href={GITHUB_REPO} className="inline-flex items-center gap-1.5 hover:text-[#1d1d1f]"><Github size={14} /> Star us on GitHub</a>
         </div>
       </footer>
     </div>

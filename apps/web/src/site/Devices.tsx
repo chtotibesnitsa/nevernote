@@ -361,7 +361,7 @@ export function Downloads() {
           </motion.div>
         ))}
       </div>
-      {release && <p className="mt-4 text-center text-[12.5px] text-[#6e6e73]">Latest version {release.version}. Free and open source.</p>}
+      {release && <p className="mt-4 text-center text-[12.5px] text-[#6e6e73]">Latest version {release.version}. Free.</p>}
       {ui}
     </>
   );

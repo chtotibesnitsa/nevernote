@@ -428,7 +428,7 @@ function SponsorCard({ onDone, onClose }: { onDone: () => void; onClose: () => v
       </Pressable>
       <Text style={{ fontSize: 11, letterSpacing: 1.2, color: t.bg, opacity: 0.6 }}>SPONSORED · {Math.max(0, left)}s</Text>
       <Text style={{ fontFamily: serif, fontSize: 22, color: t.bg }}>Nevernote is free because of people like you.</Text>
-      <Text style={{ fontSize: 14, color: t.bg, opacity: 0.8 }}>Star it on GitHub, tell a friend in your class, or go Pro to skip this forever.</Text>
+      <Text style={{ fontSize: 14, color: t.bg, opacity: 0.8 }}>Tell a friend in your class, or go Pro to skip this forever.</Text>
       <Animated.View style={[{ position: "absolute", left: 0, bottom: 0, height: 3, backgroundColor: t.clay }, a]} />
     </Animated.View>
   );

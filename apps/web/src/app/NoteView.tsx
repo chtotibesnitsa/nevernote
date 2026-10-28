@@ -734,7 +734,7 @@ function SponsorCard({ open, onDone, onClose }: { open: boolean; onDone: () => v
           </button>
           <div className="text-xs uppercase tracking-widest opacity-60">Sponsored · {left}s</div>
           <div className="title-serif mt-2 text-2xl">Nevernote is free because of people like you.</div>
-          <p className="mt-1 text-sm opacity-80">Star it on GitHub, tell a friend in your class, or go Pro to skip this forever.</p>
+          <p className="mt-1 text-sm opacity-80">Tell a friend in your class, or go Pro to skip this forever.</p>
           <motion.div className="absolute bottom-0 left-0 h-1 bg-white/70" initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 5, ease: "linear" }} />
         </motion.div>
       )}
