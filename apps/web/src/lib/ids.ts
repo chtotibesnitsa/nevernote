@@ -4,8 +4,8 @@ export function newId(): string {
   return `${t}-${r}`;
 }
 
-export function deviceKind(): import("@nevernote/core").Device {
-  const p = window.nevernote?.platform;
+export function deviceKind(): import("@notelater/core").Device {
+  const p = window.notelater?.platform;
   if (p === "darwin") return "mac";
   if (p === "win32") return "windows";
   if (p === "linux") return "linux";

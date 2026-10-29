@@ -15,7 +15,7 @@ export function admin(): SupabaseClient {
 }
 
 /** The signed-in user behind a request, or null. */
-export async function userFrom(req: Request): Promise<{ id: string; plan: "free" | "pro" } | null> {
+export async function userFrom(req: Request): Promise<{ id: string; plan: "free" | "pro"; guest: boolean } | null> {
   const token = req.headers.get("Authorization")?.replace(/^Bearer\s+/i, "");
   if (!token) return null;
   const db = admin();
@@ -23,5 +23,5 @@ export async function userFrom(req: Request): Promise<{ id: string; plan: "free"
   if (!data.user) return null;
   const { data: p } = await db.from("profiles").select("plan, pro_until").eq("id", data.user.id).single();
   const pro = p?.plan === "pro" && (!p.pro_until || Date.parse(p.pro_until) > Date.now());
-  return { id: data.user.id, plan: pro ? "pro" : "free" };
+  return { id: data.user.id, plan: pro ? "pro" : "free", guest: !!data.user.is_anonymous };
 }

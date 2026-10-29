@@ -1,9 +1,10 @@
 // Local note storage: files on desktop, IndexedDB in the browser.
-import type { Note, Store } from "@nevernote/core";
+import type { Note, Store } from "@notelater/core";
 import { desktop } from "./bridge.ts";
 
 function idb(): Promise<IDBDatabase> {
   return new Promise((resolve, reject) => {
+    // Still named after the old brand so notes already saved in this browser stay put.
     const req = indexedDB.open("nevernote", 1);
     req.onupgradeneeded = () => {
       req.result.createObjectStore("notes", { keyPath: "id" });

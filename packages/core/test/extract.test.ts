@@ -80,3 +80,21 @@ describe("extract", () => {
     expect(items.some((x) => x.segmentId === "s5")).toBe(false);
   });
 });
+
+describe("extract on unpunctuated live speech", () => {
+  const ref = new Date(2026, 9, 23, 10);
+  const seg = (text: string) => [{ id: "a", start: 0, end: 5, text }];
+  it("doesn't turn lecture phrases into reminders", () => {
+    expect(extract(seg("But Alex you have to understand"), ref)).toEqual([]);
+    expect(extract(seg("so the way I'm explaining it is you have to take what you have to do is you have to take a step back"), ref)).toEqual([]);
+  });
+  it("still catches real to-dos", () => {
+    expect(extract(seg("you have to bring your calculator"), ref)[0]?.kind).toBe("reminder");
+  });
+  it("keeps only the words around a match in a long run-on line", () => {
+    const filler = "and then we talked about the farms and the cities and the people who live there ".repeat(4);
+    const [e] = extract(seg(`${filler}the lab report is due Friday ${filler}`), ref);
+    expect(e.kind).toBe("deadline");
+    expect(e.phrase.split(" ").length).toBeLessThan(35);
+  });
+});

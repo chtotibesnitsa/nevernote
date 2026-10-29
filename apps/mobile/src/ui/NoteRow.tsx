@@ -1,4 +1,4 @@
-import type { Note } from "@nevernote/core";
+import type { Note } from "@notelater/core";
 import { router } from "expo-router";
 import { View } from "react-native";
 import { useTheme } from "../lib/theme";

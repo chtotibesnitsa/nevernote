@@ -1,10 +1,12 @@
-import { PRICING, PRO_PITCH } from "@nevernote/core";
-import { Check, X } from "lucide-react";
+import { PRICING, PRO_PITCH } from "@notelater/core";
+import { useState, type ReactNode } from "react";
+import { BarChart3, CalendarDays, Check, RefreshCw, Sparkles, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
+import { GoogleMark, upgradeGuest } from "../app/AuthGate.tsx";
 import { useApp } from "../app/state.tsx";
 import { desktop } from "../lib/bridge.ts";
 import { track } from "../lib/cloud.ts";
-import { Button, soft, spring } from "./ui.tsx";
+import { soft, spring } from "./ui.tsx";
 
 export function Toasts() {
   const { toasts, dismissToast } = useApp();
@@ -19,7 +21,7 @@ export function Toasts() {
             animate={{ opacity: 1, y: 0, scale: 1, filter: "blur(0px)" }}
             exit={{ opacity: 0, x: 40, scale: 0.96 }}
             transition={spring}
-            className="glass-solid pointer-events-auto rounded-2xl p-4"
+            className="panel pointer-events-auto !rounded-2xl p-4"
           >
             <div className="flex items-start gap-3">
               <div className="min-w-0 flex-1">
@@ -31,9 +33,9 @@ export function Toasts() {
                       t.action!.run();
                       dismissToast(t.id);
                     }}
-                    className="mt-2 text-[13px] font-semibold text-[var(--color-leather)] dark:text-[var(--color-clay)]"
+                    className="press-light mt-2.5 rounded-full bg-[var(--card)] px-3 py-1 text-[12.5px] font-semibold text-[var(--fg)]"
                   >
-                    {t.action.label} →
+                    {t.action.label}
                   </button>
                 )}
               </div>
@@ -48,67 +50,211 @@ export function Toasts() {
   );
 }
 
-const CHECKOUT = import.meta.env.VITE_PRO_CHECKOUT_URL as string | undefined;
+/**
+ * RevenueCat Web Purchase Link (Stripe underneath). The student's account id is
+ * appended, so RevenueCat's webhook can flip that exact profile to Pro, the same
+ * way App Store purchases do.
+ */
+const CHECKOUT = ((import.meta.env.VITE_RC_PURCHASE_LINK ?? import.meta.env.VITE_PRO_CHECKOUT_URL) as string | undefined)?.replace(/\/$/, "");
 
-export function ProSheet() {
-  const { proOpen, closePro, plan } = useApp();
-  const buy = (period: "monthly" | "yearly") => {
-    track("checkout_clicked", { period, from: proOpen });
-    const url = CHECKOUT ? `${CHECKOUT}?period=${period}` : "https://nevernote.app/pro";
-    if (desktop) void desktop.openExternal(url);
-    else window.open(url, "_blank");
-  };
+/** Why the sheet opened, said back to the student in one line. */
+const WHY: Record<string, string> = {
+  ask: "Ask anything across every class you've recorded.",
+  calendar: "Every due date goes into your calendar on its own.",
+  examPack: "Turn a whole unit of lectures into one review guide.",
+  export: "Send your notes to Google Docs, Notion or a PDF.",
+  flashcards: "Take your flashcards to Anki and Quizlet.",
+  summaryRules: "Different note rules for every class.",
+  unlimited: "Unlimited instant AI notes, every update, no waiting for tomorrow.",
+  batchQueued: "Notes the second class ends, every time.",
+  practiceTest: "Practice tests written from your own classes, as many as you want.",
+  studyPlan: "A day-by-day study plan up to your next test.",
+};
+
+function Sheet({ open, onClose, dark, children }: { open: boolean; onClose: () => void; dark?: boolean; children: ReactNode }) {
   return (
     <AnimatePresence>
-      {proOpen && (
+      {open && (
         <motion.div className="fixed inset-0 z-50 flex items-end justify-center p-3 sm:items-center" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}>
-          <motion.div className="absolute inset-0 bg-black/25 backdrop-blur-[2px]" onClick={closePro} />
+          <motion.div className="absolute inset-0 bg-black/35" onClick={onClose} />
           <motion.div
-            initial={{ y: 60, scale: 0.94, opacity: 0, borderRadius: 48 }}
-            animate={{ y: 0, scale: 1, opacity: 1, borderRadius: 28 }}
-            exit={{ y: 40, scale: 0.96, opacity: 0 }}
+            initial={{ y: 50, scale: 0.96, opacity: 0 }}
+            animate={{ y: 0, scale: 1, opacity: 1 }}
+            exit={{ y: 30, scale: 0.97, opacity: 0 }}
             transition={soft}
-            className="glass-solid relative w-full max-w-[520px] overflow-hidden p-7"
+            className={`relative max-h-[92dvh] w-full max-w-[540px] overflow-y-auto rounded-[30px] p-7 ${dark ? "bg-[linear-gradient(180deg,#252527,#151517)] text-white shadow-[0_0_0_1.5px_#55555a,0_40px_80px_-30px_rgb(0_0_0/0.7)]" : "bg-[var(--card)] shadow-[0_0_0_1px_var(--line),0_40px_80px_-30px_rgb(0_0_0/0.45)]"}`}
           >
-            <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-[radial-gradient(circle,rgb(200_121_74/0.35),transparent_65%)] blur-2xl" />
-            <button onClick={closePro} className="absolute right-5 top-5 text-[var(--mute)] hover:text-[var(--fg)]" aria-label="Close">
-              <X size={18} />
+            <button onClick={onClose} className={`absolute right-5 top-5 grid h-8 w-8 place-items-center rounded-full ${dark ? "bg-white/10 text-white/70 hover:text-white" : "bg-[var(--bubble)] text-[var(--mute)] hover:text-[var(--fg)]"}`} aria-label="Close">
+              <X size={16} />
             </button>
-            <div className="eyebrow">Nevernote Pro</div>
-            <h2 className="title-serif mt-2 text-[2.1rem] leading-[1.05]">
-              Your notes, <em>working for you.</em>
-            </h2>
-            <p className="mt-2 text-sm text-[var(--ink-2)]">Recording, transcripts, speaker labels, AI notes and study guides stay free forever. Pro is for the extras.</p>
-            <ul className="mt-5 space-y-3">
-              {PRO_PITCH.map((p, i) => (
-                <motion.li key={p.feature} initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ ...spring, delay: 0.05 + i * 0.04 }} className="flex gap-3">
-                  <span className="mt-0.5 grid h-5 w-5 shrink-0 place-items-center rounded-full bg-[var(--fg)] text-[var(--bg)]">
-                    <Check size={12} strokeWidth={3} />
-                  </span>
-                  <span>
-                    <span className="text-sm font-semibold">{p.title}</span>
-                    <span className="block text-[13px] leading-snug text-[var(--ink-2)]">{p.body}</span>
-                  </span>
-                </motion.li>
-              ))}
-            </ul>
-            {plan === "pro" ? (
-              <div className="mt-6 rounded-2xl bg-[var(--bubble)] p-4 text-sm">You're on Pro. Thank you for keeping Nevernote free for everyone else.</div>
-            ) : (
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <Button variant="glass" className="!rounded-2xl !py-3" onClick={() => buy("monthly")}>
-                  {PRICING.monthly.label}
-                </Button>
-                <Button variant="primary" className="!rounded-2xl !py-3" onClick={() => buy("yearly")}>
-                  {PRICING.yearly.label}
-                  <span className="rounded-full bg-[var(--color-clay)] px-1.5 py-0.5 text-[10px] font-bold text-white">{PRICING.yearly.note}</span>
-                </Button>
-              </div>
-            )}
-            <p className="mt-3 text-center text-[11px] text-[var(--mute)]">Cancel anytime. Pro pays for the free summaries everyone else gets.</p>
+            {children}
           </motion.div>
         </motion.div>
       )}
     </AnimatePresence>
+  );
+}
+
+export function ProSheet() {
+  const { proOpen, closePro, plan, session, tier, openSignup, refreshPlan, toast } = useApp();
+  const [yearly, setYearly] = useState(true);
+  const buy = (period: "monthly" | "yearly") => {
+    track("checkout_clicked", { period, from: proOpen });
+    // Pro belongs to an account, so a guest signs up first (their classes come along).
+    if (tier === "guest" || !session) {
+      closePro();
+      openSignup("pro");
+      return;
+    }
+    if (!CHECKOUT) {
+      toast({ title: "Checkout isn't switched on yet", body: "Pro goes on sale very soon. Everything free keeps working in the meantime." });
+      return;
+    }
+    // package_id opens the checkout on the plan they tapped (RevenueCat's standard monthly/annual package ids).
+    const url = `${CHECKOUT}/${encodeURIComponent(session.user.id)}?email=${encodeURIComponent(session.user.email ?? "")}&package_id=${period === "yearly" ? "%24rc_annual" : "%24rc_monthly"}`;
+    if (desktop) void desktop.openExternal(url);
+    else window.open(url, "_blank");
+    // Watch for the purchase landing (the webhook flips the profile within seconds).
+    let tries = 0;
+    const poll = setInterval(async () => {
+      if (++tries > 120 || (await refreshPlan())) {
+        clearInterval(poll);
+        if (tries <= 120) {
+          closePro();
+          toast({ title: "Welcome to NoteLater Pro", body: "Instant notes, Ask, exam packs, exports and calendar sync are all on." });
+        }
+      }
+    }, 5000);
+  };
+  const perMonth = yearly ? (PRICING.yearly.price / 12).toFixed(2) : PRICING.monthly.price.toFixed(2);
+  const save = Math.round((1 - PRICING.yearly.price / (PRICING.monthly.price * 12)) * 100);
+  return (
+    <Sheet open={!!proOpen} onClose={closePro} dark>
+      <h2 className="title-serif text-[2.2rem] leading-none">
+        NoteLater <span className="bg-[linear-gradient(180deg,#ffffff,#9a9aa0)] bg-clip-text text-transparent">Pro</span>
+      </h2>
+      <p className="mt-2 text-[14.5px] text-white/65">{(proOpen && WHY[proOpen]) || "Your notes, working for you."} Everything free stays free.</p>
+      <div className="mt-5 flex items-end gap-3">
+        <span className="title-serif text-[3.2rem] leading-none tabular-nums">${perMonth}</span>
+        <span className="pb-1.5 text-[13px] leading-tight text-white/55">
+          per month
+          <br />
+          {yearly ? `$${PRICING.yearly.price} a year` : "billed monthly"}
+        </span>
+        <div className="ml-auto flex rounded-full bg-white/[0.08] p-1 ring-1 ring-white/10">
+          {([false, true] as const).map((y) => (
+            <button key={String(y)} onClick={() => setYearly(y)} className={`relative z-10 rounded-full px-3 py-1 text-[12.5px] font-semibold ${yearly === y ? "text-[#1d1d1f]" : "text-white/70"}`}>
+              {yearly === y && <motion.span layoutId="nn-sheet-bill" transition={spring} className="absolute inset-0 -z-10 rounded-full bg-white" />}
+              {y ? `Yearly −${save}%` : "Monthly"}
+            </button>
+          ))}
+        </div>
+      </div>
+      <ul className="mt-6 grid gap-2.5 sm:grid-cols-2">
+        {PRO_PITCH.map((p, i) => (
+          <motion.li key={p.feature} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ ...spring, delay: 0.05 + i * 0.04 }} className="rounded-[16px] bg-white/[0.06] p-3.5 ring-1 ring-white/[0.08]">
+            <span className="flex items-center gap-2 text-[13.5px] font-semibold">
+              <span className="grid h-[18px] w-[18px] shrink-0 place-items-center rounded-full bg-white text-[#1d1d1f]">
+                <Check size={10} strokeWidth={3.4} />
+              </span>
+              {p.title}
+            </span>
+            <span className="mt-1 block text-[12.5px] leading-snug text-white/55">{p.body}</span>
+          </motion.li>
+        ))}
+      </ul>
+      {plan === "pro" ? (
+        <div className="mt-6 rounded-2xl bg-white/[0.08] p-4 text-sm">You're on Pro. Thank you for keeping NoteLater free for everyone else.</div>
+      ) : (
+        <button onClick={() => buy(yearly ? "yearly" : "monthly")} className="mt-6 w-full rounded-full bg-white py-3.5 text-[15.5px] font-bold text-[#1d1d1f] shadow-[0_4px_0_#9a9aa0,0_20px_36px_-14px_rgb(0_0_0/0.8)] transition active:translate-y-[3px] active:shadow-[0_1px_0_#9a9aa0]">
+          Get Pro {yearly ? "yearly" : "monthly"}
+        </button>
+      )}
+      <p className="mt-3 text-center text-[11.5px] text-white/45">Cancel anytime. Pro pays for the free notes everyone else gets.</p>
+    </Sheet>
+  );
+}
+
+const SIGNUP_WHY: Record<string, string> = {
+  pro: "Pro lives on your account, so it works on every device. Sign up free first; what you recorded comes with you.",
+  summary: "Your transcript is saved. Sign up free and NoteLater writes the notes, study guide and key terms.",
+  studyGuide: "Study guides come with a free account.",
+  insights: "See your streak, hours and every due date you've caught.",
+  calendarFile: "Add due dates to your calendar with a free account.",
+  sync: "Keep your notes on your phone, laptop and the web.",
+};
+
+/** For guests: what a free account adds, and one Google button. */
+export function SignupSheet() {
+  const { signupOpen, closeSignup, notes } = useApp();
+  const classes = notes.filter((n) => n.segments.length > 0).length;
+  return (
+    <Sheet open={!!signupOpen} onClose={closeSignup}>
+      <TranscriptToNotes />
+      <h2 className="mt-6 text-[2rem] font-bold leading-[1.05] tracking-[-0.04em]">
+        Keep everything. <span className="text-[#6e6e73]">Free forever.</span>
+      </h2>
+      <p className="mt-2 text-[15px] text-[#6e6e73]">{(signupOpen && SIGNUP_WHY[signupOpen]) || "You're using NoteLater as a guest. A free account unlocks the rest, and keeps what you've recorded."}</p>
+      <ul className="mt-5 space-y-3.5">
+        {[
+          [Sparkles, "AI notes the second class ends", "Notes, study guide and key terms. 5 a day, free."],
+          [RefreshCw, "On every device", "Phone, laptop and the web, synced live."],
+          [BarChart3, "Insights and streaks", "Hours, words and every due date caught."],
+          [CalendarDays, "Due dates in your calendar", "Google or Apple Calendar in one tap."],
+        ].map(([Icon, t, b], i) => {
+          const I = Icon as typeof Sparkles;
+          return (
+            <motion.li key={t as string} initial={{ opacity: 0, x: -10 }} animate={{ opacity: 1, x: 0 }} transition={{ ...spring, delay: 0.12 + i * 0.05 }} className="flex items-center gap-3.5">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-[13px] bg-[linear-gradient(180deg,#3a3a3c,#1d1d1f)] text-white shadow-[inset_0_1px_0_rgb(255_255_255/0.18),0_3px_0_#000,0_8px_16px_-8px_rgb(0_0_0/0.5)]">
+                <I size={18} strokeWidth={2.4} />
+              </span>
+              <span>
+                <span className="block text-[15px] font-bold leading-tight">{t as string}</span>
+                <span className="block text-[13.5px] text-[#6e6e73]">{b as string}</span>
+              </span>
+            </motion.li>
+          );
+        })}
+      </ul>
+      <button
+        onClick={() => void upgradeGuest()}
+        className="press mt-7 flex w-full items-center justify-center gap-3 rounded-full bg-[linear-gradient(180deg,#3a3a3c,#1d1d1f)] py-4 text-[16px] font-bold text-white"
+      >
+        <span className="grid h-7 w-7 place-items-center rounded-full bg-white">
+          <GoogleMark />
+        </span>
+        Continue with Google
+      </button>
+      <p className="mt-3 text-center text-[12.5px] text-[#6e6e73]">
+        {classes > 0 ? `Your ${classes} class${classes > 1 ? "es" : ""} from this browser move${classes > 1 ? "" : "s"} into your account. ` : ""}New or existing account, same button.
+      </p>
+    </Sheet>
+  );
+}
+
+/** A tiny loop: transcript lines on the left turn into tidy notes on the right. */
+function TranscriptToNotes() {
+  return (
+    <div className="flex items-center gap-3 rounded-[22px] bg-[#f5f5f7] p-4 pr-12" aria-hidden>
+      <div className="flex-1 space-y-2">
+        {[92, 70, 84, 58].map((w, i) => (
+          <motion.div key={i} className="h-2.5 rounded-full bg-[#c7c7cc]" style={{ width: `${w}%` }} animate={{ opacity: [0.35, 1, 0.35] }} transition={{ duration: 2.4, delay: i * 0.25, repeat: Infinity }} />
+        ))}
+      </div>
+      <motion.span className="grid h-9 w-9 shrink-0 place-items-center rounded-full bg-white text-[#1d1d1f] shadow-[0_2px_0_rgb(0_0_0/0.1)]" animate={{ rotate: [0, 12, 0], scale: [1, 1.08, 1] }} transition={{ duration: 2.4, repeat: Infinity }}>
+        <Sparkles size={16} strokeWidth={2.6} />
+      </motion.span>
+      <div className="flex-1 space-y-2 rounded-[14px] bg-white p-3 shadow-[0_0_0_1px_rgb(0_0_0/0.05),0_8px_18px_-12px_rgb(0_0_0/0.3)]">
+        {[80, 64, 72].map((w, i) => (
+          <div key={i} className="flex items-center gap-2">
+            <motion.span className="grid h-3.5 w-3.5 shrink-0 place-items-center rounded-full bg-[#1d1d1f] text-white" initial={{ scale: 0 }} animate={{ scale: [0, 1, 1, 0] }} transition={{ duration: 2.4, times: [0, 0.2, 0.85, 1], delay: 0.4 + i * 0.2, repeat: Infinity }}>
+              <Check size={8} strokeWidth={4} />
+            </motion.span>
+            <motion.span className="h-2.5 rounded-full bg-[#1d1d1f]" initial={{ width: 0 }} animate={{ width: [`0%`, `${w}%`, `${w}%`, `0%`] }} transition={{ duration: 2.4, times: [0, 0.25, 0.85, 1], delay: 0.4 + i * 0.2, repeat: Infinity }} />
+          </div>
+        ))}
+        <span className="inline-block rounded-[4px] bg-[#ffe58a] px-1.5 text-[10px] font-bold">due Fri</span>
+      </div>
+    </div>
   );
 }

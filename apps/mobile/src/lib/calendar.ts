@@ -1,6 +1,6 @@
 // Calendar: anyone can add a single due date through the system sheet; Pro
 // adds every one automatically, with an alert the evening before.
-import type { Extraction, Note } from "@nevernote/core";
+import type { Extraction, Note } from "@notelater/core";
 import * as Calendar from "expo-calendar/legacy";
 
 function eventFor(e: Extraction, note: Note) {
@@ -11,7 +11,7 @@ function eventFor(e: Extraction, note: Note) {
     startDate: start,
     endDate: end,
     allDay: e.allDay,
-    notes: `“${e.phrase}”\n\nHeard in ${note.title} · Nevernote`,
+    notes: `“${e.phrase}”\n\nHeard in ${note.title} · NoteLater`,
     alarms: [{ relativeOffset: e.allDay ? -16 * 60 : -24 * 60 }],
   };
 }

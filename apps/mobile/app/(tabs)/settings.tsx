@@ -1,6 +1,5 @@
-import { PRICING } from "@nevernote/core";
+import { PRICING } from "@notelater/core";
 import * as AppleAuthentication from "expo-apple-authentication";
-import * as WebBrowser from "expo-web-browser";
 import { useState, type ReactNode } from "react";
 import { Alert, Platform, ScrollView, Switch, TextInput, View } from "react-native";
 import { useSafeAreaInsets } from "react-native-safe-area-context";
@@ -8,7 +7,7 @@ import { cloudEnabled, deleteAccount, sendEmailCode, signInWithApple, signInWith
 import { useTheme } from "../../src/lib/theme";
 import { downloadModels, openPro, useApp } from "../../src/state/app";
 import { settings, useSettings, type Settings as S } from "../../src/state/settings";
-import { Button, Card, GITHUB_REPO, Hmu, Press, T } from "../../src/ui/kit";
+import { Button, Card, Hmu, Press, T } from "../../src/ui/kit";
 
 function Section({ title, hint, children }: { title: string; hint?: string; children: ReactNode }) {
   return (
@@ -104,7 +103,7 @@ export default function SettingsScreen() {
 
       <Section title="Account">
         {!cloudEnabled ? (
-          <T kind="small" style={{ paddingVertical: 10 }}>This build runs fully on your phone. Sync and AI notes switch on when it's connected to a Nevernote server.</T>
+          <T kind="small" style={{ paddingVertical: 10 }}>This build runs fully on your phone. Sync and AI notes switch on when it's connected to a NoteLater server.</T>
         ) : session ? (
           <View style={{ gap: 10, paddingVertical: 8 }}>
             <View>
@@ -137,7 +136,7 @@ export default function SettingsScreen() {
         <TextInput
           value={name}
           onChangeText={(v) => settings.set({ name: v })}
-          placeholder="What should Nevernote call you?"
+          placeholder="What should NoteLater call you?"
           placeholderTextColor={t.mute}
           style={{ fontSize: 16, color: t.fg, paddingVertical: 10 }}
         />
@@ -155,7 +154,7 @@ export default function SettingsScreen() {
         </View>
       </Section>
 
-      <Section title="Notifications" hint="The moment Nevernote hears it, during class.">
+      <Section title="Notifications" hint="The moment NoteLater hears it, during class.">
         <Toggle k="notifyDeadlines" label="Due dates" hint="“Lab report due Friday at 11:59”" />
         <Toggle k="notifyExams" label="Tests and quizzes" hint="“Unit 3 test next Tuesday”" />
         <Toggle k="notifyImportant" label="“This will be on the test” moments" />
@@ -183,14 +182,14 @@ export default function SettingsScreen() {
       {plan !== "pro" && (
         <Press onPress={() => openPro("settings-card")} style={{ marginTop: 26 }}>
           <Card style={{ backgroundColor: t.dark ? "#241d17" : "#f1e6d8", borderColor: "transparent", gap: 4 }}>
-            <T kind="h2">Nevernote Pro</T>
+            <T kind="h2">NoteLater Pro</T>
             <T kind="small">Due dates straight into your calendar, Ask your notes, instant summaries. {PRICING.yearly.label}.</T>
           </Card>
         </Press>
       )}
 
-      <T kind="mute" style={{ textAlign: "center", marginTop: 30 }} onPress={() => void WebBrowser.openBrowserAsync(GITHUB_REPO)}>
-        Nevernote is free and open source · source on GitHub
+      <T kind="mute" style={{ textAlign: "center", marginTop: 30 }}>
+        NoteLater is free. Pro is optional. Made by a student, for students.
       </T>
     </ScrollView>
   );

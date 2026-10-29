@@ -1,4 +1,4 @@
-# Nevernote server
+# NoteLater server
 
 A Supabase project serves every app. It provides:
 
@@ -11,7 +11,7 @@ The apps work without any of this; they just stay local. Transcription never tou
 
 | Function | What it does | Auth |
 |---|---|---|
-| `summarize` | Writes notes, a study guide, key terms and due dates for one note. Free accounts get 3 instant summaries a day. After that the note is queued for overnight, or written now after a 5-second sponsor card. | User JWT |
+| `summarize` | Writes notes, a study guide, key terms and due dates for one note. Free accounts get 5 instant AI notes a day, and each update to a note counts as one. After that the note is queued for overnight, or written now after a 5-second sponsor card. | User JWT |
 | `ask` | "Ask your notes" (Pro only; returns 402 otherwise) | User JWT |
 | `nightly` | Works through the overnight queue | `Bearer $CRON_SECRET` |
 | `revenuecat` | App Store purchases flip `profiles.plan` | `Bearer $REVENUECAT_WEBHOOK_SECRET` |
@@ -32,11 +32,11 @@ The apps work without any of this; they just stay local. Transcription never tou
 4. **Set up sign-in** (Authentication → Providers):
    - **Apple:**
      - Enable it.
-     - Under *Client IDs*, add the iOS bundle id `app.nevernote` (the native sign-in sends an ID token for it) and your web Services ID.
+     - Under *Client IDs*, add the iOS bundle id `com.notelater.app` (the native sign-in sends an ID token for it) and your web Services ID.
      - Add the secret key from your Apple developer account.
    - **Google:**
      - Enable it with an OAuth client from Google Cloud.
-     - Add `nevernote://auth` and your site URL to *Redirect URLs* (Authentication → URL Configuration).
+     - Add `notelater://auth` and your site URL to *Redirect URLs* (Authentication → URL Configuration).
    - **Email:**
      - Edit the *Magic Link* template so it includes `{{ .Token }}`. The phone app asks for the 6-digit code.
 5. **Schedule the overnight batch** (SQL editor; enable the `pg_cron` and `pg_net` extensions first):
@@ -50,7 +50,7 @@ The apps work without any of this; they just stay local. Transcription never tou
    ```
    08:00 UTC is 3–4 a.m. in US Eastern time, so notes are waiting before class.
 6. **Connect RevenueCat:**
-   - Create the products `nevernote_pro_monthly` ($3.99) and `nevernote_pro_yearly` ($29.99) in App Store Connect.
+   - Create the products `notelater_pro_monthly` ($3.99) and `notelater_pro_yearly` ($29.99) in App Store Connect.
    - In RevenueCat, attach both to the entitlement `pro` and the *current* offering.
    - Add a webhook to `https://<ref>.supabase.co/functions/v1/revenuecat` with the Authorization header `Bearer <REVENUECAT_WEBHOOK_SECRET>`.
 7. **Point the apps at the project:**

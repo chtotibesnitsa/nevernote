@@ -1,6 +1,6 @@
 // The small set of pieces every screen is built from: glass, type, dots,
 // the waveform and the springy pressable.
-import { pipelineDots, stageInfo, type Dot, type Stage } from "@nevernote/core";
+import { pipelineDots, stageInfo, type Dot, type Stage } from "@notelater/core";
 import { BlurView } from "expo-blur";
 import { GlassView, isLiquidGlassAvailable } from "expo-glass-effect";
 import * as WebBrowser from "expo-web-browser";
@@ -21,6 +21,7 @@ import { serif, spring, useTheme } from "../lib/theme";
 import { level } from "../state/app";
 
 export const GITHUB_PROFILE = "https://github.com/chtotibesnitsa";
+export const X_PROFILE = "https://x.com/aleks_lucenko";
 export const GITHUB_REPO = "https://github.com/chtotibesnitsa/nevernote";
 
 const liquid = isLiquidGlassAvailable();
@@ -170,9 +171,9 @@ function Bar({ i, n, lvl, color, height }: { i: number; n: number; lvl: { value:
 export function Hmu() {
   const t = useTheme();
   return (
-    <Press onPress={() => void WebBrowser.openBrowserAsync(GITHUB_PROFILE)} accessibilityRole="link" accessibilityLabel="Made by chtotibesnitsa on GitHub">
+    <Press onPress={() => void WebBrowser.openBrowserAsync(X_PROFILE)} accessibilityRole="link" accessibilityLabel="Made by Aleks, on X">
       <Glass radius={999} interactive style={{ flexDirection: "row", alignItems: "center", gap: 6, paddingLeft: 3, paddingRight: 10, paddingVertical: 3 }}>
-        <Image source={{ uri: `${GITHUB_PROFILE}.png?size=64` }} style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: t.line }} />
+        <Image source={require("../../assets/aleks.jpg")} style={{ width: 22, height: 22, borderRadius: 11, backgroundColor: t.line }} />
         <Text style={{ fontSize: 12.5, color: t.ink2 }}>hmu, I made this ↗</Text>
       </Glass>
     </Press>
@@ -183,11 +184,8 @@ export function Logo({ size = 26 }: { size?: number }) {
   const t = useTheme();
   return (
     <View style={{ flexDirection: "row", alignItems: "center", gap: 8 }}>
-      <View style={{ width: size, height: size, borderRadius: size * 0.24, backgroundColor: t.fg, alignItems: "center", justifyContent: "center" }}>
-        <Text style={{ fontFamily: serif, color: t.bg, fontSize: size * 0.62, marginTop: -size * 0.04 }}>N</Text>
-        <View style={{ position: "absolute", right: size * 0.12, bottom: size * 0.12, width: size * 0.14, height: size * 0.14, borderRadius: size, backgroundColor: t.clay }} />
-      </View>
-      <Text style={{ fontFamily: serif, fontSize: size * 0.82, color: t.fg }}>Nevernote</Text>
+      <Image source={require("../../assets/icon.png")} style={{ width: size, height: size, borderRadius: size * 0.24 }} />
+      <Text style={{ fontFamily: serif, fontSize: size * 0.82, color: t.fg }}>NoteLater</Text>
     </View>
   );
 }

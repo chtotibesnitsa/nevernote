@@ -1,4 +1,4 @@
-import type { Extraction, Note } from "@nevernote/core";
+import type { Extraction, Note } from "@notelater/core";
 import { router } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useMemo } from "react";
@@ -50,7 +50,7 @@ export default function Home() {
 
       <Animated.View entering={FadeInDown.springify().damping(18).delay(80)} style={{ marginTop: 28 }}>
         <T kind="display">{greeting(name)}</T>
-        <T kind="small" style={{ marginTop: 6 }}>Put your phone on the desk. Nevernote catches every word, who said it, and every due date.</T>
+        <T kind="small" style={{ marginTop: 6 }}>Put your phone on the desk. NoteLater catches every word, who said it, and every due date.</T>
       </Animated.View>
 
       <Animated.View entering={FadeInDown.springify().damping(18).delay(160)} style={{ marginVertical: 34 }}>

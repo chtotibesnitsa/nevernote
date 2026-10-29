@@ -42,7 +42,8 @@ describe("plans", () => {
   const base = { installedAt: "2026-10-01T00:00:00Z", shownCount: 0, dismissedInARow: 0 };
   it("routes free summaries past the daily limit to sponsored-or-overnight", () => {
     expect(summaryRoute("free", 0)).toBe("instant");
-    expect(summaryRoute("free", 3)).toBe("sponsored-or-overnight");
+    expect(summaryRoute("free", 4)).toBe("instant");
+    expect(summaryRoute("free", 5)).toBe("sponsored-or-overnight");
     expect(summaryRoute("pro", 99)).toBe("instant");
   });
   it("never upsells new users, pro users, or while recording", () => {
@@ -150,5 +151,55 @@ describe("summary styles", () => {
     const msgs = sm([{ id: "1", start: 0, end: 1, text: "hello" }], new Date(), { style: text });
     expect(msgs[0].content).toContain("Return ONLY a JSON object");
     expect(msgs[0].content).toContain("Bold every date");
+  });
+});
+
+import { answer, comingUp, needsReview, reviewQueue } from "../src/review.ts";
+describe("daily review", () => {
+  const now = new Date("2026-10-23T12:00:00Z");
+  const note = (extractions: any[]) => ({ id: "n", title: "Bio", createdAt: "2026-10-23T09:00:00Z", updatedAt: "", durationSec: 0, device: "web", stage: "ready", segments: [], speakers: [], extractions, thoughts: "" }) as any;
+  const kw = { id: "a", kind: "deadline", title: "Lab report", when: "2026-10-27", allDay: true, phrase: "lab report due monday", confidence: 0.8, source: "keywords" };
+  const ai = { ...kw, id: "b", confidence: 0.9, source: "ai", when: "2026-10-28" };
+  it("asks about keyword guesses and undated items, not confident AI ones", () => {
+    expect(needsReview(kw as any, now)).toBe(true);
+    expect(needsReview({ ...ai, when: undefined } as any, now)).toBe(true);
+    expect(needsReview(ai as any, now)).toBe(false);
+    expect(needsReview({ ...kw, kind: "important" } as any, now)).toBe(false);
+    expect(needsReview({ ...kw, when: "2026-10-01" } as any, now)).toBe(false);
+  });
+  it("confirming tracks it, dismissing hides it", () => {
+    const n = note([kw, ai]);
+    expect(reviewQueue([n], now).map((p) => p.e.id)).toEqual(["a"]);
+    expect(comingUp([n], now).map((p) => p.e.id)).toEqual(["b"]);
+    const yes = { ...n, extractions: answer(n, "a", "confirmed") };
+    expect(reviewQueue([yes], now)).toEqual([]);
+    expect(comingUp([yes], now).map((p) => p.e.id)).toEqual(["a", "b"]);
+    const no = { ...n, extractions: answer(n, "b", "dismissed") };
+    expect(comingUp([no], now)).toEqual([]);
+  });
+});
+
+import { isDue, mcQuestions, review } from "../src/study.ts";
+describe("study games", () => {
+  let seed = 7;
+  const rand = () => ((seed = (seed * 16807) % 2147483647) / 2147483647);
+  const cards = ["mitosis", "meiosis", "osmosis", "diffusion", "ATP"].map((t, i) => ({ front: t, back: `definition ${i}` }));
+  it("builds multiple choice with the right answer among four", () => {
+    const qs = mcQuestions(cards, 3, rand);
+    expect(qs).toHaveLength(3);
+    for (const q of qs) {
+      expect(q.options).toHaveLength(4);
+      expect(new Set(q.options).size).toBe(4);
+      expect(q.options[q.answer]).toBe(cards.find((c) => c.front === q.prompt)!.back);
+    }
+    expect(mcQuestions(cards.slice(0, 3))).toEqual([]);
+  });
+  it("spaces reviews out and resets on a miss", () => {
+    const now = new Date("2026-10-23T12:00:00Z");
+    const a = review(undefined, true, now);
+    expect(a.box).toBe(1);
+    expect(isDue(a, now)).toBe(false);
+    expect(isDue(a, new Date("2026-10-24T12:00:01Z"))).toBe(true);
+    expect(review(review(a, true, now), false, now).box).toBe(0);
   });
 });

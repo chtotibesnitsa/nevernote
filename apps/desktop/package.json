@@ -1,16 +1,16 @@
 {
-  "name": "@nevernote/desktop",
-  "productName": "Nevernote",
-  "version": "0.1.0",
+  "name": "@notelater/desktop",
+  "productName": "NoteLater",
+  "version": "1.1.0",
   "description": "Every word, every speaker, offline. Free and open source class notes.",
   "author": "Aleks <aleksander@lucenko.com>",
   "license": "MIT",
   "main": "dist/main.cjs",
   "scripts": {
     "build:main": "esbuild src/main.ts src/preload.ts src/engine-worker.ts --bundle --platform=node --format=cjs --outdir=dist --out-extension:.js=.cjs --external:electron --external:sherpa-onnx-node",
-    "build:renderer": "npm run build -w @nevernote/web -- --base ./ --outDir ../desktop/renderer --mode desktop",
+    "build:renderer": "npm run build -w @notelater/web -- --base ./ --outDir ../desktop/renderer --mode desktop",
     "build": "npm run build:renderer && npm run build:main",
-    "dev": "npm run build:main && NEVERNOTE_DEV_URL=http://localhost:5173 electron .",
+    "dev": "npm run build:main && NOTELATER_DEV_URL=http://localhost:5173 electron .",
     "dist:mac": "npm run build && electron-builder --mac",
     "dist:win": "npm run build && electron-builder --win",
     "test:engine": "tsx test/run-engine.ts",
@@ -18,7 +18,7 @@
   },
   "dependencies": {
     "sherpa-onnx-node": "1.13.8",
-    "@nevernote/core": "*"
+    "@notelater/core": "*"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",
@@ -29,8 +29,9 @@
     "typescript": "^5.9.3"
   },
   "build": {
-    "appId": "app.nevernote.desktop",
-    "productName": "Nevernote",
+    "appId": "com.notelater.desktop",
+    "productName": "NoteLater",
+    "electronVersion": "38.8.6",
     "directories": {
       "output": "release",
       "buildResources": "build"
@@ -46,20 +47,15 @@
     "mac": {
       "category": "public.app-category.education",
       "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "arm64",
-            "x64"
-          ]
-        }
+        "dmg"
       ],
       "hardenedRuntime": true,
       "entitlements": "build/entitlements.mac.plist",
       "entitlementsInherit": "build/entitlements.mac.plist",
       "extendInfo": {
-        "NSMicrophoneUsageDescription": "Nevernote listens to your class so it can write down every word. Audio never leaves your Mac."
-      }
+        "NSMicrophoneUsageDescription": "NoteLater listens to your class so it can write down every word. Audio never leaves your Mac."
+      },
+      "darkModeSupport": false
     },
     "win": {
       "target": [
@@ -75,8 +71,38 @@
       {
         "provider": "github",
         "owner": "chtotibesnitsa",
-        "repo": "nevernote"
+        "repo": "nevernote",
+        "releaseType": "draft"
       }
-    ]
+    ],
+    "protocols": [
+      {
+        "name": "NoteLater sign-in",
+        "schemes": [
+          "notelater"
+        ]
+      }
+    ],
+    "dmg": {
+      "title": "NoteLater",
+      "iconSize": 112,
+      "window": {
+        "width": 560,
+        "height": 380
+      },
+      "contents": [
+        {
+          "x": 150,
+          "y": 190
+        },
+        {
+          "x": 410,
+          "y": 190,
+          "type": "link",
+          "path": "/Applications"
+        }
+      ]
+    },
+    "afterPack": "build/adhoc-sign.cjs"
   }
 }

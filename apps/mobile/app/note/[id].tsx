@@ -1,6 +1,6 @@
 // One class: live transcript while recording, then notes, due dates, study
 // guide and key terms. Recording controls float at the bottom.
-import { stageInfo, type Extraction, type Note, type Segment } from "@nevernote/core";
+import { stageInfo, type Extraction, type Note, type Segment } from "@notelater/core";
 import { router, Stack, useLocalSearchParams } from "expo-router";
 import { SymbolView } from "expo-symbols";
 import { useEffect, useMemo, useRef, useState } from "react";
@@ -235,13 +235,13 @@ function SummaryTab({ note }: { note: Note }) {
           ) : (
             <T kind="small" style={{ textAlign: "center" }}>
               {!cloudEnabled
-                ? "AI notes need the Nevernote server. The transcript and due dates are already here."
+                ? "AI notes need the NoteLater server. The transcript and due dates are already here."
                 : !session
-                  ? "Sign in (free, in Settings) and Nevernote writes notes, a study guide and key terms for every class."
+                  ? "Sign in (free, in Settings) and NoteLater writes notes, a study guide and key terms for every class."
                   : !online
                     ? "You're offline. This class is saved, and its notes get written the moment you're back online."
                     : note.stage === "queued"
-                      ? "Queued. Free notes past 3 a day are written overnight."
+                      ? "Queued for tonight: today's 5 instant notes are used. Get them now below."
                       : "Ready when you are."}
             </T>
           )}
@@ -318,7 +318,7 @@ function DueList({ items, note }: { items: Extraction[]; note: Note }) {
   const addEverything = async () => {
     if (plan !== "pro") return openPro("calendar");
     const n = await addAll(dated, note);
-    toast({ title: n ? `Added ${n} to your calendar` : "Calendar access is off", body: n ? "With an alert the day before." : "Turn it on in Settings › Nevernote." });
+    toast({ title: n ? `Added ${n} to your calendar` : "Calendar access is off", body: n ? "With an alert the day before." : "Turn it on in Settings › NoteLater." });
   };
   return (
     <View style={{ gap: 10 }}>
@@ -427,8 +427,8 @@ function SponsorCard({ onDone, onClose }: { onDone: () => void; onClose: () => v
         <SymbolView name="xmark" tintColor={t.bg} size={13} />
       </Pressable>
       <Text style={{ fontSize: 11, letterSpacing: 1.2, color: t.bg, opacity: 0.6 }}>SPONSORED · {Math.max(0, left)}s</Text>
-      <Text style={{ fontFamily: serif, fontSize: 22, color: t.bg }}>Nevernote is free because of people like you.</Text>
-      <Text style={{ fontSize: 14, color: t.bg, opacity: 0.8 }}>Star it on GitHub, tell a friend in your class, or go Pro to skip this forever.</Text>
+      <Text style={{ fontFamily: serif, fontSize: 22, color: t.bg }}>NoteLater is free because of people like you.</Text>
+      <Text style={{ fontSize: 14, color: t.bg, opacity: 0.8 }}>Tell a friend in your class, or go Pro to skip this forever.</Text>
       <Animated.View style={[{ position: "absolute", left: 0, bottom: 0, height: 3, backgroundColor: t.clay }, a]} />
     </Animated.View>
   );

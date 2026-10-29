@@ -7,7 +7,7 @@ const on = (channel: string) => (cb: (payload: any) => void) => {
   return () => ipcRenderer.removeListener(channel, h);
 };
 
-contextBridge.exposeInMainWorld("nevernote", {
+contextBridge.exposeInMainWorld("notelater", {
   platform: process.platform,
   models: {
     status: () => ipcRenderer.invoke("models:status"),
@@ -20,6 +20,7 @@ contextBridge.exposeInMainWorld("nevernote", {
     stop: (noteId: string) => ipcRenderer.invoke("rec:stop", noteId),
     onSegment: on("rec:segment"),
     onStage: on("rec:stage"),
+    onPartial: on("rec:partial"),
   },
   notes: {
     list: () => ipcRenderer.invoke("notes:list"),
@@ -31,4 +32,9 @@ contextBridge.exposeInMainWorld("nevernote", {
   notify: (title: string, body: string, noteId?: string) => ipcRenderer.invoke("notify", title, body, noteId),
   onOpenNote: on("open-note"),
   openExternal: (url: string) => ipcRenderer.invoke("open-external", url),
+  onAuth: (cb: (url: string) => void) => {
+    const off = on("auth")(cb);
+    ipcRenderer.invoke("auth:pending").then((url?: string) => url && cb(url));
+    return off;
+  },
 });

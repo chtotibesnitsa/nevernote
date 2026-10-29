@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>NoteLater has moved</title>
+<script>
+  // The old GitHub Pages copy of NoteLater. Everything, including a Google
+  // sign-in coming back with ?code= or #access_token, goes on to the real site.
+  (function () {
+    var site = "__SITE__".replace(/\/$/, "");
+    var base = "/nevernote";
+    var path = location.pathname.indexOf(base) === 0 ? location.pathname.slice(base.length) : location.pathname;
+    var auth = /[?&#](code|error|error_code|access_token)=/.test(location.search + location.hash);
+    if (auth && !/^\/(app|admin)/.test(path)) path = "/app";
+    location.replace(site + (path || "/") + location.search + location.hash);
+  })();
+</script>
+<style>body{margin:0;display:grid;place-items:center;min-height:100vh;background:#fff;color:#1d1d1f;font:600 17px -apple-system,system-ui,sans-serif}</style>
+</head>
+<body>Opening NoteLater…</body>
+</html>

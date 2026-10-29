@@ -1,15 +1,16 @@
-import { insights, type Device } from "@nevernote/core";
+import { insights, type Device } from "@notelater/core";
 import { Laptop, Monitor, Smartphone } from "lucide-react";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";
 import { Card, spring } from "../components/ui.tsx";
+import { GuestInsights } from "./GuestUnlock.tsx";
 import { useApp } from "./state.tsx";
 
-// Sequential ramp for the streak grid: paper -> leather.
-const RAMP = ["var(--line)", "#d9c3a9", "#b98f6a", "#8c6243", "#5e3f29"];
+// Sequential ramp for the streak grid: light grey -> graphite.
+const RAMP = ["var(--line)", "#c7c7cc", "#8e8e93", "#4a4a4f", "#1d1d1f"];
 
 export function Insights() {
-  const { notes } = useApp();
+  const { notes, tier } = useApp();
   const s = useMemo(() => insights(notes), [notes]);
   const [tip, setTip] = useState<string | null>(null);
 
@@ -43,9 +44,13 @@ export function Insights() {
   const maxFolder = Math.max(1, ...s.byFolder.map((f) => f.minutes));
 
   return (
-    <div className="mx-auto w-full max-w-[1080px] px-5 pb-28 pt-4 md:px-10">
-      <h1 className="text-[2rem] font-semibold tracking-tight">Insights</h1>
-      <div className="mt-6 grid gap-4 md:grid-cols-3">
+    <div className="w-full px-5 pb-28 pt-4 md:px-8 xl:px-10">
+      <h1 className="title-serif text-[2.2rem] leading-tight">Insights</h1>
+      {tier === "guest" ? (
+        <GuestInsights hours={s.totalHours} words={s.totalWords} />
+      ) : (
+        <>
+      <div className={`mt-6 grid gap-4 md:grid-cols-3`}>
         <Card className="p-6">
           <Big n={s.wpm} />
           <div className="eyebrow mt-1">words per minute in class</div>
@@ -80,7 +85,7 @@ export function Insights() {
                   animate={{ width: `${(x.w / totalDev) * 100}%` }}
                   transition={{ ...spring, delay: i * 0.08 }}
                   className="flex min-w-[2.2rem] items-center gap-1 px-2 text-xs text-white"
-                  style={{ background: ["#5e3f29", "#8c6243", "#b98f6a"][i] }}
+                  style={{ background: ["#1d1d1f", "#4a4a4f", "#8e8e93"][i] }}
                 >
                   <x.icon size={12} /> {x.w / totalDev > 0.18 && x.label}
                 </motion.div>
@@ -90,7 +95,7 @@ export function Insights() {
         </Card>
       </div>
 
-      <div className="mt-4 grid gap-4 md:grid-cols-[1.4fr_1fr]">
+      <div className={`mt-4 grid gap-4 md:grid-cols-[1.4fr_1fr]`}>
         <Card className="p-6">
           <div className="flex items-baseline justify-between">
             <div className="text-2xl font-semibold">{s.streak} day streak</div>
@@ -132,19 +137,21 @@ export function Insights() {
                   <span className="tabular-nums text-[var(--mute)]">{(f.minutes / 60).toFixed(1)} h</span>
                 </div>
                 <div className="mt-1 h-2 overflow-hidden rounded-full bg-[var(--line)]">
-                  <motion.div className="h-full rounded-full bg-[#8c6243]" initial={{ width: 0 }} animate={{ width: `${(f.minutes / maxFolder) * 100}%` }} transition={{ ...spring, delay: i * 0.05 }} />
+                  <motion.div className="h-full rounded-full bg-[var(--fg)]" initial={{ width: 0 }} animate={{ width: `${(f.minutes / maxFolder) * 100}%` }} transition={{ ...spring, delay: i * 0.05 }} />
                 </div>
               </div>
             ))}
           </div>
         </Card>
       </div>
+        </>
+      )}
     </div>
   );
 }
 
 function Big({ n }: { n: number }) {
-  return <div className="text-[2.6rem] font-semibold leading-none tracking-tight tabular-nums">{n.toLocaleString()}</div>;
+  return <div className="title-serif text-[2.8rem] leading-none tabular-nums">{n.toLocaleString()}</div>;
 }
 
 function Gauge({ value }: { value: number }) {
@@ -156,7 +163,7 @@ function Gauge({ value }: { value: number }) {
       <motion.path
         d="M20 90 A70 70 0 0 1 160 90"
         fill="none"
-        stroke="#5e3f29"
+        stroke="var(--fg)"
         strokeWidth="16"
         strokeLinecap="round"
         strokeDasharray={c}

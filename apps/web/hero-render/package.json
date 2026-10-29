@@ -1,0 +1,5 @@
+{
+  "private": true,
+  "description": "Offline renderer for the landing page hero frames. Not part of the web build.",
+  "dependencies": { "three": "0.180.0", "playwright-core": "^1.55.0" }
+}

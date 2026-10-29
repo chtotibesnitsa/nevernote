@@ -1,15 +1,15 @@
-# Test Nevernote on every platform
+# Test NoteLater on every platform
 
 Do the setup once (A), then test each platform (B to E), then check that they agree with each other (F).
 
-Live backend: Supabase project `bbvaqcsyinbeopyhrqzi`. Website after the PR is merged: https://chtotibesnitsa.github.io/nevernote/
+Live backend: Supabase project `bbvaqcsyinbeopyhrqzi`. Website: https://notelater.com
 
 ## A. One-time setup
 
 | Step | Where | Result |
 |---|---|---|
 | 1. AI notes key | Either OpenRouter (key + $5, secret `LLM_API_KEY`) or Vercel AI Gateway: make an AI Gateway key in Vercel, then set secrets `LLM_BASE_URL=https://ai-gateway.vercel.sh/v1`, `LLM_API_KEY=<gateway key>`, `LLM_MODEL=google/gemini-2.5-flash-lite` in Supabase → Edge Functions → Secrets. Enter the key yourself, never paste it in chat | Summaries, study guides and Ask work, and Vercel shows the spend |
-| 2. Google sign-in | Done. Google is enabled in Supabase with the Nevernote Google Cloud client. If it errors, the redirect URI must be `https://bbvaqcsyinbeopyhrqzi.supabase.co/auth/v1/callback` | "Continue with Google" works |
+| 2. Google sign-in | Done. Google is enabled in Supabase with the NoteLater Google Cloud client. If it errors, the redirect URI must be `https://bbvaqcsyinbeopyhrqzi.supabase.co/auth/v1/callback` | "Continue with Google" works |
 | 3. Website | Merge PR #1. Settings → Pages is already set to GitHub Actions. The **Deploy website** workflow publishes it | The site is live |
 | 4. Supabase plan | Upgrade the NeverNote org to Pro ($25 a month) before you post | The project never pauses and has room for storage |
 
@@ -38,7 +38,7 @@ Check the backend before anything else. In Supabase → Edge Functions, `summari
 
 ## D. iPhone and iPad (TestFlight)
 
-You need your Apple developer account and an app record for `app.nevernote`.
+You need your Apple developer account and an app record for `com.notelater.app`.
 
 ```sh
 cd apps/mobile
@@ -62,7 +62,7 @@ The build already points at the live backend. Install from TestFlight, then:
 
 Pro purchases need RevenueCat and two App Store products, so until those exist you can test the walls but not the buying.
 
-1. Create `nevernote_pro_monthly` ($3.99) and `nevernote_pro_yearly` ($29.99) in App Store Connect.
+1. Create `notelater_pro_monthly` ($3.99) and `notelater_pro_yearly` ($29.99) in App Store Connect.
 2. In RevenueCat, attach both to the entitlement `pro` and add the webhook in `server/README.md`.
 3. Put the RevenueCat public iOS key in `apps/mobile/.env` as `EXPO_PUBLIC_REVENUECAT_IOS_KEY` and rebuild.
 
@@ -98,7 +98,7 @@ How fast does data show up? Each app checks for changes every 60 seconds and rig
 
 ## G. Admin panel (only you)
 
-Open `/admin` on the site (https://chtotibesnitsa.github.io/nevernote/admin) and sign in with Google as aleksander@lucenko.com.
+Open `/admin` on the site (https://notelater.com/admin) and sign in with Google as aleksander@lucenko.com.
 
 - Any other account, or a signed-out visitor, gets a plain "no access". The check runs on the server: the function verifies your Google identity and email, and the data tables have no public access at all.
 - You see signups, active people, Pro count, recordings, summaries, asks, AI cost per day, revenue, fixed costs, profit and loss over time, top AI spenders, and which note styles people use.

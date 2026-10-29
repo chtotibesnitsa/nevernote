@@ -1,7 +1,7 @@
 // Notes live as one JSON file each in the app's Documents folder, so a
 // recording is never lost to a crash, a dead battery or no signal.
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Note, Store } from "@nevernote/core";
+import type { Note, Store } from "@notelater/core";
 import { Directory, File, Paths } from "expo-file-system";
 
 const dir = new Directory(Paths.document, "notes");

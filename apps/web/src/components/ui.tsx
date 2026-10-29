@@ -1,7 +1,7 @@
-import { pipelineDots, stageInfo, type Dot, type Stage } from "@nevernote/core";
+import { pipelineDots, stageInfo, type Dot, type Stage } from "@notelater/core";
 import { motion } from "motion/react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
-import { GITHUB_PROFILE } from "../lib/bridge.ts";
+import { X_PROFILE } from "../lib/bridge.ts";
 
 export const spring = { type: "spring", stiffness: 380, damping: 32, mass: 0.8 } as const;
 export const soft = { type: "spring", stiffness: 200, damping: 28 } as const;
@@ -18,9 +18,9 @@ export function StatusDot({ dot, live, size = 8 }: { dot: Dot; live?: boolean; s
 }
 
 /** Heard → transcribed → summarised, as three dots. */
-export function StageDots({ stage, withLabel }: { stage: Stage; withLabel?: boolean }) {
+export function StageDots({ stage, withLabel, guest }: { stage: Stage; withLabel?: boolean; guest?: boolean }) {
   const dots = pipelineDots(stage);
-  const info = stageInfo(stage);
+  const info = stageInfo(stage, guest);
   return (
     <span className="inline-flex items-center gap-2" title={info.label}>
       <span className="inline-flex items-center gap-1">
@@ -56,20 +56,27 @@ export function Wave({ level, bars = 9, color = "var(--color-dot-green)", active
 type Variant = "primary" | "glass" | "ghost" | "danger";
 export function Button({ variant = "glass", className = "", children, ...rest }: ButtonHTMLAttributes<HTMLButtonElement> & { variant?: Variant; children: ReactNode }) {
   const v: Record<Variant, string> = {
-    primary: "bg-[var(--fg)] text-[var(--bg)] shadow-[0_8px_24px_-10px_rgb(28_25_21/0.6)] hover:opacity-90",
-    glass: "glass text-[var(--fg)] hover:brightness-[1.03]",
+    primary: "press bg-[linear-gradient(180deg,#3a3a3c,#1d1d1f)] text-white dark:bg-[linear-gradient(180deg,#ffffff,#e5e5ea)] dark:text-[#1d1d1f]",
+    glass: "press-light bg-[var(--card)] text-[var(--fg)] hover:bg-[var(--bubble)]",
     ghost: "text-[var(--ink-2)] hover:bg-[var(--bubble)]",
-    danger: "bg-[var(--color-dot-red)] text-white",
+    danger: "press bg-[var(--color-dot-red)] text-white",
   };
   return (
-    <motion.button
-      whileTap={{ scale: 0.96 }}
-      transition={spring}
-      className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-medium transition-[background,opacity,filter] disabled:opacity-50 ${v[variant]} ${className}`}
-      {...(rest as object)}
+    <button
+      className={`inline-flex items-center justify-center gap-2 rounded-full px-4 py-2 text-sm font-semibold transition-[background,opacity,transform,box-shadow] disabled:opacity-50 ${v[variant]} ${className}`}
+      {...rest}
     >
       {children}
-    </motion.button>
+    </button>
+  );
+}
+
+/** A small lock badge for features the current plan doesn't include yet. */
+export function LockBadge({ step }: { step: "signup" | "pro" }) {
+  return (
+    <span className={`inline-flex items-center gap-1 rounded-full px-1.5 py-[1px] text-[10px] font-bold uppercase tracking-wide ${step === "pro" ? "bg-[var(--fg)] text-[var(--bg)]" : "bg-[var(--bubble)] text-[var(--ink-2)] shadow-[inset_0_0_0_1px_var(--line)]"}`}>
+      {step === "pro" ? "Pro" : "Free account"}
+    </span>
   );
 }
 
@@ -77,7 +84,7 @@ export function Chip({ children, dashed, onClick }: { children: ReactNode; dashe
   return (
     <button
       onClick={onClick}
-      className={`inline-flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-[13px] text-[var(--ink-2)] transition hover:bg-[var(--bubble)] ${dashed ? "border-dashed" : ""} border-[var(--line)]`}
+      className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-1 text-[13px] font-medium text-[var(--ink-2)] transition hover:bg-[var(--bubble)] ${dashed ? "border-dashed" : ""} border-[var(--line)]`}
     >
       {children}
     </button>
@@ -88,11 +95,11 @@ export function Logo({ size = 22 }: { size?: number }) {
   return (
     <span className="inline-flex items-center gap-2">
       <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden>
-        <rect width="64" height="64" rx="15" fill="currentColor" />
-        <path d="M19 44V20h4l14 17V20h5v24h-4L24 27v17z" fill="var(--bg)" />
-        <circle cx="48" cy="45" r="4" fill="var(--color-clay)" />
+        <rect width="64" height="64" rx="16" fill="currentColor" />
+        <path d="M15 43.5V20.5L31 43.5V20.5V43.5H48" fill="none" stroke="var(--bg)" strokeWidth="6.5" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx="47" cy="24" r="3.6" fill="#ff3b30" />
       </svg>
-      <span className="title-serif text-[1.35rem] leading-none">Nevernote</span>
+      <span className="title-serif text-[1.35rem] leading-none">NoteLater</span>
     </span>
   );
 }
@@ -101,12 +108,12 @@ export function Logo({ size = 22 }: { size?: number }) {
 export function Hmu({ compact }: { compact?: boolean }) {
   return (
     <a
-      href={GITHUB_PROFILE}
+      href={X_PROFILE}
       target="_blank"
       rel="noreferrer"
       className="group glass inline-flex items-center gap-2 rounded-full py-1 pl-1 pr-3 text-xs text-[var(--ink-2)] transition hover:text-[var(--fg)]"
     >
-      <img src="https://github.com/chtotibesnitsa.png?size=64" alt="" className="h-6 w-6 rounded-full bg-[var(--line)]" onError={(e) => (e.currentTarget.style.display = "none")} />
+      <img src={`${import.meta.env.BASE_URL}aleks.jpg`} alt="Aleks" className="h-6 w-6 rounded-full bg-[var(--line)] object-cover" />
       <span>{compact ? "hmu" : "hmu, I made this"}</span>
       <span className="transition-transform group-hover:translate-x-0.5 group-hover:-translate-y-0.5">↗</span>
     </a>
@@ -114,7 +121,7 @@ export function Hmu({ compact }: { compact?: boolean }) {
 }
 
 export function Card({ children, className = "" }: { children: ReactNode; className?: string }) {
-  return <div className={`rounded-[var(--radius-glass)] border border-[var(--line)] bg-[var(--card)] ${className}`}>{children}</div>;
+  return <div className={`panel ${className}`}>{children}</div>;
 }
 
 export function fmtClock(sec: number): string {
