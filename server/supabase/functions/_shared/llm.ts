@@ -16,7 +16,7 @@ export async function chat(messages: ChatMessage[], model = MODEL, json = true):
   for (let attempt = 0; ; attempt++) {
     const res = await fetch(`${BASE}/chat/completions`, {
       method: "POST",
-      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Title": "Nevernote", "HTTP-Referer": "https://github.com/chtotibesnitsa/nevernote" },
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json", "X-Title": "NoteLater", "HTTP-Referer": "https://notelater.com" },
       body: JSON.stringify({ model, messages, temperature: 0.2, ...(json ? { response_format: { type: "json_object" } } : {}) }),
       signal: AbortSignal.timeout(90_000),
     });

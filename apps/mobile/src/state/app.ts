@@ -16,7 +16,7 @@ import {
   type Stage,
   type UpsellMoment,
   type UpsellState,
-} from "@nevernote/core";
+} from "@notelater/core";
 import type { Session } from "@supabase/supabase-js";
 import * as Crypto from "expo-crypto";
 import * as Haptics from "expo-haptics";
@@ -242,7 +242,7 @@ export async function downloadModels(): Promise<ModelPaths | null> {
     return paths;
   } catch (e) {
     app.set({ models: { ready: false, error: String(e) } });
-    toast({ title: "Download paused", body: "Nevernote will pick up where it left off. Wi-Fi helps; it's about 530 MB once." });
+    toast({ title: "Download paused", body: "NoteLater will pick up where it left off. Wi-Fi helps; it's about 530 MB once." });
     return null;
   }
 }
@@ -340,7 +340,7 @@ export async function start(opts: { title?: string; folder?: string } = {}): Pro
   } catch (e) {
     app.set({ rec: { state: "idle", elapsed: 0, error: String(e) } });
     update(note.id, { stage: "failed" });
-    toast({ title: "Microphone unavailable", body: "Allow microphone access in Settings › Nevernote, then try again." });
+    toast({ title: "Microphone unavailable", body: "Allow microphone access in Settings › NoteLater, then try again." });
     return;
   }
   recorder = rec;

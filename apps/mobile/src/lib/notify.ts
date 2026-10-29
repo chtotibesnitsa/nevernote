@@ -1,6 +1,6 @@
 // Due dates as real notifications: one the moment the teacher says it, then a
 // reminder the evening before (and an hour before, when there's a time).
-import type { Extraction, Note } from "@nevernote/core";
+import type { Extraction, Note } from "@notelater/core";
 import * as Notifications from "expo-notifications";
 import { settings } from "../state/settings";
 

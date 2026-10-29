@@ -2,7 +2,7 @@
 // Everything works signed out; this only adds sync and notes.
 import "react-native-url-polyfill/auto";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { noteToRow, rowToNote, type Plan, type Remote, type Summary } from "@nevernote/core";
+import { noteToRow, rowToNote, type Plan, type Remote, type Summary } from "@notelater/core";
 import { createClient, type Session, type SupabaseClient } from "@supabase/supabase-js";
 import Constants from "expo-constants";
 import { AppState, Platform } from "react-native";
@@ -84,10 +84,10 @@ export async function signInWithApple(): Promise<void> {
   if (error) throw error;
 }
 
-/** Google through the system browser sheet, back to the app via nevernote://auth. */
+/** Google through the system browser sheet, back to the app via notelater://auth. */
 export async function signInWithGoogle(): Promise<void> {
   const WebBrowser = await import("expo-web-browser");
-  const redirectTo = "nevernote://auth";
+  const redirectTo = "notelater://auth";
   const { data, error } = await supabase!.auth.signInWithOAuth({ provider: "google", options: { redirectTo, skipBrowserRedirect: true } });
   if (error || !data.url) throw error ?? new Error("No sign-in URL");
   const res = await WebBrowser.openAuthSessionAsync(data.url, redirectTo);

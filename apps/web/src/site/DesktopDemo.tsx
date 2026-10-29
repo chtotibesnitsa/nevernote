@@ -1,4 +1,4 @@
-// The student's laptop screen from the hero, as real HTML: Nevernote recording
+// The student's laptop screen from the hero, as real HTML: NoteLater recording
 // class, with notes taken from the board on the left and everything the
 // teacher says on the right. The 3D scene uses a screenshot of this exact
 // component as the laptop texture, so the hand-off from frames to page is seamless.
@@ -82,7 +82,7 @@ export function DesktopDemo({ live = false, className = "" }: { live?: boolean; 
         {/* menu bar */}
         <div className="absolute inset-x-0 top-0 flex h-[24px] items-center gap-4 bg-white/45 px-4 text-[12px] backdrop-blur-xl">
           <svg width="12" height="14" viewBox="0 0 17 20" aria-hidden><path fill="#1d1d1f" d="M14.1 10.6c0-2.6 2.1-3.8 2.2-3.9-1.2-1.8-3.1-2-3.7-2-1.6-.2-3.1.9-3.9.9-.8 0-2-.9-3.4-.9C3.6 4.8 1.9 5.9 1 7.5c-1.9 3.2-.5 8 1.3 10.6.9 1.3 2 2.7 3.3 2.6 1.3-.1 1.8-.8 3.4-.8 1.6 0 2 .8 3.4.8 1.4 0 2.3-1.3 3.2-2.6 1-1.5 1.4-2.9 1.4-3-.1 0-2.9-1.1-2.9-4.5zM11.5 3c.7-.9 1.2-2 1.1-3.2-1 0-2.3.7-3 1.6-.7.8-1.2 2-1.1 3.1 1.2.1 2.3-.6 3-1.5z" /></svg>
-          <span className="font-semibold">Nevernote</span>
+          <span className="font-semibold">NoteLater</span>
           {["File", "Edit", "View", "Window"].map((m) => <span key={m}>{m}</span>)}
           <span className="ml-auto flex items-center gap-1.5 rounded-full bg-[#ff3b30]/12 px-2 py-[1px] font-medium text-[#d70015]">
             <span className="h-[6px] w-[6px] rounded-full bg-[#ff3b30]" /> {clock}
@@ -98,8 +98,8 @@ export function DesktopDemo({ live = false, className = "" }: { live?: boolean; 
               {["#ff5f57", "#febc2e", "#28c840"].map((c) => <span key={c} className="h-[11px] w-[11px] rounded-full" style={{ background: c }} />)}
             </div>
             <div className="flex items-center gap-2 px-1 pb-4">
-              <svg width="20" height="20" viewBox="0 0 64 64" aria-hidden><rect width="64" height="64" rx="15" fill="#1d1d1f" /><path d="M19 44V20h4l14 17V20h5v24h-4L24 27v17z" fill="#fff" /><circle cx="48" cy="45" r="4" fill="#c8794a" /></svg>
-              <span className="text-[15px] font-semibold tracking-tight">Nevernote</span>
+              <svg width="20" height="20" viewBox="0 0 64 64" aria-hidden><rect width="64" height="64" rx="15" fill="#1d1d1f" /><path d="M15 43.5V20.5L31 43.5V20.5V43.5H48" fill="none" stroke="#fff" strokeWidth="6.5" strokeLinejoin="round" strokeLinecap="round" /><circle cx="47" cy="24" r="3.6" fill="#ff3b30" /></svg>
+              <span className="text-[15px] font-semibold tracking-tight">NoteLater</span>
             </div>
             {["Home", "Notes", "Insights", "Settings"].map((n, i) => (
               <div key={n} className={`rounded-[8px] px-2.5 py-[6px] text-[13px] ${i === 1 ? "bg-white font-medium shadow-[0_1px_2px_rgb(0_0_0/0.08)]" : "text-[#6e6e73]"}`}>{n}</div>

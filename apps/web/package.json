@@ -1,5 +1,5 @@
 {
-  "name": "@nevernote/web",
+  "name": "@notelater/web",
   "private": true,
   "version": "0.1.0",
   "type": "module",
@@ -14,7 +14,7 @@
     "@fontsource-variable/inter": "^5.2.8",
     "@fontsource-variable/newsreader": "^5.2.8",
     "@huggingface/transformers": "^3.7.5",
-    "@nevernote/core": "*",
+    "@notelater/core": "*",
     "@supabase/supabase-js": "^2.75.0",
     "lucide-react": "^0.545.0",
     "marked": "^16.4.0",

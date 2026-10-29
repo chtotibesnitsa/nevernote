@@ -1,7 +1,7 @@
 // Study: flashcards with spaced repetition, a quiz and a match game (free
 // account), practice tests, study plans and exam packs (Pro), and outside
 // sources for every term. All of it is built from the student's own classes.
-import { unlockStep, type Note } from "@nevernote/core";
+import { unlockStep, type Note } from "@notelater/core";
 import { ArrowLeft, ArrowRight, RotateCcw } from "lucide-react";
 import { marked } from "marked";
 import { AnimatePresence, motion } from "motion/react";
@@ -28,7 +28,7 @@ export function Study() {
   return (
     <div className="mx-auto w-full max-w-[980px] px-5 pb-28 pt-4 md:px-8">
       <h1 className="title-serif text-[2.2rem] leading-tight">Study</h1>
-      <p className="mt-1 text-[15px] text-[var(--mute)]">Everything here is built from the notes Nevernote wrote for your classes.</p>
+      <p className="mt-1 text-[15px] text-[var(--mute)]">Everything here is built from the notes NoteLater wrote for your classes.</p>
 
       <div className="mt-5 flex flex-wrap items-center gap-3">
         <div className="no-scrollbar -mx-1 flex max-w-full overflow-x-auto rounded-full bg-[var(--bubble)] p-1 shadow-[inset_0_0_0_1px_var(--line)]">

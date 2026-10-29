@@ -84,7 +84,7 @@ export function summaryRoute(plan: Plan, usedToday: number): SummaryRoute {
 }
 
 export const PRO_PITCH: { feature: Feature; title: string; body: string }[] = [
-  { feature: "calendarSync", title: "Due dates land in your calendar", body: "Every deadline and test Nevernote hears goes straight into Google or Apple Calendar, with a reminder the night before." },
+  { feature: "calendarSync", title: "Due dates land in your calendar", body: "Every deadline and test NoteLater hears goes straight into Google or Apple Calendar, with a reminder the night before." },
   { feature: "askNotes", title: "Ask your notes anything", body: "\"What did I miss?\" \"What's on Friday's test?\" Answers from every class you've recorded, with the exact moment they said it." },
   { feature: "examPack", title: "Exam packs", body: "Pick a unit and get one study guide, flashcards and practice questions built from all of its lectures." },
   { feature: "practiceTest", title: "Practice tests and study plans", body: "A fresh test written from what your teacher actually said, and a day-by-day plan up to the exam." },

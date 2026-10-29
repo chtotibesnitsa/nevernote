@@ -2,7 +2,7 @@
 // game (free), AI practice tests (Pro), and links out to good free sources.
 // Every right or wrong answer feeds the same spaced-repetition schedule the
 // flashcards use, so the deck learns what you actually know.
-import { cardKey, isDue, mcQuestions, review, shuffle, subjectsOf, unlockStep, type Card, type McQuestion, type Note, type Recall } from "@nevernote/core";
+import { cardKey, isDue, mcQuestions, review, shuffle, subjectsOf, unlockStep, type Card, type McQuestion, type Note, type Recall } from "@notelater/core";
 import { Check, ExternalLink, RotateCcw, Sparkles, Timer, Trophy, X } from "lucide-react";
 import { marked } from "marked";
 import { AnimatePresence, motion } from "motion/react";

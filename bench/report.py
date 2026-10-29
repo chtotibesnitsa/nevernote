@@ -20,7 +20,7 @@ TIERS = [
     ("t3_noisy", "Loud room"),
     ("t4_brutal", "Brutal"),
 ]
-NAMES = {"parakeet": "Nevernote · Parakeet", "moonshine": "Moonshine base", "whisper-base.en": "Whisper base"}
+NAMES = {"parakeet": "NoteLater · Parakeet", "moonshine": "Moonshine base", "whisper-base.en": "Whisper base"}
 
 
 def load(path):

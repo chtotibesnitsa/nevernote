@@ -1,15 +1,15 @@
 {
   "expo": {
-    "name": "Nevernote",
-    "slug": "nevernote",
-    "scheme": "nevernote",
+    "name": "NoteLater",
+    "slug": "notelater",
+    "scheme": "notelater",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "bundleIdentifier": "app.nevernote",
+      "bundleIdentifier": "com.notelater.app",
       "buildNumber": "1",
       "supportsTablet": false,
       "usesAppleSignIn": true,
@@ -17,12 +17,12 @@
         "UIBackgroundModes": [
           "audio"
         ],
-        "NSMicrophoneUsageDescription": "Nevernote listens to your class so it can write the transcript on this phone. Audio never leaves your device to be transcribed.",
+        "NSMicrophoneUsageDescription": "NoteLater listens to your class so it can write the transcript on this phone. Audio never leaves your device to be transcribed.",
         "ITSAppUsesNonExemptEncryption": false
       }
     },
     "android": {
-      "package": "app.nevernote",
+      "package": "com.notelater.app",
       "permissions": [
         "RECORD_AUDIO",
         "FOREGROUND_SERVICE",
@@ -61,7 +61,7 @@
       [
         "expo-calendar",
         {
-          "calendarPermission": "Nevernote adds the due dates and tests it hears in class to your calendar, only when you ask."
+          "calendarPermission": "NoteLater adds the due dates and tests it hears in class to your calendar, only when you ask."
         }
       ]
     ],

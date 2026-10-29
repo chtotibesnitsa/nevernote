@@ -1,4 +1,4 @@
-import { PRICING, PRO_PITCH } from "@nevernote/core";
+import { PRICING, PRO_PITCH } from "@notelater/core";
 import { useState, type ReactNode } from "react";
 import { BarChart3, CalendarDays, Check, RefreshCw, Sparkles, X } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -120,7 +120,7 @@ export function ProSheet() {
         clearInterval(poll);
         if (tries <= 120) {
           closePro();
-          toast({ title: "Welcome to Nevernote Pro", body: "Instant notes, Ask, exam packs, exports and calendar sync are all on." });
+          toast({ title: "Welcome to NoteLater Pro", body: "Instant notes, Ask, exam packs, exports and calendar sync are all on." });
         }
       }
     }, 5000);
@@ -130,7 +130,7 @@ export function ProSheet() {
   return (
     <Sheet open={!!proOpen} onClose={closePro} dark>
       <h2 className="title-serif text-[2.2rem] leading-none">
-        Nevernote <span className="bg-[linear-gradient(180deg,#ffffff,#9a9aa0)] bg-clip-text text-transparent">Pro</span>
+        NoteLater <span className="bg-[linear-gradient(180deg,#ffffff,#9a9aa0)] bg-clip-text text-transparent">Pro</span>
       </h2>
       <p className="mt-2 text-[14.5px] text-white/65">{(proOpen && WHY[proOpen]) || "Your notes, working for you."} Everything free stays free.</p>
       <div className="mt-5 flex items-end gap-3">
@@ -163,7 +163,7 @@ export function ProSheet() {
         ))}
       </ul>
       {plan === "pro" ? (
-        <div className="mt-6 rounded-2xl bg-white/[0.08] p-4 text-sm">You're on Pro. Thank you for keeping Nevernote free for everyone else.</div>
+        <div className="mt-6 rounded-2xl bg-white/[0.08] p-4 text-sm">You're on Pro. Thank you for keeping NoteLater free for everyone else.</div>
       ) : (
         <button onClick={() => buy(yearly ? "yearly" : "monthly")} className="mt-6 w-full rounded-full bg-white py-3.5 text-[15.5px] font-bold text-[#1d1d1f] shadow-[0_4px_0_#9a9aa0,0_20px_36px_-14px_rgb(0_0_0/0.8)] transition active:translate-y-[3px] active:shadow-[0_1px_0_#9a9aa0]">
           Get Pro {yearly ? "yearly" : "monthly"}
@@ -176,7 +176,7 @@ export function ProSheet() {
 
 const SIGNUP_WHY: Record<string, string> = {
   pro: "Pro lives on your account, so it works on every device. Sign up free first; what you recorded comes with you.",
-  summary: "Your transcript is saved. Sign up free and Nevernote writes the notes, study guide and key terms.",
+  summary: "Your transcript is saved. Sign up free and NoteLater writes the notes, study guide and key terms.",
   studyGuide: "Study guides come with a free account.",
   insights: "See your streak, hours and every due date you've caught.",
   calendarFile: "Add due dates to your calendar with a free account.",
@@ -193,7 +193,7 @@ export function SignupSheet() {
       <h2 className="mt-6 text-[2rem] font-bold leading-[1.05] tracking-[-0.04em]">
         Keep everything. <span className="text-[#6e6e73]">Free forever.</span>
       </h2>
-      <p className="mt-2 text-[15px] text-[#6e6e73]">{(signupOpen && SIGNUP_WHY[signupOpen]) || "You're using Nevernote as a guest. A free account unlocks the rest, and keeps what you've recorded."}</p>
+      <p className="mt-2 text-[15px] text-[#6e6e73]">{(signupOpen && SIGNUP_WHY[signupOpen]) || "You're using NoteLater as a guest. A free account unlocks the rest, and keeps what you've recorded."}</p>
       <ul className="mt-5 space-y-3.5">
         {[
           [Sparkles, "AI notes the second class ends", "Notes, study guide and key terms. 5 a day, free."],

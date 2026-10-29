@@ -1,4 +1,4 @@
-// The daily check-in: which things Nevernote heard are worth a quick yes or no.
+// The daily check-in: which things NoteLater heard are worth a quick yes or no.
 import type { Extraction, Note } from "./types.ts";
 
 const TRACKED = new Set(["deadline", "exam", "event", "reminder"]);

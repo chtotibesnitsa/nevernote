@@ -21,14 +21,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-      # Nevernote lives on Vercel now. This old address only forwards there, so a
+      # NoteLater lives on Vercel now. This old address only forwards there, so a
       # stale link or a Google sign-in sent back here still lands in the real app.
       - run: |
           mkdir -p out
           sed "s#__SITE__#${SITE}#" apps/web/pages-redirect/index.html > out/index.html
           cp out/index.html out/404.html
         env:
-          SITE: ${{ vars.VITE_SITE_URL || 'https://nevernote-git-site-v3-cookerprojects.vercel.app' }}
+          SITE: ${{ vars.VITE_SITE_URL || 'https://notelater.com' }}
       - uses: actions/upload-pages-artifact@v3
         with:
           path: out

@@ -1,5 +1,5 @@
 import { QuotaPill } from "../components/Quota.tsx";
-import { stageInfo, type Extraction, type Note, type Segment } from "@nevernote/core";
+import { stageInfo, type Extraction, type Note, type Segment } from "@notelater/core";
 import { ArrowLeft, CalendarPlus, Copy, Folder, MoreHorizontal, Pause, Play, Search, Sparkles, Square, Trash2, X } from "lucide-react";
 import { marked } from "marked";
 import { AnimatePresence, motion } from "motion/react";
@@ -10,7 +10,7 @@ import { Button, Chip, fmtClock, soft, spring, StageDots, StatusDot } from "../c
 import { ask, cloudEnabled } from "../lib/cloud.ts";
 import { download, icsFor } from "../lib/ics.ts";
 import { cardsOf, exportDoc, exportFlashcards, exportMarkdown, exportPdf, noteMarkdown } from "../lib/export.ts";
-import { unlockStep } from "@nevernote/core";
+import { unlockStep } from "@notelater/core";
 import { LockBadge } from "../components/ui.tsx";
 import { CutBanner, EnginePanel } from "./RecordingUI.tsx";
 import { NotesTeaser } from "./GuestUnlock.tsx";
@@ -401,8 +401,8 @@ function Transcript({ note, live, jump }: { note: Note; live: boolean; jump?: st
             <motion.div initial={{ height: 0 }} animate={{ height: "auto" }} exit={{ height: 0 }} className="flex items-center justify-between border-t border-[var(--line)] px-4 py-2.5 text-sm text-[var(--ink-2)]">
               <span>
                 {liveEngine === "cloud"
-                  ? "Live words come from your browser's speech service. Nevernote tells voices apart on this device and picks up names people say."
-                  : "Everything stays on this device. Nevernote tells voices apart as you go and picks up names people say."}
+                  ? "Live words come from your browser's speech service. NoteLater tells voices apart on this device and picks up names people say."
+                  : "Everything stays on this device. NoteLater tells voices apart as you go and picks up names people say."}
               </span>
               <button onClick={() => setBanner(false)} aria-label="Dismiss">
                 <X size={14} />
@@ -542,11 +542,11 @@ function SummaryTab({ note }: { note: Note }) {
           ) : (
             <p className="mx-auto mt-3 max-w-md text-[15px] text-[var(--ink-2)]">
               {!cloudEnabled
-                ? "AI notes need the Nevernote sync server. Your transcript and the due dates below are already here."
+                ? "AI notes need the NoteLater sync server. Your transcript and the due dates below are already here."
                 : tier === "guest"
-                  ? "Your transcript is saved. Sign up free and Nevernote writes the notes, a study guide and key terms for this class."
+                  ? "Your transcript is saved. Sign up free and NoteLater writes the notes, a study guide and key terms for this class."
                   : !session
-                  ? "Sign in (free) and Nevernote writes notes, a study guide and key terms for every class."
+                  ? "Sign in (free) and NoteLater writes notes, a study guide and key terms for every class."
                   : !online
                     ? "You're offline. This class is saved, and its notes get written the moment you're back on Wi-Fi."
                     : note.stage === "queued"
@@ -733,7 +733,7 @@ function SponsorCard({ open, onDone, onClose }: { open: boolean; onDone: () => v
             <X size={16} />
           </button>
           <div className="text-xs uppercase tracking-widest opacity-60">Sponsored · {left}s</div>
-          <div className="title-serif mt-2 text-2xl">Nevernote is free because of people like you.</div>
+          <div className="title-serif mt-2 text-2xl">NoteLater is free because of people like you.</div>
           <p className="mt-1 text-sm opacity-80">Tell a friend in your class, or go Pro to skip this forever.</p>
           <motion.div className="absolute bottom-0 left-0 h-1 bg-white/70" initial={{ width: "0%" }} animate={{ width: "100%" }} transition={{ duration: 5, ease: "linear" }} />
         </motion.div>

@@ -41,7 +41,7 @@ export function MicOverlay() {
               <Mic size={30} strokeWidth={2.6} />
             </div>
             <h2 className="mt-4 text-2xl font-extrabold tracking-tight">{asking ? "Allow your microphone" : "Microphone is blocked"}</h2>
-            <p className="mt-1.5 text-[15px] text-[var(--ink-2)]">{asking ? "Your browser is asking. Audio stays on this device." : "Nevernote can't hear class until you allow it."}</p>
+            <p className="mt-1.5 text-[15px] text-[var(--ink-2)]">{asking ? "Your browser is asking. Audio stays on this device." : "NoteLater can't hear class until you allow it."}</p>
             {denied && (
               <ol className="mt-5 space-y-2.5 text-left">
                 {STEPS.map(([t, d], i) => (

@@ -27,7 +27,7 @@ import {
   type Stage,
   type UpsellMoment,
   type UpsellState,
-} from "@nevernote/core";
+} from "@notelater/core";
 import type { Session } from "@supabase/supabase-js";
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { desktop, isDesktop, type AsrModelId } from "../lib/bridge.ts";
@@ -300,14 +300,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
     if (session) fetchPlan().then(setPlan);
     else setPlan("free");
   }, [session]);
-  // Desktop: the browser hands the Google sign-in back over nevernote://auth?code=…
+  // Desktop: the browser hands the Google sign-in back over notelater://auth?code=…
   useEffect(
     () =>
       desktop?.onAuth?.(async (link) => {
         const code = new URL(link).searchParams.get("code");
         if (!code || !supabase) return;
         const { error } = await supabase.auth.exchangeCodeForSession(code);
-        if (error) toast({ title: "Couldn't finish signing in", body: "Click Continue with Google again. If it keeps happening, restart Nevernote." });
+        if (error) toast({ title: "Couldn't finish signing in", body: "Click Continue with Google again. If it keeps happening, restart NoteLater." });
       }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [],
@@ -413,7 +413,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await syncNow();
         if (moved > 0) toast({ title: "Your classes are in your account", body: "What you recorded as a guest is saved to your account and syncs everywhere you sign in." });
       })
-      .catch(() => toast({ title: "Couldn't move your guest classes yet", body: "They're safe in this browser. Nevernote will try again next time you open it." }));
+      .catch(() => toast({ title: "Couldn't move your guest classes yet", body: "They're safe in this browser. NoteLater will try again next time you open it." }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [session?.user.id]);
 
@@ -457,7 +457,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         nudge("summaryReady");
       } catch (e) {
         update(id, { stage: liveStage(id) ?? "queued" });
-        if (!quiet) toast({ title: "Couldn't write notes yet", body: "Saved; Nevernote will try again when the connection is better." });
+        if (!quiet) toast({ title: "Couldn't write notes yet", body: "Saved; NoteLater will try again when the connection is better." });
       }
     },
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -573,7 +573,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         await desktop.models.download(settings.model);
         setModelsReady(true);
       } catch (e) {
-        toast({ title: "Couldn't download the offline engine", body: "Check your connection. Nevernote will try again when you press record." });
+        toast({ title: "Couldn't download the offline engine", body: "Check your connection. NoteLater will try again when you press record." });
       } finally {
         off();
         setRec((r) => ({ ...r, engineProgress: undefined }));

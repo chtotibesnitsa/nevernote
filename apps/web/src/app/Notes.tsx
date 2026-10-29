@@ -1,4 +1,4 @@
-import type { Note } from "@nevernote/core";
+import type { Note } from "@notelater/core";
 import { FileText, LayoutGrid, List, Search } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useMemo, useRef, useState } from "react";

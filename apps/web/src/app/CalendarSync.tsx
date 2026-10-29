@@ -1,4 +1,4 @@
-// Pro: subscribe Google or Apple Calendar to Nevernote once, and every due date
+// Pro: subscribe Google or Apple Calendar to NoteLater once, and every due date
 // it hears after that shows up on its own, with a reminder the night before.
 import { useState } from "react";
 import { Button } from "../components/ui.tsx";

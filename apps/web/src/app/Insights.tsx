@@ -1,4 +1,4 @@
-import { insights, type Device } from "@nevernote/core";
+import { insights, type Device } from "@notelater/core";
 import { Laptop, Monitor, Smartphone } from "lucide-react";
 import { motion } from "motion/react";
 import { useMemo, useState } from "react";

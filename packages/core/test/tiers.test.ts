@@ -23,8 +23,8 @@ describe("tiers", () => {
 
 describe("calendar feed", () => {
   it("names the calendar and prefixes each event with its class", () => {
-    const ics = icsFor([{ id: "a", kind: "deadline", title: "Lab report", phrase: "due Friday", when: "2026-10-23T23:59:00", course: "Biology" } as never], undefined, "Nevernote due dates");
-    expect(ics).toContain("X-WR-CALNAME:Nevernote due dates");
+    const ics = icsFor([{ id: "a", kind: "deadline", title: "Lab report", phrase: "due Friday", when: "2026-10-23T23:59:00", course: "Biology" } as never], undefined, "NoteLater due dates");
+    expect(ics).toContain("X-WR-CALNAME:NoteLater due dates");
     expect(ics).toContain("SUMMARY:Biology: Lab report");
   });
 });

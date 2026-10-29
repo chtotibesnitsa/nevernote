@@ -22,7 +22,7 @@ jobs:
       - name: Build website
         run: npm run build:web
       - name: Build desktop main process
-        run: npm run build:main -w @nevernote/desktop
+        run: npm run build:main -w @notelater/desktop
 
   mobile:
     runs-on: ubuntu-latest

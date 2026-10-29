@@ -1,4 +1,4 @@
-import { pipelineDots, stageInfo, type Dot, type Stage } from "@nevernote/core";
+import { pipelineDots, stageInfo, type Dot, type Stage } from "@notelater/core";
 import { motion } from "motion/react";
 import type { ButtonHTMLAttributes, ReactNode } from "react";
 import { X_PROFILE } from "../lib/bridge.ts";
@@ -96,10 +96,10 @@ export function Logo({ size = 22 }: { size?: number }) {
     <span className="inline-flex items-center gap-2">
       <svg width={size} height={size} viewBox="0 0 64 64" aria-hidden>
         <rect width="64" height="64" rx="16" fill="currentColor" />
-        <path d="M21 43.5V20.5L38 43.5V20.5" fill="none" stroke="var(--bg)" strokeWidth="7" strokeLinejoin="round" strokeLinecap="round" />
-        <circle cx="46.5" cy="43.2" r="3.4" fill="#ff3b30" />
+        <path d="M15 43.5V20.5L31 43.5V20.5V43.5H48" fill="none" stroke="var(--bg)" strokeWidth="6.5" strokeLinejoin="round" strokeLinecap="round" />
+        <circle cx="47" cy="24" r="3.6" fill="#ff3b30" />
       </svg>
-      <span className="title-serif text-[1.35rem] leading-none">Nevernote</span>
+      <span className="title-serif text-[1.35rem] leading-none">NoteLater</span>
     </span>
   );
 }

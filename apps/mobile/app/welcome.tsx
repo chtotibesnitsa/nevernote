@@ -13,7 +13,7 @@ import { settings, useSettings } from "../src/state/settings";
 import { Button, Logo, T } from "../src/ui/kit";
 
 const PAGES: { icon: SFSymbol; title: string; body: string }[] = [
-  { icon: "waveform", title: "Every word in the room.", body: "Put your phone on the desk. Nevernote writes down the teacher, the questions and the answers, and tells the voices apart." },
+  { icon: "waveform", title: "Every word in the room.", body: "Put your phone on the desk. NoteLater writes down the teacher, the questions and the answers, and tells the voices apart." },
   { icon: "lock.shield", title: "Stays on your phone.", body: "Transcription runs on this iPhone, even in airplane mode. Nothing is uploaded to turn speech into text." },
   { icon: "calendar.badge.clock", title: "Due dates find you.", body: "“Lab report due Friday at 11:59” becomes a notification the moment it's said, and a reminder the night before." },
 ];

@@ -22,7 +22,7 @@ export async function signInWithGoogle() {
 /**
  * One Google button for signing up and signing in. A new Google account is
  * linked to the guest, so it keeps its classes. A Google account that already
- * has Nevernote can't be linked; Google signs into it instead, and the guest's
+ * has NoteLater can't be linked; Google signs into it instead, and the guest's
  * classes are claimed onto it once back (see claimGuest).
  */
 export async function upgradeGuest() {
@@ -124,7 +124,7 @@ export function GuestBar() {
   if (!session?.user.is_anonymous) return null;
   return (
     <div className="sticky top-0 z-50 flex flex-wrap items-center justify-center gap-x-3 gap-y-1.5 bg-[#1d1d1f] px-4 py-2 text-center text-[13px] text-white/80">
-      <span>You're trying Nevernote as a guest. Sign up to keep your notes and unlock AI notes, sync and insights.</span>
+      <span>You're trying NoteLater as a guest. Sign up to keep your notes and unlock AI notes, sync and insights.</span>
       <button onClick={() => void upgradeGuest()} className="inline-flex items-center gap-2 rounded-full bg-white py-1 pl-1 pr-3 text-[12.5px] font-bold text-[#1d1d1f] shadow-[0_2px_0_#9a9aa0] transition active:translate-y-[2px] active:shadow-none">
         <span className="grid h-5 w-5 place-items-center rounded-full bg-white"><GoogleMark /></span>
         Sign up free

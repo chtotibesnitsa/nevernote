@@ -1,8 +1,8 @@
 project_id = "nevernote"
 
 [auth]
-site_url = "https://nevernote.app"
-additional_redirect_urls = ["nevernote://auth", "http://localhost:5173/app"]
+site_url = "https://notelater.com"
+additional_redirect_urls = ["notelater://auth", "http://localhost:5173/app"]
 
 [auth.external.apple]
 enabled = true
