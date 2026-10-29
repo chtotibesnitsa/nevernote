@@ -334,3 +334,18 @@ html.desktop body {
     display: none;
   }
 }
+
+/* Loading: the bar on the opening screen and the green liquid inside the status pill. */
+@keyframes nn-load { 0% { transform: translateX(-110%); } 100% { transform: translateX(220%); } }
+.nn-load { animation: nn-load 1.2s ease-in-out infinite; }
+@keyframes nn-liquid-sheen { from { background-position: 0 0; } to { background-position: 80px 0; } }
+.nn-liquid {
+  background:
+    repeating-linear-gradient(110deg, rgb(255 255 255 / 0.28) 0 14px, transparent 14px 40px),
+    linear-gradient(180deg, #7be495, #34c759);
+  background-size: 80px 100%, 100% 100%;
+  border-radius: 0 999px 999px 0;
+  animation: nn-liquid-sheen 2.4s linear infinite;
+  opacity: 0.55;
+}
+@media (prefers-reduced-motion: reduce) { .nn-load, .nn-liquid { animation: none; } }

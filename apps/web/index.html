@@ -22,7 +22,16 @@
     <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
   </head>
   <body>
-    <div id="root"></div>
+    <div id="root"><div id="boot" aria-label="Loading NoteLater"><svg width="64" height="64" viewBox="0 0 64 64" aria-hidden="true"><rect width="64" height="64" rx="16" fill="#1d1d1f"/><path d="M15 43.5V20.5L31 43.5V20.5V43.5H48" fill="none" stroke="#fff" stroke-width="6.5" stroke-linejoin="round" stroke-linecap="round"/><circle cx="47" cy="24" r="3.6" fill="#ff3b30"/></svg><span class="bt">NoteLater</span><span class="bl"><i></i></span></div></div>
+    <style>
+      #boot{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;background:#f5f5f7;font:700 22px/1 system-ui,-apple-system,"Segoe UI",sans-serif;letter-spacing:-.03em;color:#1d1d1f;animation:bootin .35s ease both}
+      #boot svg{animation:bootpop 1.6s ease-in-out infinite}
+      #boot .bl{width:120px;height:6px;border-radius:99px;background:#e5e5ea;overflow:hidden;margin-top:6px}
+      #boot .bl i{display:block;height:100%;width:45%;border-radius:99px;background:#34c759;animation:bootbar 1.2s ease-in-out infinite}
+      @keyframes bootin{from{opacity:0}to{opacity:1}}
+      @keyframes bootpop{0%,100%{transform:scale(1)}50%{transform:scale(1.07)}}
+      @keyframes bootbar{0%{transform:translateX(-100%)}100%{transform:translateX(260%)}}
+    </style>
     <script type="module" src="/src/main.tsx"></script>
   </body>
 </html>
