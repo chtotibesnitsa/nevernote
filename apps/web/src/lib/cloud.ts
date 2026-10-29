@@ -105,9 +105,20 @@ export async function requestSummary(noteId: string, sponsored = false): Promise
   return data as SummaryResult;
 }
 
-export async function ask(question: string, noteIds?: string[], opts: { tool?: AskTool; history?: { q: string; a: string }[] } = {}): Promise<{ answer?: string; error?: string }> {
+export async function ask(
+  question: string,
+  noteIds?: string[],
+  opts: { tool?: AskTool; history?: { q: string; a: string }[]; live?: { title: string; segments: { text: string; speaker?: string; start: number; end: number }[] } } = {},
+): Promise<{ answer?: string; error?: string }> {
   const { data, error } = await supabase!.functions.invoke("ask", { body: { question, noteIds, ...opts } });
-  if (error) return { error: (error as { context?: { status?: number } }).context?.status === 402 ? "pro" : String(error.message) };
+  if (error) {
+    const res = (error as { context?: Response }).context;
+    if (res?.status === 402) return { error: "pro" };
+    if (res?.status === 403) return { error: "signup" };
+    // The function explains itself (daily limit, model busy): show that, not "non-2xx status code".
+    const body = await res?.clone().json().catch(() => null);
+    return { error: typeof body?.error === "string" ? body.error : "Couldn't reach NoteLater. Check your connection and try again." };
+  }
   return data;
 }
 

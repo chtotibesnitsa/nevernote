@@ -362,6 +362,7 @@ function Transcript({ note, live, jump }: { note: Note; live: boolean; jump?: st
 
   // The transcript scrolls inside its own box, so the page never grows. It follows
   // new words only while you're at the bottom; scroll up and it stays put.
+  const fit = useFitHeight(box);
   const onScroll = () => {
     const el = box.current!;
     stick.current = el.scrollHeight - el.scrollTop - el.clientHeight < 80;
@@ -377,7 +378,7 @@ function Transcript({ note, live, jump }: { note: Note; live: boolean; jump?: st
   useEffect(() => {
     if (stick.current) requestAnimationFrame(toEnd);
     else if (live) setBehind(true);
-  }, [note.segments.length, draft, live]);
+  }, [note.segments.length, draft, live, fit]);
 
   const rename = (id: string) => {
     const name = prompt(`Who is ${speakers.get(id)?.name}?`, speakers.get(id)?.name);
@@ -414,7 +415,7 @@ function Transcript({ note, live, jump }: { note: Note; live: boolean; jump?: st
 
       {live && <div className="mt-4"><EnginePanel empty={note.segments.length === 0} /></div>}
       <div className="relative mt-3">
-      <div ref={box} onScroll={onScroll} className="h-[calc(100dvh-420px)] min-h-[300px] overflow-y-auto md:h-[calc(100dvh-370px)] overscroll-contain rounded-2xl pb-28 pr-1 [overflow-anchor:none] md:pb-20">
+      <div ref={box} onScroll={onScroll} style={{ height: fit }} className="min-h-[240px] overflow-y-auto overscroll-contain rounded-2xl pb-4 pr-1 [overflow-anchor:none]">
       {note.segments.length === 0 && !draft ? (
         <div className="mt-16 text-center text-[var(--mute)]">
           {live ? (
@@ -459,7 +460,7 @@ function Transcript({ note, live, jump }: { note: Note; live: boolean; jump?: st
       </div>
       <AnimatePresence>
         {behind && (
-          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="absolute inset-x-0 bottom-28 z-10 flex justify-center md:bottom-24">
+          <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 8 }} className="absolute inset-x-0 bottom-3 z-10 flex justify-center">
             <button onClick={toEnd} className="rounded-full bg-[var(--fg)] px-4 py-2 text-[13px] font-medium text-[var(--bg)] shadow-lg">
               ↓ New words
             </button>
@@ -744,35 +745,114 @@ function SponsorCard({ open, onDone, onClose }: { open: boolean; onDone: () => v
 
 // ---------------- Bottom bar ----------------
 
+/** Publishes how much of the window the bottom bar covers, so content can end right above it. */
+function useBarHeight(ref: React.RefObject<HTMLDivElement | null>) {
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    const root = document.documentElement;
+    const set = () => root.style.setProperty("--bar-h", `${Math.max(0, window.innerHeight - el.getBoundingClientRect().top)}px`);
+    set();
+    const ro = new ResizeObserver(set);
+    ro.observe(el);
+    window.addEventListener("resize", set);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener("resize", set);
+      root.style.removeProperty("--bar-h");
+    };
+  }, [ref]);
+}
+
+/** Height that takes a box from where it starts down to just above the bottom bar. */
+function useFitHeight(ref: React.RefObject<HTMLDivElement | null>) {
+  const [h, setH] = useState(480);
+  useEffect(() => {
+    let raf = 0;
+    const measure = () => {
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(() => {
+        const el = ref.current;
+        if (!el) return;
+        const bar = parseFloat(getComputedStyle(document.documentElement).getPropertyValue("--bar-h")) || 96;
+        setH(Math.max(240, Math.round(window.innerHeight - el.getBoundingClientRect().top - bar - 12)));
+      });
+    };
+    measure();
+    // Banners opening or closing above the transcript, the answer card growing, the window resizing.
+    const ro = new ResizeObserver(measure);
+    ro.observe(document.body);
+    const bar = new MutationObserver(measure);
+    bar.observe(document.documentElement, { attributes: true, attributeFilter: ["style"] });
+    window.addEventListener("resize", measure);
+    window.addEventListener("scroll", measure, true);
+    const t = setInterval(measure, 1000);
+    return () => {
+      cancelAnimationFrame(raf);
+      ro.disconnect();
+      bar.disconnect();
+      clearInterval(t);
+      window.removeEventListener("resize", measure);
+      window.removeEventListener("scroll", measure, true);
+    };
+  }, [ref]);
+  return h;
+}
+
 function BottomBar({ note, live, onPause, onResume, onStop }: { note: Note; live: boolean; onPause: () => void; onResume: () => void; onStop: () => Promise<void> }) {
   const { rec, plan, nudge, openPro, need } = useApp();
   const [q, setQ] = useState("");
   const [answer, setAnswer] = useState<string | null>(null);
   const [asking, setAsking] = useState(false);
 
-  const submit = async (question: string) => {
-    if (!question.trim()) return;
+  const bar = useRef<HTMLDivElement>(null);
+  useBarHeight(bar);
+
+  /** `minutes` limits the question to the most recent part of the class ("What did I miss?"). */
+  const submit = async (question: string, minutes?: number) => {
+    if (!question.trim() || asking) return;
     if (!need("askNotes", "ask")) {
       if (plan !== "pro") nudge("askedQuestion");
       return;
     }
+    const end = note.segments.at(-1)?.end ?? 0;
+    const segs = minutes ? note.segments.filter((s) => s.end >= end - minutes * 60) : note.segments;
+    if (!segs.length) {
+      setAnswer(minutes ? "Nothing's been said yet. Ask again once class gets going." : "This class has no transcript yet.");
+      return;
+    }
+    setQ("");
+    setAnswer(null);
     setAsking(true);
-    const r = await ask(question, [note.id]);
+    // The class as it is on this device right now, so a live question sees the last few seconds.
+    const r = await ask(question, [note.id], { live: { title: note.title, segments: segs.map(({ text, speaker, start, end }) => ({ text, speaker, start, end })) } });
     setAsking(false);
-    setAnswer(r.answer ?? (r.error === "pro" ? null : `Couldn't answer: ${r.error}`));
+    if (r.error === "pro") return openPro("ask");
+    if (r.error === "signup") return void need("askNotes", "ask");
+    setAnswer(r.answer ?? r.error ?? "No answer came back. Try again.");
   };
 
   // Portalled: the page transition's transform would otherwise trap a fixed bar inside the scrolling page.
   return createPortal(
     <div className="pointer-events-none fixed inset-x-0 bottom-0 z-30 flex justify-center px-4 pb-24 md:left-[248px] md:pb-6 md:pr-6 lg:pr-[376px]">
-      <div className="pointer-events-auto w-full max-w-[860px]">
+      <div ref={bar} className="pointer-events-auto w-full max-w-[860px]">
         <AnimatePresence>
+          {asking && (
+            <motion.div key="thinking" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="glass-solid mb-2 flex items-center gap-2.5 rounded-2xl px-4 py-3 text-[14.5px] text-[var(--ink-2)]">
+              <span className="flex gap-1">
+                {[0, 1, 2].map((i) => (
+                  <motion.span key={i} className="h-1.5 w-1.5 rounded-full bg-[var(--ink-2)]" animate={{ opacity: [0.25, 1, 0.25] }} transition={{ repeat: Infinity, duration: 1, delay: i * 0.15 }} />
+                ))}
+              </span>
+              Reading your class…
+            </motion.div>
+          )}
           {answer && (
-            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="glass-solid mb-2 rounded-2xl p-4 text-[15px] leading-relaxed">
-              <button className="float-right text-[var(--mute)]" onClick={() => setAnswer(null)} aria-label="Close">
+            <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="glass-solid relative mb-2 rounded-2xl p-4 text-[15px] leading-relaxed">
+              <button className="absolute right-3 top-3 grid h-7 w-7 place-items-center rounded-full bg-[var(--bubble)] text-[var(--mute)]" onClick={() => setAnswer(null)} aria-label="Close">
                 <X size={14} />
               </button>
-              {answer}
+              <div className="prose-nn max-h-[38dvh] overflow-y-auto pr-6 !text-[15px]" dangerouslySetInnerHTML={{ __html: marked.parse(answer.replace(/</g, "&lt;"), { async: false, breaks: true }) as string }} />
             </motion.div>
           )}
         </AnimatePresence>
@@ -800,8 +880,8 @@ function BottomBar({ note, live, onPause, onResume, onStop }: { note: Note; live
             }}
             className="glass-solid flex min-w-0 flex-1 items-center gap-2 rounded-full py-1.5 pl-5 pr-1.5"
           >
-            <input value={q} onChange={(e) => setQ(e.target.value)} placeholder={asking ? "Thinking…" : "Ask anything"} className="min-w-0 flex-1 bg-transparent py-1.5 text-[15px] outline-none placeholder:text-[var(--mute)]" />
-            <button type="button" onClick={() => void submit("What did I miss? Summarise the last ten minutes in three bullets.")} className="whitespace-nowrap rounded-full bg-[var(--bubble)] px-3.5 py-1.5 text-sm font-medium">
+            <input value={q} onChange={(e) => setQ(e.target.value)} disabled={asking} placeholder={asking ? "Thinking…" : "Ask anything about this class"} className="min-w-0 flex-1 bg-transparent py-1.5 text-[15px] outline-none placeholder:text-[var(--mute)]" />
+            <button type="button" disabled={asking} onClick={() => void submit("What did I miss? Sum up what was said in these last ten minutes in three short bullets, with anything due or on a test first.", 10)} className="whitespace-nowrap rounded-full bg-[var(--bubble)] px-3.5 py-1.5 text-sm font-medium">
               What did I miss?
             </button>
             {plan !== "pro" && (
