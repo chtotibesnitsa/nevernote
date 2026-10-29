@@ -166,13 +166,20 @@ const ASK_JOBS: Record<AskTool, string> = {
   recap: "Recap these classes as a quick catch-up: what was covered, what was assigned or announced, and anything the teacher stressed.",
 };
 
+/** Long classes keep their opening and, mostly, their latest part: what was just said matters most. */
+export function clipMiddle(text: string, max: number): string {
+  if (text.length <= max) return text;
+  const head = Math.floor(max / 4);
+  return `${text.slice(0, head)}\n[…]\n${text.slice(text.length - (max - head))}`;
+}
+
 export function askMessages(
   question: string,
   context: { title: string; date: Date; segments: Segment[]; notes?: string }[],
   opts: { tool?: AskTool; history?: { q: string; a: string }[] } = {},
 ): ChatMessage[] {
   const docs = context
-    .map((c) => `## ${c.title} (${toLocalISO(c.date, true)})\n${c.notes ? `${c.notes}\n` : ""}${transcriptText(c.segments).slice(0, 12000)}`)
+    .map((c) => `## ${c.title} (${toLocalISO(c.date, true)})\n${c.notes ? `${c.notes}\n` : ""}${clipMiddle(transcriptText(c.segments), 12000)}`)
     .join("\n\n");
   // A few earlier turns, trimmed, so follow-ups ("and the second one?") make sense.
   const past = (opts.history ?? []).slice(-4).flatMap((t): ChatMessage[] => [

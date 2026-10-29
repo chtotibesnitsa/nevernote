@@ -402,20 +402,39 @@ export function AppProvider({ children }: { children: ReactNode }) {
   }, [syncNow, session?.user.id, refreshPlan]);
 
   // Signed into an account that already existed: bring the guest's classes onto it.
+  // A guest who links Google keeps the same user id, so this also runs when
+  // is_anonymous flips: either way their classes get their AI notes right away.
+  const account = session && !session.user.is_anonymous ? session.user.id : null;
   useEffect(() => {
-    if (!session || session.user.is_anonymous) return;
+    if (!account || !session) return;
     claimGuest(session)
       .then(async (moved) => {
-        if (moved === null) return;
-        // Everything in this browser goes up again, now under the account, and the account's own notes come down.
-        for (const n of await local.list()) await local.put({ ...n, syncedAt: undefined });
-        await local.setMeta("cursor", "");
-        await syncNow();
-        if (moved > 0) toast({ title: "Your classes are in your account", body: "What you recorded as a guest is saved to your account and syncs everywhere you sign in." });
+        if (moved !== null) {
+          // Everything in this browser goes up again, now under the account, and the account's own notes come down.
+          for (const n of await local.list()) await local.put({ ...n, syncedAt: undefined });
+          await local.setMeta("cursor", "");
+          await syncNow();
+          if (moved > 0) toast({ title: "Your classes are in your account", body: "What you recorded as a guest is saved to your account and syncs everywhere you sign in." });
+        }
+        await notesForGuestClasses(account);
       })
       .catch(() => toast({ title: "Couldn't move your guest classes yet", body: "They're safe in this browser. NoteLater will try again next time you open it." }));
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [session?.user.id]);
+  }, [account]);
+  /** Once per account on this browser: the latest classes recorded before signing up get their notes now. */
+  const notesForGuestClasses = async (uid: string) => {
+    const key = `nn:guest-notes:${uid}`;
+    if (localStorage.getItem(key)) return;
+    localStorage.setItem(key, "1");
+    const recent = Date.now() - 3 * 864e5;
+    const waiting = notesRef.current
+      .filter((n) => n.segments.length && !n.summary && !liveStage(n.id) && Date.parse(n.createdAt) > recent)
+      .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
+      .slice(0, 3);
+    if (!waiting.length) return;
+    await syncNow();
+    for (const n of waiting) await summarizeRef.current(n.id, false, true);
+  };
 
   // ---------- summaries ----------
   /** While a class is still open (paused, or recording again), its stage belongs to the recorder. */
@@ -463,6 +482,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [session, online, update, syncNow, nudge, toast, openSignup, openPro, refreshQuota],
   );
+  const summarizeRef = useRef(summarize);
+  summarizeRef.current = summarize;
   /**
    * Worth writing notes now? The first notes come as soon as there's a couple of
    * sentences; after that, a new section needs at least two new lines.

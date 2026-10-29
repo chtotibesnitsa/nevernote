@@ -2,7 +2,7 @@
 // permission walkthrough, the transcriber loading panel, and the cutoff log with
 // its STOPPED / Resume controls.
 import { AnimatePresence, motion } from "motion/react";
-import { ArrowUpLeft, Mic, Pause, Play, RefreshCw, TriangleAlert } from "lucide-react";
+import { Mic, Pause, Play, RefreshCw, TriangleAlert } from "lucide-react";
 import { useEffect, useState } from "react";
 import { Button, fmtClock, soft, spring } from "../components/ui.tsx";
 import { isDesktop } from "../lib/bridge.ts";
@@ -15,14 +15,13 @@ const STEPS = [
   ["Pick your mic", "Choose the mic you want from the list below, then try again."],
 ];
 
-/** Greys out the page while the browser asks for the mic, and explains what to do if it's blocked. */
+/** Explains what to do when the browser has blocked the mic. */
 export function MicOverlay() {
   const { rec, start } = useApp();
   const [devices, setDevices] = useState<MediaDeviceInfo[]>([]);
   const [pick, setPick] = useState(() => localStorage.getItem("nn:mic") ?? "");
   const denied = !!rec.error && /NotAllowed|Permission|NotFound|Denied/i.test(rec.error);
-  const asking = rec.state === "starting" && !rec.noteId;
-  const open = !isDesktop && (asking || denied);
+  const open = !isDesktop && denied;
   useEffect(() => {
     if (!open) return;
     void navigator.mediaDevices?.enumerateDevices().then((d) => setDevices(d.filter((x) => x.kind === "audioinput")));
@@ -31,17 +30,12 @@ export function MicOverlay() {
     <AnimatePresence>
       {open && (
         <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[80] grid place-items-center bg-black/45 px-5 backdrop-blur-md">
-          {asking && (
-            <motion.div initial={{ opacity: 0, x: -10, y: -10 }} animate={{ opacity: 1, x: [0, -6, 0], y: [0, -6, 0] }} transition={{ x: { repeat: Infinity, duration: 1.2 }, y: { repeat: Infinity, duration: 1.2 }, opacity: { duration: 0.3 } }} className="absolute left-6 top-5 flex items-center gap-2 text-white">
-              <ArrowUpLeft size={34} strokeWidth={3} /> <span className="text-lg font-extrabold">Click Allow up here</span>
-            </motion.div>
-          )}
           <motion.div initial={{ scale: 0.94, y: 12 }} animate={{ scale: 1, y: 0 }} transition={spring} className="glass-strong w-full max-w-[460px] rounded-[28px] p-6 text-center">
             <div className="mx-auto grid h-16 w-16 place-items-center rounded-[20px] bg-[var(--color-dot-red)] text-white shadow-[0_14px_30px_-10px_rgb(239_68_68/0.7)]">
               <Mic size={30} strokeWidth={2.6} />
             </div>
-            <h2 className="mt-4 text-2xl font-extrabold tracking-tight">{asking ? "Allow your microphone" : "Microphone is blocked"}</h2>
-            <p className="mt-1.5 text-[15px] text-[var(--ink-2)]">{asking ? "Your browser is asking. Audio stays on this device." : "NoteLater can't hear class until you allow it."}</p>
+            <h2 className="mt-4 text-2xl font-extrabold tracking-tight">Microphone is blocked</h2>
+            <p className="mt-1.5 text-[15px] text-[var(--ink-2)]">{"NoteLater can't hear class until you allow it."}</p>
             {denied && (
               <ol className="mt-5 space-y-2.5 text-left">
                 {STEPS.map(([t, d], i) => (

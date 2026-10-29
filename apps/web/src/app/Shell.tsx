@@ -1,3 +1,4 @@
+import { AppLoading, StatusPill } from "../components/StatusPill.tsx";
 import { QuotaPill } from "../components/Quota.tsx";
 import { BarChart3, CircleDot, GraduationCap, Home, MessageCircleQuestion, Settings as Cog } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
@@ -117,12 +118,13 @@ export function Shell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (anon && existingAccountReturn()) void signInWithGoogle();
   }, [anon]);
-  if (cloudEnabled && !authReady) return <div className="min-h-screen bg-[var(--bg)]" />;
-  if (cloudEnabled && !session) return guest === "failed" || isDesktop ? <AuthGate /> : <div className="min-h-screen bg-[var(--bg)]" />;
+  if (cloudEnabled && !authReady) return <AppLoading />;
+  if (cloudEnabled && !session) return guest === "failed" || isDesktop ? <AuthGate /> : <AppLoading label="Setting up your notebook" />;
   return (
     <>
     <GuestBar />
     <MicOverlay />
+    <StatusPill />
     <div className={`flex min-h-screen ${isDesktop ? "" : "paper-grain"}`}>
       {/* Sidebar */}
       <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 flex-col overflow-y-auto px-3 pb-16 pt-12 md:flex" style={{ WebkitAppRegion: "drag" } as never}>

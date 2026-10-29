@@ -110,7 +110,8 @@ export function ProSheet() {
       toast({ title: "Checkout isn't switched on yet", body: "Pro goes on sale very soon. Everything free keeps working in the meantime." });
       return;
     }
-    const url = `${CHECKOUT}/${encodeURIComponent(session.user.id)}?email=${encodeURIComponent(session.user.email ?? "")}`;
+    // package_id opens the checkout on the plan they tapped (RevenueCat's standard monthly/annual package ids).
+    const url = `${CHECKOUT}/${encodeURIComponent(session.user.id)}?email=${encodeURIComponent(session.user.email ?? "")}&package_id=${period === "yearly" ? "%24rc_annual" : "%24rc_monthly"}`;
     if (desktop) void desktop.openExternal(url);
     else window.open(url, "_blank");
     // Watch for the purchase landing (the webhook flips the profile within seconds).
