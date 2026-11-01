@@ -755,9 +755,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
           return;
         }
         other = v !== voiceOfPhrase ? other + 1 : 0;
-        // Three seconds of a different voice: close this line so each person gets their own.
+        // Four seconds of a different voice: close this line so each person gets their own.
         // (Each cut restarts the engine, so it's kept for clear changes of speaker.)
-        if (other >= 3 && now() - phraseStart > 3) {
+        if (other >= 4 && now() - phraseStart > 4) {
           cutAt = now() - 2.6;
           other = 0;
           live.current.cut();
@@ -775,6 +775,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
       );
       if (!liveSpeechSupported()) return whisper();
       const ids = new Map<string, { id: string; start: number; speaker: string }>();
+      // The engine finishes a phrase at every short pause, which reads as a pile of
+      // fragments. Phrases from the same voice close together join into one line.
+      const parts = new Map<string, { key: string; text: string }[]>();
+      let line: { id: string; start: number; end: number; speaker: string } | null = null;
+      let growing = false; // engines that resend everything so far as one final: no joining
+      const joined = (id: string) => {
+        const t = (parts.get(id) ?? []).map((x) => x.text).join(" ");
+        return t[0].toUpperCase() + t.slice(1);
+      };
+      const wordCount = (t: string) => t.split(/\s+/).filter(Boolean).length;
       // This class's vocabulary: names already heard first, then its subject's terms.
       const cur = notesRef.current.find((x) => x.id === noteId);
       const terms = classTerms(`${cur?.folder ?? ""} ${cur?.title ?? ""}`, 400, (cur?.speakers ?? []).map((sp) => sp.name).filter((nm) => !/^S\d+$/.test(nm)));
@@ -792,12 +802,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const fixed = tidyPhrase(fixTerms(text.trim(), terms));
             if (!fixed) return; // "um", or a loop of nothing
             const clean = fixed[0].toUpperCase() + fixed.slice(1);
+            if (drop.length) growing = true;
             const gone = drop.map((k) => ids.get(k)?.id).filter(Boolean) as string[];
             if (gone.length) dropSegsRef.current(noteId, gone);
             const known = ids.get(key);
             if (known) {
-              // The engine sent this phrase again with more words: replace the line in place.
-              onSegmentRef.current(noteId, { id: known.id, start: known.start, end: now(), text: clean, speaker: known.speaker });
+              // The engine sent this phrase again with more words: replace it in place.
+              const ps = parts.get(known.id);
+              const part = ps?.find((x) => x.key === key);
+              if (part) part.text = fixed;
+              if (line?.id === known.id) line.end = now();
+              onSegmentRef.current(noteId, { id: known.id, start: known.start, end: now(), text: ps && part ? joined(known.id) : clean, speaker: known.speaker });
               return;
             }
             const end = cutAt ?? now();
@@ -811,9 +826,32 @@ export function AppProvider({ children }: { children: ReactNode }) {
             const id = `${noteId.slice(-6)}-${++segN.current}`;
             const tr = tracker();
             const speaker = tr.assign(voiceprint(audio), id);
+            const prev = line ? (parts.get(line.id) ?? []) : [];
+            const prevText = prev.map((x) => x.text).join(" ");
+            if (
+              line &&
+              !growing &&
+              !tr.relabel &&
+              !tr.unsure &&
+              speaker === line.speaker &&
+              start - line.end < 1.6 &&
+              wordCount(prevText) + wordCount(fixed) <= 45 &&
+              !(/[.?!]$/.test(prevText) && wordCount(prevText) >= 14)
+            ) {
+              prev.push({ key, text: fixed });
+              line.end = end;
+              ids.set(key, { id: line.id, start: line.start, speaker });
+              onSegmentRef.current(noteId, { id: line.id, start: line.start, end, text: joined(line.id), speaker });
+              return;
+            }
             ids.set(key, { id, start, speaker });
+            parts.set(id, [{ key, text: clean }]);
+            line = { id, start, end, speaker };
             onSegmentRef.current(noteId, { id, start, end, text: clean, speaker });
-            if (tr.relabel) relabelRef.current(noteId, tr.relabel, speaker);
+            if (tr.relabel) {
+              relabelRef.current(noteId, tr.relabel, speaker);
+              line = null;
+            }
           },
           onFail: () => {
             live.current = null;

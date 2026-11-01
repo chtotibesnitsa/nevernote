@@ -139,6 +139,7 @@ export class SpeakerTracker {
     private maxSpeakers = 6,
     private threshold = 0.75,
     private agree = 0.45,
+    private margin = 0.12,
   ) {}
 
   /**
@@ -157,6 +158,11 @@ export class SpeakerTracker {
       if (d < bd) [bd, best] = [d, i];
     });
     return bd > this.threshold ? "new" : `S${best + 1}`;
+  }
+
+  /** True while a possible new voice has been heard once and not yet confirmed. */
+  get unsure(): boolean {
+    return !!this.candidate;
   }
 
   /** `tag` names the phrase (a segment id), so its label can be fixed if it turns out to be the first of a new voice. */
@@ -192,6 +198,12 @@ export class SpeakerTracker {
       return this.last;
     }
     if (bd > this.threshold) return this.last; // a one-off odd phrase: don't drag a voice towards it
+    // Short phrases ("yeah", "okay so") carry too little voice to tell people apart: keep whoever was talking.
+    if (p.voiced < 0.7) return this.last;
+    // Stick with the current speaker unless another voice is clearly closer: far, echoey
+    // audio makes one person's phrases wobble between two nearby clusters.
+    const cur = Number(this.last.slice(1)) - 1;
+    if (cur !== best && this.centers[cur] && dist(this.centers[cur].v) - bd < this.margin && dist(this.centers[cur].v) <= this.threshold) best = cur;
     const c = this.centers[best];
     c.n++;
     const a = Math.max(1 / c.n, 0.05);

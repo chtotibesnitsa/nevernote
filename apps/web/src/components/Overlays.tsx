@@ -166,7 +166,7 @@ export function ProSheet() {
       {plan === "pro" ? (
         <div className="mt-6 rounded-2xl bg-white/[0.08] p-4 text-sm">You're on Pro. Thank you for keeping NoteLater free for everyone else.</div>
       ) : (
-        <button onClick={() => buy(yearly ? "yearly" : "monthly")} className="mt-6 w-full rounded-full bg-white py-3.5 text-[15.5px] font-bold text-[#1d1d1f] shadow-[0_4px_0_#9a9aa0,0_20px_36px_-14px_rgb(0_0_0/0.8)] transition active:translate-y-[3px] active:shadow-[0_1px_0_#9a9aa0]">
+        <button onClick={() => buy(yearly ? "yearly" : "monthly")} className="mt-6 w-full rounded-full bg-white py-3.5 text-[15px] font-semibold text-[#1d1d1f] transition hover:bg-white/90 active:scale-[0.99]">
           Get Pro {yearly ? "yearly" : "monthly"}
         </button>
       )}
