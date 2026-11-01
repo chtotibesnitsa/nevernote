@@ -42,7 +42,7 @@ function PlanCard() {
         NoteLater <span className="bg-[linear-gradient(180deg,#fff,#9a9aa0)] bg-clip-text text-transparent">Pro</span>
       </div>
       <p className="mt-1 text-[12px] leading-snug text-white/55">Ask your notes, exam packs, calendar sync and exports.</p>
-      <span className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-[12px] font-bold text-[#1d1d1f] shadow-[0_3px_0_#9a9aa0]">See Pro · from $2.50/mo</span>
+      <span className="mt-3 inline-flex rounded-full bg-white px-3 py-1.5 text-[12px] font-semibold text-[#1d1d1f]">See Pro · from $2.50/mo</span>
     </button>
   );
 }
@@ -147,7 +147,7 @@ export function Shell({ children }: { children: ReactNode }) {
         </nav>
         <div className="mt-auto flex flex-col gap-3" style={{ WebkitAppRegion: "no-drag" } as never}>
           <LiveCard />
-          <QuotaPill wide />
+          <QuotaPill wide compact />
           <PlanCard />
         </div>
       </aside>

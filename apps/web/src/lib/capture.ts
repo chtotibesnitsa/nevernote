@@ -50,7 +50,10 @@ export async function startCapture(onChunk: (s: Float32Array) => void, room = tr
     const level = new DynamicsCompressorNode(ctx, { threshold: -46, knee: 18, ratio: 6, attack: 0.01, release: 0.4 });
     const makeup = new GainNode(ctx, { gain: 7 });
     const limit = new DynamicsCompressorNode(ctx, { threshold: -4, knee: 0, ratio: 20, attack: 0.002, release: 0.1 });
-    src.connect(hp).connect(level).connect(makeup).connect(limit);
+    // Distance and hard walls take the consonants first (s, t, k, f): a gentle lift
+    // around 3 kHz brings back the sounds that tell "fifteen" from "fifty".
+    const presence = new BiquadFilterNode(ctx, { type: "peaking", frequency: 3000, Q: 0.9, gain: 4 });
+    src.connect(hp).connect(presence).connect(level).connect(makeup).connect(limit);
     out = limit;
   }
   const dest = ctx.createMediaStreamDestination();
